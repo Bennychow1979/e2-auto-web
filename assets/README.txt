@@ -1,0 +1,1 @@
+E2 Auto media assets. The Myvi showroom photo will be added separately.
