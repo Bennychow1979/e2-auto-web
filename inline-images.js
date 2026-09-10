@@ -1,7 +1,7 @@
 (()=>{
   const repo='Bennychow1979/e2-auto-web';
   const names=['myvi-real.jpg','crv-real.jpg'];
-  const version='7d4c0c02';
+  const version='55530627';
   const cache=new Map();
 
   function fileFor(img){
