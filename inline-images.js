@@ -1,7 +1,7 @@
 (()=>{
   const repo='Bennychow1979/e2-auto-web';
   const names=['myvi-real.jpg','crv-real.jpg'];
-  const version='48cf9e0b';
+  const version='7d4c0c02';
   const cache=new Map();
 
   function fileFor(img){
@@ -15,7 +15,7 @@
 
   async function apiObjectUrl(name){
     if(cache.has(name)) return cache.get(name);
-    const api=`https://api.github.com/repos/${repo}/contents/assets/${encodeURIComponent(name)}?ref=main`;
+    const api=`https://api.github.com/repos/${repo}/contents/assets/${encodeURIComponent(name)}?ref=main&v=${version}`;
     const res=await fetch(api,{cache:'no-store',headers:{Accept:'application/vnd.github+json'}});
     if(!res.ok) throw new Error(`GitHub API image fetch failed: ${res.status}`);
     const data=await res.json();
