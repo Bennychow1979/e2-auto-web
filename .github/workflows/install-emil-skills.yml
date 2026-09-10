@@ -1,0 +1,52 @@
+name: Install Emil Kowalski Skills
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/install-emil-skills.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  install-skills:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch emilkowalski/skills
+        run: |
+          rm -rf /tmp/emil-skills
+          git clone --depth 1 https://github.com/emilkowalski/skills.git /tmp/emil-skills
+
+      - name: Install skills into project
+        run: |
+          mkdir -p .agents/skills
+          rm -rf .agents/skills/*
+          cp -R /tmp/emil-skills/skills/* .agents/skills/
+          cp /tmp/emil-skills/LICENSE .agents/skills/EMILKOWALSKI_SKILLS_LICENSE
+          cat > .agents/skills/README.md <<'EOF'
+          # Installed design skills
+
+          Source: https://github.com/emilkowalski/skills
+
+          Installed into `.agents/skills/` for use by compatible coding agents.
+          Includes `apple-design`, animation, prototyping, UI review, and related skills.
+          EOF
+
+      - name: Commit installed skills
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .agents/skills
+          if git diff --cached --quiet; then
+            echo "Skills already up to date."
+            exit 0
+          fi
+          git commit -m "Install emilkowalski design skills"
+          git push origin main
