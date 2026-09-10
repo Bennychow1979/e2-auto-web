@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-label="E2 Auto red hatchback hero artwork">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#15171b"/><stop offset=".55" stop-color="#0a0b0d"/><stop offset="1" stop-color="#020203"/></linearGradient>
+ <radialGradient id="glow" cx="70%" cy="42%" r="45%"><stop offset="0" stop-color="#ff3b30" stop-opacity=".34"/><stop offset="1" stop-color="#ff3b30" stop-opacity="0"/></radialGradient>
+ <linearGradient id="car" x1="0" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#ff6158"/><stop offset=".45" stop-color="#e4211a"/><stop offset="1" stop-color="#7d0906"/></linearGradient>
+ <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a9d7e9" stop-opacity=".75"/><stop offset=".55" stop-color="#263944" stop-opacity=".8"/><stop offset="1" stop-color="#0d1216" stop-opacity=".95"/></linearGradient>
+ <filter id="shadow"><feGaussianBlur stdDeviation="18"/></filter>
+</defs>
+<rect width="1600" height="1000" fill="url(#bg)"/><rect width="1600" height="1000" fill="url(#glow)"/>
+<ellipse cx="1040" cy="785" rx="470" ry="62" fill="#000" opacity=".75" filter="url(#shadow)"/>
+<g transform="translate(470 295)">
+ <path d="M70 395 C115 328 169 294 258 281 L358 151 C386 113 423 91 475 84 L690 84 C755 87 811 112 852 151 L963 270 C1044 280 1110 309 1153 367 L1187 420 C1195 436 1185 461 1161 464 L71 464 C35 464 19 443 30 422 Z" fill="url(#car)"/>
+ <path d="M379 167 C401 132 431 117 474 113 L567 113 L566 266 L291 266 Z" fill="url(#glass)"/>
+ <path d="M600 113 L687 113 C734 114 780 132 811 163 L902 264 L601 264 Z" fill="url(#glass)"/>
+ <path d="M70 395 C261 372 442 361 628 363 C837 365 1010 379 1153 407" fill="none" stroke="#ff817a" stroke-width="5" opacity=".55"/>
+ <path d="M324 274 L565 274" stroke="#2b0504" stroke-width="5" opacity=".65"/><path d="M598 274 L915 274" stroke="#2b0504" stroke-width="5" opacity=".65"/>
+ <rect x="651" y="302" width="63" height="11" rx="5" fill="#65100d" opacity=".9"/>
+ <path d="M1006 304 L1100 323 C1121 327 1137 341 1146 359 L1157 380 L1063 374 C1032 372 1012 357 1006 334 Z" fill="#fff1d9" opacity=".96"/>
+ <path d="M83 344 L149 324 C175 316 194 323 205 347 L216 371 L105 378 Z" fill="#8c0908"/>
+ <circle cx="290" cy="454" r="91" fill="#090a0c"/><circle cx="290" cy="454" r="54" fill="#34363a"/><circle cx="290" cy="454" r="20" fill="#15161a"/><circle cx="959" cy="454" r="91" fill="#090a0c"/><circle cx="959" cy="454" r="54" fill="#34363a"/><circle cx="959" cy="454" r="20" fill="#15161a"/>
+ <g stroke="#8b8d92" stroke-width="8" opacity=".8"><path d="M290 405v98M241 454h98M959 405v98M910 454h98"/></g>
+ <path d="M181 445 H1090" stroke="#3b0605" stroke-width="10" opacity=".5"/>
+</g>
+<text x="1240" y="880" text-anchor="end" fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="34" font-weight="700" opacity=".82">E2 AUTO</text>
+<text x="1240" y="920" text-anchor="end" fill="#a6a6aa" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" font-size="20">Prototype artwork</text>
+</svg>
