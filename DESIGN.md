@@ -436,6 +436,8 @@ Use horizontal browsing on mobile where appropriate.
 
 ## Car Detail Page
 
+Every vehicle in live inventory should have its own dedicated detail page.
+
 Recommended order:
 
 1. Large hero / gallery
@@ -448,6 +450,27 @@ Recommended order:
 8. Trade-in
 9. Loan support
 10. Showroom / WhatsApp conversion
+
+### Required vehicle identity data
+
+Every live vehicle detail page should include these fields when available:
+
+- Plate number / registration number
+- Year
+- Make + model
+- Variant / engine
+- Transmission / drivetrain
+- Mileage
+- Selling price
+- Exterior colour
+- Showroom / location
+- Stock status
+
+**Plate number is a required identity field for E2 listings.** Show it clearly in the key-spec area, near year / variant / mileage. Do not hide it inside long body copy.
+
+When a customer taps WhatsApp from a vehicle page, include the plate number in the pre-filled enquiry so the E2 team can identify the exact unit immediately.
+
+Do not use the plate number as the permanent page URL because registration numbers can change or be transferred. Prefer a stable model / inventory slug or stock ID for the URL.
 
 ### Sticky purchase bar
 
@@ -578,6 +601,7 @@ The next site generation should follow this hierarchy:
 - gallery-first
 - sticky price/action bar
 - key specs only
+- include plate number as a standard identity field
 
 ### 5. Finance conversion
 - calculator
