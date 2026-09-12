@@ -81,14 +81,45 @@ renderMedia();
 }
 $('editor').addEventListener('close',()=>{$('editor').querySelectorAll('video').forEach(v=>v.pause());mediaDraft=[];mediaDrag=null;releaseUnusedMedia()});
 
+
+const OTHER_VEHICLE='__enter_manually__';
+function vehicleCatalog(){
+const catalog=Object.create(null);catalog.Honda=Object.assign(Object.create(null),{'CR-V':['TC-P 2WD']});catalog.Perodua=Object.assign(Object.create(null),{Myvi:[]});
+data.cars.forEach(c=>{if(!c.brand||!c.model)return;catalog[c.brand]??=Object.create(null);catalog[c.brand][c.model]??=[];if(c.spec&&!catalog[c.brand][c.model].includes(c.spec))catalog[c.brand][c.model].push(c.spec)});
+return catalog;
+}
+const identityNames={brand:'BRAND',model:'MODEL',spec:'VARIANT'};
+function identityField(key){const label=identityNames[key];return '<div class="field identityField"><label for="vehicle-'+key+'">'+label+'</label><select id="vehicle-'+key+'" name="'+key+'" required></select><label id="manual-'+key+'" class="manualIdentity" hidden>Enter '+label.toLowerCase()+'<input id="custom-'+key+'" name="custom_'+key+'" maxlength="100" disabled></label></div>'}
+function identityValue(key){const input=$('vehicle-'+key);return input.value===OTHER_VEHICLE?$('custom-'+key).value.trim():input.value}
+function toggleManual(key){
+const custom=$('vehicle-'+key).value===OTHER_VEHICLE;
+$('manual-'+key).hidden=!custom;$('custom-'+key).disabled=!custom;$('custom-'+key).required=custom;
+}
+function identityOptions(key,choices,value='',enabled=true){
+const select=$('vehicle-'+key),known=choices.includes(value),custom=!!value&&!known;
+select.innerHTML='<option value="">Select '+identityNames[key].toLowerCase()+'</option>'+choices.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('')+'<option value="'+OTHER_VEHICLE+'">Other / enter manually</option>';
+select.disabled=!enabled;select.value=custom?OTHER_VEHICLE:value;$('custom-'+key).value=custom?value:'';toggleManual(key);
+}
+function setupVehicleIdentity(obj){
+const catalog=vehicleCatalog();
+identityOptions('brand',Object.keys(catalog).sort(),obj.brand);
+identityOptions('model',Object.keys(catalog[obj.brand]||{}).sort(),obj.model,!!obj.brand);
+identityOptions('spec',catalog[obj.brand]?.[obj.model]||[],obj.spec,!!obj.model);
+function brandChanged(){toggleManual('brand');const brand=identityValue('brand');identityOptions('model',Object.keys(vehicleCatalog()[brand]||{}).sort(),'',!!brand);identityOptions('spec',[],'',false)}
+function modelChanged(){toggleManual('model');const brand=identityValue('brand'),model=identityValue('model');identityOptions('spec',vehicleCatalog()[brand]?.[model]||[],'',!!model)}
+$('vehicle-brand').onchange=brandChanged;$('custom-brand').oninput=brandChanged;
+$('vehicle-model').onchange=modelChanged;$('custom-model').oninput=modelChanged;
+$('vehicle-spec').onchange=()=>toggleManual('spec');
+}
+
 function openEditor(kind,id='',prefill=''){
 if(kind==='car'&&role!=='admin')return;
 let title='',fields='',obj;
-if(kind==='car'){obj=data.cars.find(c=>c.id===id)||{plate:'',brand:'',model:'',spec:'',cc:'',fuel:'',transmission:'',year:2022,price:0,status:'Available'};title=id?'Edit sample vehicle':'Add sample vehicle';fields=field('CAR PLATE','plate',obj.plate)+field('BRAND','brand',obj.brand)+field('MODEL','model',obj.model)+field('SPEC / Variant','spec',obj.spec)+field('CC','cc',obj.cc,'number')+select('TRANSMISSION','transmission',obj.transmission,[{value:'',label:'Select transmission'},...transmissions])+select('FUEL TYPE','fuel',obj.fuel,[{value:'',label:'Select fuel type'},...fuelTypes],true)+'<p class="field full" style="color:#6b6f76;line-height:1.6;margin:0">CC = engine capacity in cubic centimetres. Use 0 for a fully electric vehicle. All demo specifications are illustrative.</p>'+field('Year','year',obj.year,'number')+field('Illustrative price (RM)','price',obj.price,'number')+select('Status','status',obj.status,['Available','Reserved','Sold'],true);}
+if(kind==='car'){obj=data.cars.find(c=>c.id===id)||{plate:'',brand:'',model:'',spec:'',cc:'',fuel:'',transmission:'',year:2022,price:0,status:'Available'};title=id?'Edit sample vehicle':'Add sample vehicle';fields=field('CAR PLATE','plate',obj.plate)+identityField('brand')+identityField('model')+identityField('spec')+'<p class="field full identityHelp">Choose brand → model → variant (SPEC). Options come from the sample catalogue and vehicles saved in this demo. Missing a choice? Select Other / enter manually.</p>'+field('CC','cc',obj.cc,'number')+select('TRANSMISSION','transmission',obj.transmission,[{value:'',label:'Select transmission'},...transmissions])+select('FUEL TYPE','fuel',obj.fuel,[{value:'',label:'Select fuel type'},...fuelTypes],true)+'<p class="field full" style="color:#6b6f76;line-height:1.6;margin:0">CC = engine capacity in cubic centimetres. Use 0 for a fully electric vehicle. All demo specifications are illustrative.</p>'+field('Year','year',obj.year,'number')+field('Illustrative price (RM)','price',obj.price,'number')+select('Status','status',obj.status,['Available','Reserved','Sold'],true);}
 if(kind==='lead'){if(id&&!canLead(id))return;obj=data.leads.find(l=>l.id===id)||{name:'',car:prefill||data.cars[0]?.id,owner:'A',stage:stages[0],note:''};title=id?'Update enquiry':'Add sample enquiry';fields=field('Sample customer name','name',obj.name,'text',true)+select('Interested vehicle','car',obj.car,data.cars.map(c=>({value:c.id,label:vehicleName(c)+' · '+c.plate})))+select('Stage','stage',obj.stage,stages)+(role==='admin'?select('Assign to','owner',obj.owner,[{value:'A',label:'Demo Sales A'},{value:'B',label:'Demo Sales B'}],true):'')+noteField(obj.note);}
 if(kind==='visit'){if(id&&!visits().some(v=>v.id===id))return;if(!ownLeads().length){notify('Add a sample enquiry before booking a viewing.');return}obj=data.visits.find(v=>v.id===id)||{lead:prefill||ownLeads()[0].id,when:'',status:'To confirm',note:''};title=id?'Edit viewing':'Book sample viewing';fields=select('Customer enquiry','lead',obj.lead,ownLeads().map(l=>({value:l.id,label:l.name+' · '+carName(l.car)})),true)+'<label class="field full">Date &amp; time (Malaysia time)<input name="when" type="datetime-local" value="'+esc(obj.when)+'"><small>Leave blank if the time is not confirmed.</small></label>'+select('Status','status',obj.status,['To confirm','Confirmed','Completed','Cancelled'],true)+noteField(obj.note);}
 if(kind==='car'){mediaDraft=carMedia(obj);fields+=mediaSection()}
-edit={kind,id};$('editorTitle').textContent=title;$('editorFields').innerHTML=fields;if(kind==='car')setupMedia();$('editor').showModal();
+edit={kind,id};$('editorTitle').textContent=title;$('editorFields').innerHTML=fields;if(kind==='car'){setupVehicleIdentity(obj);setupMedia()}$('editor').showModal();
 }
 document.querySelectorAll('[data-role]').forEach(b=>b.addEventListener('click',()=>enter(b.dataset.role)));
 $('sideNav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){view=b.dataset.view;render()}});
@@ -99,6 +130,7 @@ $('closeEditor').onclick=()=>$('editor').close();
 $('editor').addEventListener('click',e=>{if(e.target!==$('editor'))return;const r=$('editor').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('editor').close()});
 $('editForm').addEventListener('submit',e=>{
 e.preventDefault();if(!edit)return;const f=Object.fromEntries(new FormData(e.currentTarget));for(const k of Object.keys(f))f[k]=f[k].trim();
+if(edit.kind==='car'){for(const key of ['brand','model','spec']){f[key]=identityValue(key);delete f['custom_'+key]}}
 if((f.name!==undefined&&!f.name)||(f.plate!==undefined&&!f.plate)){notify('Enter a name and sample plate where required.');return}
 const id=edit.id||edit.kind+Date.now();
 if(edit.kind==='car'){if(role!=='admin')return;if(!['plate','brand','model','spec','cc','transmission','fuel'].every(k=>f[k]!==undefined&&f[k]!=='')){notify('Complete all required vehicle fields.');return}f.plate=f.plate.replace(/\s+/g,'').toUpperCase();if(data.cars.some(c=>c.plate.replace(/\s+/g,'').toUpperCase()===f.plate&&c.id!==id)){notify('That car plate already exists. Use a unique plate.');return}f.cc=Number(f.cc);if(!Number.isInteger(f.cc)||f.cc<0||f.cc>20000||!transmissions.includes(f.transmission)||!fuelTypes.includes(f.fuel)){notify('Enter CC as a whole number from 0–20,000 and select a transmission and fuel type.');return}f.year=Number(f.year);f.price=Number(f.price);if(!Number.isInteger(f.year)||f.year<1900||f.year>2100||!Number.isFinite(f.price)||f.price<=0){notify('Use a year from 1900–2100 and a price above RM0.');return}f.media=mediaDraft.map(m=>({...m}));f.img=f.media.find(m=>m.type==='photo')?.url||'';const idx=data.cars.findIndex(c=>c.id===id);if(idx<0)data.cars.push({id,...f});else data.cars[idx]={...data.cars[idx],...f};}
