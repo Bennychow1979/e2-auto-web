@@ -2,9 +2,9 @@ name: Verify inventory permissions
 on:
   push:
     branches: [main]
-    paths: ['supabase/**', 'portal.js', 'showroom.js', 'car.js', 'e2-data.js', 'package*.json', '.github/workflows/inventory-checks.yml']
+    paths: ['supabase/**', 'portal.js', 'photo-sort.js', 'showroom.js', 'car.js', 'e2-data.js', 'package*.json', '.github/workflows/inventory-checks.yml']
   pull_request:
-    paths: ['supabase/**', 'portal.js', 'showroom.js', 'car.js', 'e2-data.js', 'package*.json', '.github/workflows/inventory-checks.yml']
+    paths: ['supabase/**', 'portal.js', 'photo-sort.js', 'showroom.js', 'car.js', 'e2-data.js', 'package*.json', '.github/workflows/inventory-checks.yml']
 permissions:
   contents: read
 jobs:

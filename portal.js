@@ -1,3 +1,4 @@
+import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
 import {db,configured,check,esc,rm,mileageText,getVehicles,coverURL,photoURLs,compressPhoto,friendlyError} from './e2-data.js';
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');
 let cars=[], current=null, role=null, busy=false, dirty=false, recovery=false, authEpoch=0;
@@ -39,10 +40,11 @@ function renderStock(){
 async function renderPhotos(){
   const id=current?.id;const photos=current?await photoURLs(current.photos):[];
   if(current?.id!==id)return;
-  $('photos').innerHTML=photos.map((p,i)=>'<div>'+(p.url?'<img src="'+esc(p.url)+'" alt="Vehicle photo '+(i+1)+'">':'<div class="noPhoto">Photo unavailable</div>')+'<small>'+(i===0?'COVER PHOTO':'PHOTO '+(i+1))+'</small>'+(current.publication==='draft'?'<button type="button" data-remove="'+p.id+'">Remove photo '+(i+1)+'</button>':'')+'</div>').join('');setBusy(busy);
+  $('photos').innerHTML=photos.map((p,i)=>'<div data-photo-id="'+p.id+'">'+(p.url?'<img src="'+esc(p.url)+'" alt="Vehicle photo '+(i+1)+'">':'<div class="noPhoto">Photo unavailable</div>')+'<small>'+(i===0?'COVER PHOTO':'PHOTO '+(i+1))+'</small>'+(current.publication==='draft'?'<button type="button" data-remove="'+p.id+'">Remove photo '+(i+1)+'</button>':'')+'</div>').join('');setBusy(busy);
   document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>removePhoto(b.dataset.remove));
   if(current?.publication==='draft')document.querySelectorAll('#photos>div').forEach((node,i)=>{if(!i)return;const button=document.createElement('button');button.type='button';button.textContent='Set as cover';button.disabled=busy||dirty;button.onclick=()=>setCover(photos[i].id);node.append(button)});
   if(current?.publication==='draft')document.querySelectorAll('#photos>div').forEach((node,i)=>{
+    const handle=document.createElement('button');handle.type='button';handle.className='photoDragHandle';handle.textContent='⠿ Drag to move';handle.setAttribute('aria-label','Drag photo '+(i+1)+' to reorder');node.querySelector('small').after(handle);
     const controls=document.createElement('div');controls.className='photoOrderControls';
     for(const [delta,label] of [[-1,'← Earlier'],[1,'Later →']]){
       const button=document.createElement('button');button.type='button';button.textContent=label;
@@ -50,7 +52,7 @@ async function renderPhotos(){
       button.setAttribute('aria-label','Move photo '+(i+1)+(delta<0?' earlier':' later'));
       button.onclick=()=>movePhoto(photos[i].id,delta);controls.append(button);
     }
-    node.querySelector('small').after(controls);
+    handle.after(controls);
   });
   setBusy(busy);
 }
@@ -124,16 +126,24 @@ async function movePhoto(id,delta){
   const expected=current.photos.map(p=>p.id),from=expected.indexOf(id),to=from+delta;
   if(from<0||to<0||to>=expected.length)return;
   const ordered=[...expected];[ordered[from],ordered[to]]=[ordered[to],ordered[from]];
+  await savePhotoOrder(ordered,expected,id);
+}
+async function savePhotoOrder(ordered,expected,id){
+  if(busy||dirty||current?.publication!=='draft')return;
   setBusy(true);message('editorMessage','Saving photo order…');
   try{
     check(await db.rpc('e2_reorder_photos',{target_vehicle:current.id,ordered_ids:ordered,expected_ids:expected}));
     await syncCurrent();message('editorMessage','Photo order saved. The first photo is the cover.');
     setBusy(false);
-    const buttons=document.querySelectorAll('.photoOrderControls');
-    buttons[to]?.querySelector('button:not(:disabled)')?.focus({preventScroll:true});
+    document.querySelector('[data-photo-id="'+id+'"] .photoDragHandle')?.focus({preventScroll:true});
   }catch(error){editorError(error);try{await syncCurrent()}catch{}}
   finally{setBusy(false)}
 }
+enablePhotoDrag($('photos'),{
+  canStart:()=>!busy&&!dirty&&current?.publication==='draft',
+  onActive:state=>setBusy(state),
+  onDrop:savePhotoOrder
+});
 $('publishVehicle').onclick=async()=>{
   if(busy||!current||dirty)return;const publication=current.publication==='published'?'draft':'published';setBusy(true);
   try{
