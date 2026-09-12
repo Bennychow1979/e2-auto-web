@@ -610,3 +610,10 @@ The next site generation should follow this hierarchy:
 - WhatsApp handoff
 
 V5 should feel more like an automotive product launch and less like a conventional dealership homepage.
+
+
+## Approved design and workspace next step — 2026-09-12
+
+The user approved the filter-demo.html design as the E2 visual baseline: original E2 logo in navigation and footer, no centered hero logo, warm-white canvas, restrained gold, dark actions, floating translucent navigation, vehicle gallery and search/filter. Do not reintroduce the maximum-mileage filter. Existing homepage and preserved variants remain available; sample inventory must not be promoted to real stock.
+
+The next approved deliverable is a clickable login and Admin/Salesman workspace prototype. portal-demo.html uses fictional records and temporary in-memory edits; it has no authentication, persistence, external submissions or security boundary. Account and Customer are future roles. Production sign-in, database permissions and user invitations require a separate implementation.
