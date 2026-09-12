@@ -4,8 +4,12 @@
 
 The production entry points are `portal.html`, `showroom.html` and `car.html?id=<stable UUID>`.
 The original homepage and all design demos are preserved. They do not use the live database.
-The browser configuration is deliberately empty until the owner connects the Supabase project.
-Do not describe the production service as live until the migration, first account and hosted end-to-end checks below are completed.
+On 2026-09-13 the owner connected E2 WEB Project (`gkppiuuwsecojcnvkzjl`, Singapore, Free plan).
+The initial migration was applied through SQL Editor to an empty public schema. All four business tables have RLS enabled; `vehicle-photos` is private with the expected 3 MB WebP limit.
+The owner created the first confirmed Auth user and that verified user was assigned active Admin membership. Public sign-up and anonymous sign-in are disabled. The Site URL and sole redirect URL are the exact hosted `portal.html` address.
+The browser now uses the project's publishable key. GitHub Pages deployment `14a24c75e46feaf25e9459878c032a3549c994fa` succeeded and the public showroom successfully queried the hosted database.
+JMK882 has been created as a private draft using the supplied details, with 750,000 km explicitly unconfirmed. It has no vehicle photos yet and is not published.
+First staff-browser login and real Storage upload/publish/unpublish verification remain pending the owner's login. Do not describe the full hosted workflow as verified until those checks complete. Production password-reset email delivery is also not yet verified.
 
 ## Connect the owner's project
 
@@ -61,3 +65,4 @@ For production operation, choose a backup plan for **both database and Storage f
 - https://supabase.com/docs/guides/getting-started/api-keys
 - https://supabase.com/docs/reference/javascript/auth-signinwithpassword
 - https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail
+
