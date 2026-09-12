@@ -621,4 +621,4 @@ The next approved deliverable is a clickable login and Admin/Salesman workspace 
 
 ### Required staff vehicle fields
 
-Vehicle creation and editing must use separate CAR PLATE, BRAND, MODEL, SPEC / variant, CC (engine capacity in cubic centimetres), and TRANSMISSION fields. Keep year, selling price and stock status. CC is a non-negative whole number; fully electric vehicles use 0. Model display labels derive from brand and model. Demo specifications remain explicitly illustrative.
+Vehicle creation and editing must use separate CAR PLATE, BRAND, MODEL, SPEC / variant, ENGINE SIZE (L; the user-facing CC field), and TRANSMISSION fields. Keep year, selling price and stock status. Display and enter engine size in litres to one decimal place, such as 1.0, 1.5 and 2.0. Fully electric vehicles use 0.0. The demo may store cc internally, converting litres × 1000 at save time; never display raw cc values in the staff vehicle form or cards. Model display labels derive from brand and model. Demo specifications remain explicitly illustrative.
