@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node supabase/tests/inventory.cjs",
-    "check": "node --check e2-data.js && node --check portal.js && node --check photo-sort.js && node --check showroom.js && node --check car.js"
+    "check": "node --check e2-data.js && node --check portal.js && node --check photo-sort.js && node --check showroom.js && node --check showroom-flow.js && node --check car.js"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14"

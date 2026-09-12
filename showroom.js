@@ -1,6 +1,7 @@
+import {createShowroomFlow} from './showroom-flow.js?v=flow-1';
 import {esc,rm,mileageText,getVehicles,photoURLs,friendlyError} from './e2-data.js';
 const $=id=>document.getElementById(id), blank={q:'',budget:'',body:'',brand:'',yearFrom:'',yearTo:'',transmission:''};
-let cars=[],state={...blank},draft={...blank},flow=false,timer=null;
+let cars=[],state={...blank},draft={...blank};
 const advanced=['brand','yearFrom','yearTo','transmission'];
 const normalize=s=>String(s).toLowerCase().replace(/\s/g,'');
 const matches=(c,s)=>(!s.q||normalize(c.brand+c.model+c.variant+c.plate).includes(normalize(s.q)))&&(!s.budget||Number(c.price)<Number(s.budget))&&(!s.body||c.body_type===s.body)&&(!s.brand||c.brand===s.brand)&&(!s.yearFrom||c.year>=Number(s.yearFrom))&&(!s.yearTo||c.year<=Number(s.yearTo))&&(!s.transmission||c.transmission===s.transmission);
@@ -20,11 +21,7 @@ function preview(){const valid=!draft.yearFrom||!draft.yearTo||Number(draft.year
 function loadDraft(){advanced.forEach(k=>$('advancedForm').elements.namedItem(k).value=draft[k]);preview()}
 $('moreFilters').onclick=()=>{draft={...state};loadDraft();$('filterDialog').showModal()};$('closeFilters').onclick=()=>$('filterDialog').close();$('advancedForm').onchange=e=>{if(advanced.includes(e.target.name)){draft[e.target.name]=e.target.value;preview()}};$('resetAdvanced').onclick=()=>{advanced.forEach(k=>draft[k]='');loadDraft()};$('advancedForm').onsubmit=e=>{e.preventDefault();if($('applyFilters').disabled)return;state={...draft};$('filterDialog').close();sync();render()};
 function options(id,values,label){const el=$(id),selected=el.value;el.innerHTML='<option value="">'+label+'</option>'+[...new Set(values.filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true})).map(v=>'<option>'+esc(v)+'</option>').join('');el.value=selected}
-function activeIndex(){const track=$('galleryTrack'),nodes=[...track.children];let best=0,distance=Infinity;nodes.forEach((node,i)=>{const d=Math.abs(node.offsetLeft+node.offsetWidth/2-(track.scrollLeft+track.clientWidth/2));if(d<distance){distance=d;best=i}});return best}
-function move(delta){const nodes=$('galleryTrack').children;if(!nodes.length)return;nodes[(activeIndex()+delta+nodes.length)%nodes.length].scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'nearest',inline:'center'})}
-function stopFlow(){flow=false;clearInterval(timer);$('flow').textContent='Start flow';$('flow').setAttribute('aria-pressed','false')}
-$('flow').onclick=()=>{if(flow){stopFlow();return}flow=true;$('flow').textContent='Pause flow';$('flow').setAttribute('aria-pressed','true');timer=setInterval(()=>{if(!document.hidden&&!document.querySelector('dialog[open]'))move(1)},5000)};
-$('previous').onclick=()=>{stopFlow();move(-1)};$('next').onclick=()=>{stopFlow();move(1)};$('galleryTrack').onpointerdown=stopFlow;$('galleryTrack').onfocusin=stopFlow;$('galleryTrack').onscroll=()=>{$('galleryCount').textContent=cars.length?(activeIndex()+1)+' / '+Math.min(cars.length,8):'—'};
+const galleryFlow=createShowroomFlow();
 async function load(){
   try{
     cars=await getVehicles();
@@ -32,7 +29,7 @@ async function load(){
     cars.forEach(c=>c.cover=byPath.get(c.photos[0]?.path));
     $('publicState').hidden=!!cars.length;$('publicState').textContent=cars.length?'':'New vehicles are being prepared. Contact E2 for current availability.';
     $('galleryTrack').innerHTML=cars.slice(0,8).map((c,i)=>'<a class="galleryCard" href="car.html?id='+c.id+'"><span class="cardTop"><span>'+String(i+1).padStart(2,'0')+' / '+esc(c.brand)+'</span><span class="sampleTag">'+esc(c.stock_status)+'</span></span><span class="photo">'+(c.cover?'<img src="'+esc(c.cover)+'" alt="'+esc(c.brand+' '+c.model)+'" '+(i?'loading="lazy"':'fetchpriority="high"')+'>':'<span class="noPhoto">Photo unavailable</span>')+'</span><span class="cardCaption"><span><span class="cardYear">'+esc(c.year+' · '+c.variant)+'</span><strong>'+esc(c.brand+' '+c.model)+'</strong></span><span class="samplePrice">'+rm(c.price)+'<small>View this car ↗</small></span></span></a>').join('');
-    document.querySelector('.galleryControls').hidden=!cars.length;$('galleryCount').textContent=cars.length?'1 / '+Math.min(cars.length,8):'—';
+    galleryFlow.refresh();
     options('brandFilter',cars.map(c=>c.brand),'All brands');options('bodyFilter',cars.map(c=>c.body_type),'All types');options('yearFrom',cars.map(c=>c.year),'Any year');options('yearTo',cars.map(c=>c.year),'Any year');options('transmissionFilter',cars.map(c=>c.transmission),'Any transmission');render();
   }catch(error){$('publicState').hidden=false;$('publicState').textContent=friendlyError(error);$('resultCount').textContent='Inventory temporarily unavailable';$('emptyResults').hidden=true;document.querySelector('.galleryControls').hidden=true;}
 }

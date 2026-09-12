@@ -622,3 +622,6 @@ The next approved deliverable is a clickable login and Admin/Salesman workspace 
 ### Required staff vehicle fields
 
 Vehicle creation and editing must use separate CAR PLATE, BRAND, MODEL, SPEC / variant, ENGINE SIZE (L; the user-facing CC field), and TRANSMISSION fields. Keep year, selling price and stock status. Display and enter engine size in litres to one decimal place, such as 1.0, 1.5 and 2.0. Fully electric vehicles use 0.0. The demo may store cc internally, converting litres × 1000 at save time; never display raw cc values in the staff vehicle form or cards. Model display labels derive from brand and model. Demo specifications remain explicitly illustrative.
+
+### Live showroom Flow — 2026-09-13
+The connected showroom must retain the approved gallery demo effect: a prominent central vehicle, smaller quieter neighbours, slow continuous Flow (28 px/second) rather than timed slide jumps, pointer hover/focus pause, swipe/drag and arrow navigation, and direct links to real vehicle pages. Start automatically unless reduced motion is requested. Keep original demo pages intact and use each published vehicle's actual cover photo.
