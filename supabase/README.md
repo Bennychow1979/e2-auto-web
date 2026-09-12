@@ -2,11 +2,11 @@
 
 ## Status
 
-The production entry points are `portal.html`, `showroom.html` and `car.html?id=<stable UUID>`.
-The original homepage and all design demos are preserved. They do not use the live database.
+The production entry points are `index.html`, `portal.html`, `showroom.html` and `car.html?id=<stable UUID>`.
+The connected showroom is now the root homepage. The previous homepage is preserved as `homepage-before-domain.html`; the design demos remain separate from the live database.
 On 2026-09-13 the owner connected E2 WEB Project (`gkppiuuwsecojcnvkzjl`, Singapore, Free plan).
 The initial migration was applied through SQL Editor to an empty public schema. All four business tables have RLS enabled; `vehicle-photos` is private with the expected 3 MB WebP limit.
-The owner created the first confirmed Auth user and that verified user was assigned active Admin membership. Public sign-up and anonymous sign-in are disabled. The Site URL and sole redirect URL are the exact hosted `portal.html` address.
+The owner created the first confirmed Auth user and that verified user was assigned active Admin membership. Public sign-up and anonymous sign-in are disabled. The Site URL is `https://e2auto.my/portal.html`. The redirect allowlist contains this exact URL and the previous GitHub Pages portal URL for the domain transition.
 The browser now uses the project's publishable key. GitHub Pages deployment `14a24c75e46feaf25e9459878c032a3549c994fa` succeeded and the public showroom successfully queried the hosted database.
 JMK882 has been created as a private draft using the supplied details, with 750,000 km explicitly unconfirmed. It has no vehicle photos yet and is not published.
 The owner has signed in and uploaded/published Ford Ranger ALQ1667; the live portal shows its saved photos and published status. Unpublish verification remains pending. Production password-reset email delivery is also not yet verified.
@@ -15,7 +15,7 @@ The owner has signed in and uploaded/published Ford Ranger ALQ1667; the live por
 
 1. In the **E2 WEB Project** Supabase dashboard, inspect existing public tables and buckets first. Apply `migrations/202609120001_inventory.sql` once using SQL Editor. It is transactional and intentionally does not overwrite existing tables. For later schema changes, add a new migration instead of re-running this file.
 2. In Project Settings / API Keys, obtain the **publishable** key (`sb_publishable_…`) and Project URL. Set only those two public values in `e2-config.js`. Never use secret keys, service_role keys, database passwords or management access tokens in browser code, GitHub or chat.
-3. Under Authentication / URL Configuration set the Site URL to `https://bennychow1979.github.io/e2-auto-web/portal.html` and add that exact URL to the allowed redirect list. Do not use broad wildcard redirects. Configure a production email provider before relying on password-reset mail; Supabase's default email delivery has testing restrictions.
+3. Under Authentication / URL Configuration set the Site URL to `https://e2auto.my/portal.html` and add that exact URL to the allowed redirect list. Do not use broad wildcard redirects. Configure a production email provider before relying on password-reset mail; Supabase's default email delivery has testing restrictions.
 4. Disable public sign-up for this staff-only phase. Create the owner's E2 Auth account in Authentication / Users. The owner enters and keeps the password. This is separate from signing into the Supabase dashboard with GitHub.
 5. Assign the first Admin to the verified Auth user ID through SQL Editor, replacing the placeholder below. Never derive Admin access from browser data or user-editable Auth metadata.
 
@@ -25,7 +25,7 @@ values ('REPLACE_WITH_VERIFIED_AUTH_USER_UUID'::uuid,'admin',true);
 ```
 
 6. Deploy the public configuration with the website. Sign in at `portal.html`. Add a vehicle as a draft, upload an actual photo, preview, then explicitly publish. In a signed-out browser check that the same record appears on `showroom.html` and `car.html?id=…`. Reload to verify persistence. Move the vehicle to draft and verify signed-out access disappears.
-7. Once this passes, preserve the current `index.html` under a new backup filename and promote the connected showroom to the root homepage. Until then the existing homepage remains the public entry point.
+7. The connected showroom was promoted to `index.html` on 2026-09-13. Its previous design is preserved in `homepage-before-domain.html`. See `../DOMAIN.md` for the custom-domain rollout.
 
 ## Permissions and data boundaries
 
