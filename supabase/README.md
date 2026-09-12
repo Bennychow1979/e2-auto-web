@@ -9,7 +9,7 @@ The initial migration was applied through SQL Editor to an empty public schema. 
 The owner created the first confirmed Auth user and that verified user was assigned active Admin membership. Public sign-up and anonymous sign-in are disabled. The Site URL and sole redirect URL are the exact hosted `portal.html` address.
 The browser now uses the project's publishable key. GitHub Pages deployment `14a24c75e46feaf25e9459878c032a3549c994fa` succeeded and the public showroom successfully queried the hosted database.
 JMK882 has been created as a private draft using the supplied details, with 750,000 km explicitly unconfirmed. It has no vehicle photos yet and is not published.
-First staff-browser login and real Storage upload/publish/unpublish verification remain pending the owner's login. Do not describe the full hosted workflow as verified until those checks complete. Production password-reset email delivery is also not yet verified.
+The owner has signed in and uploaded/published Ford Ranger ALQ1667; the live portal shows its saved photos and published status. Unpublish verification remains pending. Production password-reset email delivery is also not yet verified.
 
 ## Connect the owner's project
 
@@ -31,7 +31,7 @@ values ('REPLACE_WITH_VERIFIED_AUTH_USER_UUID'::uuid,'admin',true);
 
 - Anon and ordinary authenticated users: published vehicle fields and attached photos only.
 - Active Sales: read shared stock, including drafts; no uploads or inventory changes.
-- Active Admin: create/edit drafts, upload/remove photos, select a cover, publish/unpublish, read audit records.
+- Active Admin: create/edit drafts, upload/remove photos, select a cover, rearrange photos, publish/unpublish, read audit records.
 - Account is reserved; it has no private inventory or finance access in this phase. Customer accounts/workflows are not implemented yet.
 - Clients cannot grant themselves membership or edit their role. Owner-managed membership deactivation takes effect on subsequent database requests, even with an existing Auth session.
 - Inventory fields are public on publication. Customer documents, identity documents, bank details and internal notes must never be stored in these tables or the vehicle-photo bucket.
@@ -42,7 +42,7 @@ values ('REPLACE_WITH_VERIFIED_AUTH_USER_UUID'::uuid,'admin',true);
 
 Private `vehicle-photos` bucket; no public bucket bypass. The Storage SELECT policy follows the published vehicle relationship, with staff read access where permitted. The browser receives signed URLs valid for five minutes. A previously issued link or downloaded/cached photo cannot be instantly recalled after unpublishing.
 
-Input limit: 20 JPG/PNG/WebP photos per vehicle, 20 MB each. Browser conversion produces WebP up to 1920 px at quality 0.84, capped at 3 MB. Original metadata is not copied to the canvas export. The database enforces the 20 slots; the bucket enforces MIME and byte limits. Set-cover is an Admin-only database function, serialized with publication.
+Input limit: 20 JPG/PNG/WebP photos per vehicle, 20 MB each. Browser conversion produces WebP up to 1920 px at quality 0.84, capped at 3 MB. Original metadata is not copied to the canvas export. The database enforces the 20 slots; the bucket enforces MIME and byte limits. Set-cover and photo reordering are Admin-only database functions, serialized with publication. Apply `migrations/202609130002_photo_order.sql` after the initial migration; it was applied to E2 WEB Project on 2026-09-13. Earlier / Later buttons save each change immediately on a draft, with position zero as the cover. The reorder operation validates the complete photo set and expected prior order, rejecting stale concurrent edits. Published listings must move to draft before photo changes.
 
 Upload order is object first, then photo metadata; publication requires an attached existing object. Removal detaches metadata before deleting the stored object. Interrupted uploads or failed cleanup can leave private orphan objects; review and remove these through the Storage dashboard after confirming no `vehicle_photos.path` references them. Never delete the Storage SQL rows directly, because that does not clean up the underlying file.
 
@@ -65,4 +65,3 @@ For production operation, choose a backup plan for **both database and Storage f
 - https://supabase.com/docs/guides/getting-started/api-keys
 - https://supabase.com/docs/reference/javascript/auth-signinwithpassword
 - https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail
-

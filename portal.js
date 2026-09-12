@@ -6,7 +6,7 @@ const value=name=>form.elements.namedItem(name).value;
 const identity=name=>value(name)==='__manual__'?value(name+'Manual').trim():value(name);
 function message(id,text,error=false){$(id).textContent=text;$(id).classList.toggle('error',error)}
 function editorError(error){message('editorMessage',friendlyError(error),true)}
-function setBusy(state){busy=state;fields.disabled=state||current?.publication==='published';$('saveVehicle').disabled=fields.disabled;$('closeEditor').disabled=state;$('publishVehicle').disabled=state||!current||dirty||!current.photos.length;$('photoInput').disabled=state||dirty||!current||current.publication==='published'||current.photos.length>=20;document.querySelectorAll('#photos button').forEach(b=>b.disabled=state||dirty||current?.publication==='published');}
+function setBusy(state){busy=state;fields.disabled=state||current?.publication==='published';$('saveVehicle').disabled=fields.disabled;$('closeEditor').disabled=state;$('publishVehicle').disabled=state||!current||dirty||!current.photos.length;$('photoInput').disabled=state||dirty||!current||current.publication==='published'||current.photos.length>=20;document.querySelectorAll('#photos button').forEach(b=>b.disabled=state||dirty||current?.publication==='published'||b.dataset.boundary==='true');}
 function selectOptions(name,choices,selected=''){
   const select=form.elements.namedItem(name), manual=form.elements.namedItem(name+'Manual');
   const items=[...new Set(choices.filter(Boolean))].sort();
@@ -42,6 +42,17 @@ async function renderPhotos(){
   $('photos').innerHTML=photos.map((p,i)=>'<div>'+(p.url?'<img src="'+esc(p.url)+'" alt="Vehicle photo '+(i+1)+'">':'<div class="noPhoto">Photo unavailable</div>')+'<small>'+(i===0?'COVER PHOTO':'PHOTO '+(i+1))+'</small>'+(current.publication==='draft'?'<button type="button" data-remove="'+p.id+'">Remove photo '+(i+1)+'</button>':'')+'</div>').join('');setBusy(busy);
   document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>removePhoto(b.dataset.remove));
   if(current?.publication==='draft')document.querySelectorAll('#photos>div').forEach((node,i)=>{if(!i)return;const button=document.createElement('button');button.type='button';button.textContent='Set as cover';button.disabled=busy||dirty;button.onclick=()=>setCover(photos[i].id);node.append(button)});
+  if(current?.publication==='draft')document.querySelectorAll('#photos>div').forEach((node,i)=>{
+    const controls=document.createElement('div');controls.className='photoOrderControls';
+    for(const [delta,label] of [[-1,'← Earlier'],[1,'Later →']]){
+      const button=document.createElement('button');button.type='button';button.textContent=label;
+      button.dataset.boundary=String(i+delta<0||i+delta>=photos.length);
+      button.setAttribute('aria-label','Move photo '+(i+1)+(delta<0?' earlier':' later'));
+      button.onclick=()=>movePhoto(photos[i].id,delta);controls.append(button);
+    }
+    node.querySelector('small').after(controls);
+  });
+  setBusy(busy);
 }
 function populate(car){
   form.reset();current=car;dirty=false;
@@ -107,6 +118,21 @@ async function setCover(id){
   if(busy||dirty)return;setBusy(true);
   try{check(await db.rpc('e2_set_cover',{photo_id:id}));await syncCurrent();message('editorMessage','Cover photo saved.');}
   catch(error){editorError(error)}finally{setBusy(false)}
+}
+async function movePhoto(id,delta){
+  if(busy||dirty||current?.publication!=='draft')return;
+  const expected=current.photos.map(p=>p.id),from=expected.indexOf(id),to=from+delta;
+  if(from<0||to<0||to>=expected.length)return;
+  const ordered=[...expected];[ordered[from],ordered[to]]=[ordered[to],ordered[from]];
+  setBusy(true);message('editorMessage','Saving photo order…');
+  try{
+    check(await db.rpc('e2_reorder_photos',{target_vehicle:current.id,ordered_ids:ordered,expected_ids:expected}));
+    await syncCurrent();message('editorMessage','Photo order saved. The first photo is the cover.');
+    setBusy(false);
+    const buttons=document.querySelectorAll('.photoOrderControls');
+    buttons[to]?.querySelector('button:not(:disabled)')?.focus({preventScroll:true});
+  }catch(error){editorError(error);try{await syncCurrent()}catch{}}
+  finally{setBusy(false)}
 }
 $('publishVehicle').onclick=async()=>{
   if(busy||!current||dirty)return;const publication=current.publication==='published'?'draft':'published';setBusy(true);
