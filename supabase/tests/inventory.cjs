@@ -27,6 +27,10 @@ await fails(`update public.vehicles set publication='published' where id='${car}
 await fails(`insert into public.vehicle_photos(vehicle_id,path,position) values('${car}','${path}',0)`,'Cannot attach missing storage object');
 await db.exec(`insert into storage.objects(bucket_id,name) values('vehicle-photos','${path}');insert into public.vehicle_photos(id,vehicle_id,path,position) values('${photo}','${car}','${path}',0)`);
 await count('select count(*) n from public.inventory_audit',2,'Admin sees inventory audit');
+await db.exec('reset role');
+await db.exec(fs.readFileSync('supabase/migrations/202609130003_photo_limit_30.sql','utf8'));
+await as(admin);
+await count(`select count(*) n from public.vehicle_photos where id='${photo}' and position=0`,1,'Limit migration preserves existing photo and cover');
 await db.exec(`select public.e2_set_cover('${photo}')`);
 await count(`select count(*) n from public.vehicle_photos where id='${photo}' and position=0`,1,'Admin can choose draft cover');
 const p2='20000000-0000-4000-8000-000000000002',p3='20000000-0000-4000-8000-000000000003';
@@ -64,6 +68,20 @@ await count(`with removed as(delete from public.vehicle_photos where id='${photo
 await as(null);await count('select count(*) n from public.vehicles',1,'Anonymous sees published vehicle');await count('select count(*) n from public.vehicle_photos',1,'Anonymous sees published photo metadata');await count('select count(*) n from storage.objects',1,'Anonymous can access only published attached photo');
 await as(admin);await db.exec(`update public.vehicles set publication='draft' where id='${car}'`);
 await fails(`update public.vehicles set mileage=-1 where id='${car}'`,'Reject negative mileage');await fails(`update public.vehicles set mileage=null,mileage_confirmed=true where id='${car}'`,'Unknown mileage cannot be confirmed');
+// Exercise the new boundary on a draft; production receives no test uploads.
+const extra=Array.from({length:30},(_,i)=>'30000000-0000-4000-8000-'+String(i+1).padStart(12,'0'));
+for(const id of extra)await db.exec(`insert into storage.objects(bucket_id,name) values('vehicle-photos','${car}/${id}.webp')`);
+await assert.rejects(db.exec(`insert into public.vehicle_photos(id,vehicle_id,path,position) values('${extra[0]}','${car}','${car}/${extra[0]}.webp',30)`),/vehicle_photos_position_check/);passed++;console.log('PASS Position 30 is rejected (valid slots are 0–29)');
+await assert.rejects(db.exec(`insert into public.vehicle_photos(id,vehicle_id,path,position) values('${extra[0]}','${car}','${car}/${extra[0]}.webp',-1)`),/vehicle_photos_position_check/);passed++;console.log('PASS Negative photo position is rejected');
+for(const [i,id] of extra.slice(0,29).entries())await db.exec(`insert into public.vehicle_photos(id,vehicle_id,path,position) values('${id}','${car}','${car}/${id}.webp',${i+1})`);
+await count(`select count(*) n from public.vehicle_photos where vehicle_id='${car}'`,30,'Photos 21 through 30 are accepted');
+await assert.rejects(db.exec(`insert into public.vehicle_photos(id,vehicle_id,path,position) values('${extra[29]}','${car}','${car}/${extra[29]}.webp',0)`),/Maximum 30 photos per vehicle/);passed++;console.log('PASS Photo 31 is rejected by database count guard');
+const full=[photo,...extra.slice(0,29)],reverse=[...full].reverse();
+await db.exec(reorder(reverse,full));
+assert.deepEqual((await db.query(`select id from public.vehicle_photos where vehicle_id='${car}' order by position`)).rows.map(r=>r.id),reverse);passed++;console.log('PASS All 30 photos reorder and persist');
+await db.exec(`select public.e2_set_cover('${photo}')`);
+await count(`select count(*) n from public.vehicle_photos where id='${photo}' and position=0`,1,'Set cover works with 30 photos');
+for(const id of extra)await db.exec(`delete from public.vehicle_photos where id='${id}';delete from storage.objects where name='${car}/${id}.webp'`);
 await count(`with removed as(delete from storage.objects where name='${path}' returning id) select count(*) n from removed`,0,'Cannot delete referenced storage object');
 await db.exec(`delete from public.vehicle_photos where id='${photo}';delete from storage.objects where name='${path}'`);
 await count('select count(*) n from storage.objects',0,'Remove detaches then cleans storage');

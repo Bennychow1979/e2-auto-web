@@ -1,5 +1,6 @@
 import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
 import {db,configured,check,esc,rm,mileageText,getVehicles,coverURL,photoURLs,compressPhoto,friendlyError} from './e2-data.js';
+const MAX_PHOTOS=30;
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');
 let cars=[], current=null, role=null, busy=false, dirty=false, recovery=false, authEpoch=0;
 const base=[{brand:'Honda',model:'CR-V',variant:'TC-P 2WD'},{brand:'Perodua',model:'Myvi',variant:''}];
@@ -7,7 +8,7 @@ const value=name=>form.elements.namedItem(name).value;
 const identity=name=>value(name)==='__manual__'?value(name+'Manual').trim():value(name);
 function message(id,text,error=false){$(id).textContent=text;$(id).classList.toggle('error',error)}
 function editorError(error){message('editorMessage',friendlyError(error),true)}
-function setBusy(state){busy=state;fields.disabled=state||current?.publication==='published';$('saveVehicle').disabled=fields.disabled;$('closeEditor').disabled=state;$('publishVehicle').disabled=state||!current||dirty||!current.photos.length;$('photoInput').disabled=state||dirty||!current||current.publication==='published'||current.photos.length>=20;document.querySelectorAll('#photos button').forEach(b=>b.disabled=state||dirty||current?.publication==='published'||b.dataset.boundary==='true');}
+function setBusy(state){busy=state;fields.disabled=state||current?.publication==='published';$('saveVehicle').disabled=fields.disabled;$('closeEditor').disabled=state;$('publishVehicle').disabled=state||!current||dirty||!current.photos.length;$('photoInput').disabled=state||dirty||!current||current.publication==='published'||current.photos.length>=MAX_PHOTOS;document.querySelectorAll('#photos button').forEach(b=>b.disabled=state||dirty||current?.publication==='published'||b.dataset.boundary==='true');}
 function selectOptions(name,choices,selected=''){
   const select=form.elements.namedItem(name), manual=form.elements.namedItem(name+'Manual');
   const items=[...new Set(choices.filter(Boolean))].sort();
@@ -90,7 +91,7 @@ async function syncCurrent(){const rows=await getVehicles({staff:true,id:current
 $('photoInput').onchange=async()=>{
   if(busy||!current||current.publication!=='draft')return;
   const files=[...$('photoInput').files];$('photoInput').value='';
-  if(files.length+current.photos.length>20){editorError(new Error('Maximum 20 photos. Choose fewer files.'));return}
+  if(files.length+current.photos.length>MAX_PHOTOS){editorError(new Error('Maximum '+MAX_PHOTOS+' photos. Choose fewer files.'));return}
   setBusy(true);let completed=0;
   try{
     for(const file of files){
