@@ -6,13 +6,13 @@ const extra=[
 {brand:'BMW',body:'Coupé',plate:'DEMO03',mileage:58000,transmission:'Auto'},
 {brand:'Jeep',body:'SUV',plate:'DEMO04',mileage:null,transmission:'Auto'}];
 const cars=demoCars.map((c,i)=>({...c,...extra[i],id:i,priceValue:Number(c.price.replace(/\D/g,'')),year:Number(c.year)}));
-const blank={q:'',budget:'',body:'',brand:'',yearFrom:'',yearTo:'',transmission:'',mileage:''};
+const blank={q:'',budget:'',body:'',brand:'',yearFrom:'',yearTo:'',transmission:''};
 let state={...blank},draft={...blank};
 const byId=id=>document.getElementById(id), modal=byId('filterDialog'), form=byId('advancedForm');
-const advanced=['brand','yearFrom','yearTo','transmission','mileage'];
+const advanced=['brand','yearFrom','yearTo' ,'transmission'];
 const normalize=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
-function matches(c,s){return (!s.q||normalize(c.brand+' '+c.name+' '+c.plate).includes(normalize(s.q)))&&(!s.budget||c.priceValue<Number(s.budget))&&(!s.body||c.body===s.body)&&(!s.brand||c.brand===s.brand)&&(!s.yearFrom||c.year>=Number(s.yearFrom))&&(!s.yearTo||c.year<=Number(s.yearTo))&&(!s.transmission||c.transmission===s.transmission)&&(!s.mileage||(c.mileage!==null&&c.mileage<=Number(s.mileage)));}
-function chipText(k,v){return ({q:'Search: '+v,budget:'Under RM'+Number(v).toLocaleString('en-MY'),body:v,brand:v,yearFrom:'From '+v,yearTo:'To '+v,transmission:v,mileage:'Up to '+Number(v).toLocaleString('en-MY')+' km'})[k];}
+function matches(c,s){return (!s.q||normalize(c.brand+' '+c.name+' '+c.plate).includes(normalize(s.q)))&&(!s.budget||c.priceValue<Number(s.budget))&&(!s.body||c.body===s.body)&&(!s.brand||c.brand===s.brand)&&(!s.yearFrom||c.year>=Number(s.yearFrom))&&(!s.yearTo||c.year<=Number(s.yearTo))&&(!s.transmission||c.transmission===s.transmission);}
+function chipText(k,v){return ({q:'Search: '+v,budget:'Under RM'+Number(v).toLocaleString('en-MY'),body:v,brand:v,yearFrom:'From '+v,yearTo:'To '+v,transmission:v})[k];}
 function render(){
 const found=cars.filter(c=>matches(c,state));const results=byId('filterResults');results.replaceChildren();
 found.forEach(c=>{const row=document.createElement('button');row.type='button';row.className='sampleRow';row.setAttribute('aria-label','Open '+c.name+' sample details from results');
