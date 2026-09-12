@@ -1,0 +1,21 @@
+name: Verify inventory permissions
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/**', 'portal.js', 'showroom.js', 'car.js', 'e2-data.js', 'package*.json', '.github/workflows/inventory-checks.yml']
+  pull_request:
+    paths: ['supabase/**', 'portal.js', 'showroom.js', 'car.js', 'e2-data.js', 'package*.json', '.github/workflows/inventory-checks.yml']
+permissions:
+  contents: read
+jobs:
+  database-and-browser-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm test

@@ -1,0 +1,55 @@
+const { PGlite }=require('@electric-sql/pglite');
+const fs=require('node:fs');const assert=require('node:assert/strict');
+(async()=>{
+const db=new PGlite();let passed=0;
+await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
+create schema auth; create schema storage;
+create table auth.users(id uuid primary key);
+create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text,unique(bucket_id,name));
+alter table storage.objects enable row level security;
+grant usage on schema public,auth,storage to anon,authenticated,service_role;
+grant select,insert,update,delete on storage.objects to anon,authenticated;
+grant execute on function auth.uid() to anon,authenticated;
+`);
+await db.exec(fs.readFileSync('supabase/migrations/202609120001_inventory.sql','utf8'));
+const admin='00000000-0000-4000-8000-000000000001',sales='00000000-0000-4000-8000-000000000002',customer='00000000-0000-4000-8000-000000000003',account='00000000-0000-4000-8000-000000000004';
+const car='10000000-0000-4000-8000-000000000001',photo='20000000-0000-4000-8000-000000000001',path=car+'/'+photo+'.webp';
+await db.exec(`insert into auth.users values('${admin}'),('${sales}'),('${customer}'),('${account}'); insert into public.staff_memberships(user_id,role) values('${admin}','admin'),('${sales}','sales'),('${account}','account');`);
+async function as(id){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id||'']);await db.exec('set role '+(id?'authenticated':'anon'))}
+async function fails(sql,label){let error;try{await db.exec(sql)}catch(e){error=e}assert.ok(error,label);passed++;console.log('PASS '+label)}
+async function count(sql,n,label){const r=await db.query(sql);assert.equal(Number(r.rows[0].n),n,label);passed++;console.log('PASS '+label)}
+await as(admin);
+await db.exec(`insert into public.vehicles(id,plate,brand,model,variant,year,engine_litres,transmission,fuel_type,mileage,mileage_confirmed,price) values('${car}','JMK882','Honda','CR-V','TC-P 2WD',2017,1.5,'Auto','PETROL',750000,false,61990)`);
+await fails(`update public.vehicles set publication='published' where id='${car}'`,'Cannot publish without photo');
+await fails(`insert into public.vehicle_photos(vehicle_id,path,position) values('${car}','${path}',0)`,'Cannot attach missing storage object');
+await db.exec(`insert into storage.objects(bucket_id,name) values('vehicle-photos','${path}');insert into public.vehicle_photos(id,vehicle_id,path,position) values('${photo}','${car}','${path}',0)`);
+await count('select count(*) n from public.inventory_audit',2,'Admin sees inventory audit');
+await db.exec(`select public.e2_set_cover('${photo}')`);
+await count(`select count(*) n from public.vehicle_photos where id='${photo}' and position=0`,1,'Admin can choose draft cover');
+await as(null);await count('select count(*) n from public.vehicles',0,'Anonymous cannot read draft');await count('select count(*) n from public.vehicle_photos',0,'Anonymous cannot read draft photo metadata');await count('select count(*) n from storage.objects',0,'Anonymous cannot read draft photo object');
+await fails(`update public.vehicles set price=1`,'Anonymous cannot write');
+await as(sales);await count('select count(*) n from public.vehicles',1,'Sales can read shared draft stock');await count('select count(*) n from public.staff_memberships',1,'Sales sees only own membership');
+await fails(`select public.e2_set_cover('${photo}')`,'Sales cannot call admin cover RPC');
+await fails(`insert into public.staff_memberships values('${customer}','admin',true)`,'Cannot promote own account');
+await count(`with changed as(update public.vehicles set publication='published' returning id) select count(*) n from changed`,0,'Sales cannot publish through direct API');
+await fails(`insert into storage.objects(bucket_id,name) values('vehicle-photos','${car}/20000000-0000-4000-8000-000000000099.webp')`,'Sales cannot upload');
+await as(customer);await count('select count(*) n from public.vehicles',0,'Customer cannot read drafts');await count('select count(*) n from public.inventory_audit',0,'Customer cannot read audit');
+await as(account);await count('select count(*) n from public.vehicles',0,'Account role cannot read private stock');
+await as(admin);await db.exec(`update public.vehicles set publication='published' where id='${car}'`);
+await fails(`select public.e2_set_cover('${photo}')`,'Published cover cannot be changed');
+await fails(`update public.vehicles set price=999 where id='${car}'`,'Published record must move to draft before editing');
+await count(`with removed as(delete from public.vehicle_photos where id='${photo}' returning id) select count(*) n from removed`,0,'Cannot remove published photo');
+await as(null);await count('select count(*) n from public.vehicles',1,'Anonymous sees published vehicle');await count('select count(*) n from public.vehicle_photos',1,'Anonymous sees published photo metadata');await count('select count(*) n from storage.objects',1,'Anonymous can access only published attached photo');
+await as(admin);await db.exec(`update public.vehicles set publication='draft' where id='${car}'`);
+await fails(`update public.vehicles set mileage=-1 where id='${car}'`,'Reject negative mileage');await fails(`update public.vehicles set mileage=null,mileage_confirmed=true where id='${car}'`,'Unknown mileage cannot be confirmed');
+await count(`with removed as(delete from storage.objects where name='${path}' returning id) select count(*) n from removed`,0,'Cannot delete referenced storage object');
+await db.exec(`delete from public.vehicle_photos where id='${photo}';delete from storage.objects where name='${path}'`);
+await count('select count(*) n from storage.objects',0,'Remove detaches then cleans storage');
+await as(null);await count('select count(*) n from public.vehicles',0,'Unpublish removes public access');
+await db.exec('reset role');await db.exec(`update public.staff_memberships set active=false where user_id='${admin}'`);await as(admin);
+await count('select count(*) n from public.vehicles',0,'Revoked admin loses draft access immediately');
+await fails(`insert into public.vehicles(plate,brand,model,variant,year,engine_litres,transmission,fuel_type,price) values('QA2','Honda','CR-V','TC-P',2017,1.5,'Auto','PETROL',100)`,'Revoked admin cannot add stock');
+console.log(passed+' database authorization/integrity checks passed.');await db.close();
+})().catch(e=>{console.error(e);process.exitCode=1});
