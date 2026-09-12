@@ -2,6 +2,8 @@ import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
 import {db,configured,check,esc,rm,mileageText,getVehicles,coverURL,photoURLs,compressPhoto,friendlyError} from './e2-data.js';
 const MAX_PHOTOS=30;
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');
+const canManageStock=()=>['super_admin','admin'].includes(role);
+const roleLabels={super_admin:'Super Admin',admin:'Admin',sales:'Salesman · view only',account:'Account · public stock only',customer:'Customer · public stock only'};
 let cars=[], current=null, role=null, busy=false, dirty=false, recovery=false, authEpoch=0;
 const base=[{brand:'Honda',model:'CR-V',variant:'TC-P 2WD'},{brand:'Perodua',model:'Myvi',variant:''}];
 const value=name=>form.elements.namedItem(name).value;
@@ -33,7 +35,7 @@ async function refresh(){
 function renderStock(){
   const query=$('stockSearch').value.toLowerCase().replace(/\s/g,'');
   const found=cars.filter(c=>(c.plate+c.brand+c.model+c.variant).toLowerCase().replace(/\s/g,'').includes(query));
-  $('stockList').innerHTML=found.map(c=>'<article class="stockItem"><div class="noPhoto" data-cover="'+c.id+'">'+(c.photos.length?'Loading photo…':'No photos yet')+'</div><div><span class="stockState">'+esc(c.publication==='published'?'Published · '+c.stock_status:'Draft · private')+'</span><h2>'+esc(c.brand+' '+c.model)+'</h2><p>'+esc(c.plate+' · '+c.year+' · '+c.variant)+'</p><small>'+esc(mileageText(c))+' · '+Number(c.engine_litres).toFixed(1)+' L</small><p class="stockPrice">'+rm(c.price)+'</p></div>'+(role==='admin'?'<button class="primary" data-edit="'+c.id+'">Manage vehicle ↗</button>':'<span>View only</span>')+'</article>').join('')||'<p>No vehicles found. '+(role==='admin'?'Add your first vehicle to begin.':'')+'</p>';
+  $('stockList').innerHTML=found.map(c=>'<article class="stockItem"><div class="noPhoto" data-cover="'+c.id+'">'+(c.photos.length?'Loading photo…':'No photos yet')+'</div><div><span class="stockState">'+esc(c.publication==='published'?'Published · '+c.stock_status:'Draft · private')+'</span><h2>'+esc(c.brand+' '+c.model)+'</h2><p>'+esc(c.plate+' · '+c.year+' · '+c.variant)+'</p><small>'+esc(mileageText(c))+' · '+Number(c.engine_litres).toFixed(1)+' L</small><p class="stockPrice">'+rm(c.price)+'</p></div>'+(canManageStock()?'<button class="primary" data-edit="'+c.id+'">Manage vehicle ↗</button>':'<span>View only</span>')+'</article>').join('')||'<p>No vehicles found. '+(canManageStock()?'Add your first vehicle to begin.':'')+'</p>';
   const epoch=authEpoch;
   for(const car of found)coverURL(car).then(url=>{if(!url||epoch!==authEpoch)return;const holder=document.querySelector('[data-cover="'+car.id+'"]');if(holder){const img=document.createElement('img');img.src=url;img.alt=car.brand+' '+car.model;img.loading='lazy';holder.replaceChildren(img)}}).catch(()=>{});
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEditor(cars.find(c=>c.id===b.dataset.edit)));
@@ -75,7 +77,7 @@ function closeEditor(){if(busy)return;if(dirty&&!confirm('Discard unsaved vehicl
 $('closeEditor').onclick=closeEditor;$('vehicleEditor').addEventListener('cancel',e=>{e.preventDefault();closeEditor()});
 $('addVehicle').onclick=()=>openEditor();$('stockSearch').oninput=renderStock;$('refreshStock').onclick=refresh;
 form.onsubmit=async event=>{
-  event.preventDefault();if(busy||role!=='admin')return;
+  event.preventDefault();if(busy||!canManageStock())return;
   const mileage=value('mileage')===''?null:Number(value('mileage'));
   const confirmed=form.elements.namedItem('mileage_confirmed').checked;
   if(confirmed&&mileage===null){editorError(new Error('Enter the mileage before marking it confirmed.'));return}
@@ -156,12 +158,12 @@ $('publishVehicle').onclick=async()=>{
 };
 async function showSession(session){
   const epoch=++authEpoch;
-  if(!session){role=null;cars=[];$('stockList').replaceChildren();$('workspace').hidden=true;$('entry').hidden=false;$('vehicleEditor').close();return}
+  if(!session){$('manageUsers').hidden=true;role=null;cars=[];$('stockList').replaceChildren();$('workspace').hidden=true;$('entry').hidden=false;$('vehicleEditor').close();return}
   if(recovery)return;
   try{
     const membership=check(await db.from('staff_memberships').select('role,active').eq('user_id',session.user.id).maybeSingle());if(epoch!==authEpoch)return;
-    if(!membership?.active||!['admin','sales'].includes(membership.role)){$('entry').hidden=false;$('workspace').hidden=true;await db.auth.signOut();throw new Error('This account has no inventory access. Ask the E2 administrator to activate your staff membership.')}
-    role=membership.role;$('profileName').textContent=session.user.email;$('profileRole').textContent=role==='admin'?'Admin':'Salesman · view only';$('addVehicle').hidden=role!=='admin';$('entry').hidden=true;$('workspace').hidden=false;await refresh();
+    if(!membership?.active||!Object.hasOwn(roleLabels,membership.role)){$('entry').hidden=false;$('workspace').hidden=true;await db.auth.signOut();throw new Error('This account has no inventory access. Ask the E2 administrator to activate your staff membership.')}
+    role=membership.role;$('profileName').textContent=session.user.email;$('profileRole').textContent=roleLabels[role];$('manageUsers').hidden=role!=='super_admin';$('addVehicle').hidden=!canManageStock();$('entry').hidden=true;$('workspace').hidden=false;await refresh();
   }catch(error){message('authMessage',friendlyError(error),true)}
 }
 $('loginForm').onsubmit=async e=>{

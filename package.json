@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node supabase/tests/inventory.cjs",
-    "check": "node --check e2-data.js && node --check portal.js && node --check photo-sort.js && node --check showroom.js && node --check showroom-flow.js && node --check car.js"
+    "test": "node supabase/tests/inventory.cjs && node supabase/tests/staff.cjs && node supabase/tests/invite-handler.cjs",
+    "check": "node --check e2-data.js && node --check portal.js && node --check photo-sort.js && node --check showroom.js && node --check showroom-flow.js && node --check car.js && node --check team.js && node --check accept-invite.js"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14"

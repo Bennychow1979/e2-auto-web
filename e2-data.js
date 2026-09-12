@@ -6,7 +6,7 @@ export const mileageText = car => car.mileage === null ? 'Pending confirmation' 
 const config = window.E2_CONFIG || {};
 export const configured = /^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(config.supabaseUrl || '') && /^sb_publishable_[A-Za-z0-9_-]+$/.test(config.publishableKey || '');
 // Public pages never inherit a staff session, even in the same browser.
-const staffPage = location.pathname.endsWith('/portal.html') || (location.pathname.endsWith('/car.html') && new URLSearchParams(location.search).get('preview')==='1');
+const staffPage = ['/portal.html','/team.html','/accept-invite.html'].some(path=>location.pathname.endsWith(path)) || (location.pathname.endsWith('/car.html') && new URLSearchParams(location.search).get('preview')==='1');
 export const db = configured ? createClient(config.supabaseUrl, config.publishableKey, {
   auth: {persistSession:staffPage,autoRefreshToken:staffPage,detectSessionInUrl:staffPage,storageKey:'e2-staff-auth'}
 }) : null;

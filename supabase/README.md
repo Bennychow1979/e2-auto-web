@@ -60,6 +60,20 @@ Before enabling actual staff, verify: failed login, sign-out, session restore, o
 
 For production operation, choose a backup plan for **both database and Storage files**, test restoration, configure email delivery, review account recovery/MFA options and monitor storage/egress. Supabase database backups alone do not contain the photo file contents.
 
+## Users and permissions
+
+Migration `202609130004_super_admin.sql` was applied to E2 WEB Project on 2026-09-13. It adds Super Admin user management without elevating any account automatically. Owner elevation remains a separate reviewed operation.
+
+`team.html` requires an active Super Admin and lists only server-authorized membership data. Super Admin can invite users, attach existing Auth accounts, change roles and deactivate access. Admin retains full inventory management; Salesman has shared inventory read access. Account and Customer currently see published stock only; accounting and customer workflows are not implemented yet. Inactive memberships lose private data access on subsequent requests.
+
+Role changes are serialized, revision checked and audited. Direct client writes to memberships remain forbidden. The final active Super Admin cannot be removed, and changing one's own role requires another Super Admin.
+
+Deploy `functions/e2-invite-user/index.ts` as `e2-invite-user`. This function was deployed on 2026-09-13 with legacy JWT verification enabled. It verifies the caller with Auth and an active Super Admin database check on every request. Service credentials stay in the function's managed environment. Invitation attempts are limited to 20 per hour per Super Admin. Successful email delivery is followed by a role-assignment RPC that rechecks the caller and refuses to overwrite existing membership; if assignment fails, use Add existing E2 account after reviewing the user list.
+
+The SMTP sender is `e2autosdnbhd@gmail.com`; its App Password is managed only in the Supabase dashboard and must never be stored here. The owner saved SMTP settings on 2026-09-13. Add the exact Auth redirect `https://e2auto.my/accept-invite.html` (configured). Recipients set their own password on that page. No production invitation email has yet been sent or delivery verified. The handler's `status` action validates endpoint access without sending email; verify this using a real Super Admin session before first invitation.
+
+`npm test` includes 47 inventory checks with the new migration, 40 staff permission checks and 10 mock invitation-handler checks. Local browser fixtures verified default Salesman role, protected own account, role editing, invitation failure messaging and phone layout. Mock checks do not establish hosted email delivery.
+
 ## Official references
 
 - https://supabase.com/docs/guides/database/postgres/row-level-security

@@ -4,7 +4,7 @@ const fs=require('node:fs');const assert=require('node:assert/strict');
 const db=new PGlite();let passed=0;
 await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
 create schema auth; create schema storage;
-create table auth.users(id uuid primary key);
+create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
 create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
 create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text,unique(bucket_id,name));
@@ -17,7 +17,7 @@ await db.exec(fs.readFileSync('supabase/migrations/202609120001_inventory.sql','
 await db.exec(fs.readFileSync('supabase/migrations/202609130002_photo_order.sql','utf8'));
 const admin='00000000-0000-4000-8000-000000000001',sales='00000000-0000-4000-8000-000000000002',customer='00000000-0000-4000-8000-000000000003',account='00000000-0000-4000-8000-000000000004';
 const car='10000000-0000-4000-8000-000000000001',photo='20000000-0000-4000-8000-000000000001',path=car+'/'+photo+'.webp';
-await db.exec(`insert into auth.users values('${admin}'),('${sales}'),('${customer}'),('${account}'); insert into public.staff_memberships(user_id,role) values('${admin}','admin'),('${sales}','sales'),('${account}','account');`);
+await db.exec(`insert into auth.users(id) values('${admin}'),('${sales}'),('${customer}'),('${account}'); insert into public.staff_memberships(user_id,role) values('${admin}','admin'),('${sales}','sales'),('${account}','account');`);
 async function as(id){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id||'']);await db.exec('set role '+(id?'authenticated':'anon'))}
 async function fails(sql,label){let error;try{await db.exec(sql)}catch(e){error=e}assert.ok(error,label);passed++;console.log('PASS '+label)}
 async function count(sql,n,label){const r=await db.query(sql);assert.equal(Number(r.rows[0].n),n,label);passed++;console.log('PASS '+label)}
@@ -29,6 +29,7 @@ await db.exec(`insert into storage.objects(bucket_id,name) values('vehicle-photo
 await count('select count(*) n from public.inventory_audit',2,'Admin sees inventory audit');
 await db.exec('reset role');
 await db.exec(fs.readFileSync('supabase/migrations/202609130003_photo_limit_30.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/202609130004_super_admin.sql','utf8'));
 await as(admin);
 await count(`select count(*) n from public.vehicle_photos where id='${photo}' and position=0`,1,'Limit migration preserves existing photo and cover');
 await db.exec(`select public.e2_set_cover('${photo}')`);
@@ -56,7 +57,7 @@ await as(null);await count('select count(*) n from public.vehicles',0,'Anonymous
 await fails(`update public.vehicles set price=1`,'Anonymous cannot write');
 await as(sales);await count('select count(*) n from public.vehicles',1,'Sales can read shared draft stock');await count('select count(*) n from public.staff_memberships',1,'Sales sees only own membership');
 await fails(`select public.e2_set_cover('${photo}')`,'Sales cannot call admin cover RPC');
-await fails(`insert into public.staff_memberships values('${customer}','admin',true)`,'Cannot promote own account');
+await fails(`insert into public.staff_memberships(user_id,role,active) values('${customer}','admin',true)`,'Cannot promote own account');
 await count(`with changed as(update public.vehicles set publication='published' returning id) select count(*) n from changed`,0,'Sales cannot publish through direct API');
 await fails(`insert into storage.objects(bucket_id,name) values('vehicle-photos','${car}/20000000-0000-4000-8000-000000000099.webp')`,'Sales cannot upload');
 await as(customer);await count('select count(*) n from public.vehicles',0,'Customer cannot read drafts');await count('select count(*) n from public.inventory_audit',0,'Customer cannot read audit');
