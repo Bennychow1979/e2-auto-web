@@ -25,6 +25,23 @@ Deno.serve(async (req) => {
     if(raw.length>4096)return reply(413,{error:'Request too large'});
     let body;try{body=JSON.parse(raw)}catch{return reply(400,{error:'Invalid request'})}
     if(body.action==='status')return reply(200,{ready:true});
+    if(body.action==='resend'){
+      if(typeof body.user_id!=='string'||!/^[0-9a-f-]{36}$/i.test(body.user_id))return reply(400,{error:'Choose an existing staff account.'});
+      const {data:members,error:listError}=await caller.rpc('e2_list_staff');
+      if(listError)return reply(403,{error:'Could not verify staff access'});
+      const member=members.find(m=>m.user_id===body.user_id);
+      if(!member||!member.active)return reply(409,{error:'This account is missing or inactive. Refresh users before retrying.'});
+      const admin=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
+      const {data:existing,error:userError}=await admin.auth.admin.getUserById(member.user_id);
+      if(userError||!existing?.user||existing.user.email?.toLowerCase()!==member.email.toLowerCase())return reply(409,{error:'This account has changed. Refresh users before retrying.'});
+      if(existing.user.email_confirmed_at)return reply(409,{error:'This email is already confirmed. Use Forgot password on the sign-in page.'});
+      const {error:limitError}=await caller.rpc('e2_check_invite');
+      if(limitError)return reply(429,{error:limitError.message});
+      const {data:invited,error:inviteError}=await admin.auth.admin.inviteUserByEmail(member.email,{redirectTo:'https://e2auto.my/accept-invite.html'});
+      if(inviteError)return reply(inviteError.status===429?429:400,{error:inviteError.status===429?'Please wait at least 60 seconds before requesting another email. The mail service may also have an hourly limit.':'Invitation could not be resent. Check SMTP sending records and try again. If the account is now confirmed, use Forgot password.'});
+      if(invited?.user?.id!==member.user_id)return reply(409,{error:'The account changed during this request. Refresh users before retrying.'});
+      return reply(200,{user_id:member.user_id,email:member.email,resent:true});
+    }
     const email=typeof body.email==='string'?body.email.trim().toLowerCase():'';
     if(body.action!=='invite'||email.length>254||!/^\S+@\S+\.\S+$/.test(email)||!roles.has(body.role))return reply(400,{error:'Enter a valid email and role'});
     const {data:members,error:listError}=await caller.rpc('e2_list_staff');

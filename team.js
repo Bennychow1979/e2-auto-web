@@ -2,13 +2,15 @@ import {db,configured,check,esc,friendlyError} from './e2-data.js?v=staff-1';
 const $=id=>document.getElementById(id);
 const labels={super_admin:'Super Admin',admin:'Admin',sales:'Salesman',account:'Account',customer:'Customer'};
 const help={super_admin:'Can invite users, change permissions, and manage all vehicles. Give this role only to someone you trust with the whole workspace.',admin:'Can manage vehicles, photos and publication. Cannot manage users or permissions.',sales:'Can view shared inventory, including drafts. Cannot edit vehicles or manage users.',account:'Published stock only. Accounting functions are not available yet.',customer:'Published stock only. Customer account functions are not available yet.'};
-let members=[],self=null,editing=null,busy=false,epoch=0;
+let members=[],self=null,editing=null,busy=false,epoch=0,resendTarget=null;
+const resendWait=new Map();
 function note(id,text,error=false){$(id).textContent=text;$(id).classList.toggle('error',error)}
-function lock(value){busy=value;document.querySelectorAll('#userForm input,#userForm select,#userForm button').forEach(el=>el.disabled=value);$('closeUser').disabled=value;$('addUser').disabled=value;$('refreshUsers').disabled=value;document.querySelectorAll('[data-user]').forEach(el=>el.disabled=value||el.dataset.user===self)}
-function gate(text){epoch++;members=[];self=null;$('userList').replaceChildren();$('teamWorkspace').hidden=true;$('teamGate').hidden=false;$('userDialog').close();note('gateMessage',text)}
+function lock(value){busy=value;document.querySelectorAll('#userForm input,#userForm select,#userForm button,#resendDialog button').forEach(el=>el.disabled=value);$('closeUser').disabled=value;$('addUser').disabled=value;$('refreshUsers').disabled=value;document.querySelectorAll('[data-user]').forEach(el=>el.disabled=value||el.dataset.user===self);updateResendButtons()}
+function gate(text){epoch++;members=[];self=null;$('userList').replaceChildren();$('teamWorkspace').hidden=true;$('teamGate').hidden=false;$('userDialog').close();$('resendDialog').close();resendTarget=null;note('gateMessage',text)}
 function render(){
-  $('userList').innerHTML=members.map(m=>'<article class="userRow"><div><strong>'+esc(m.email)+'</strong><small>'+(m.user_id===self?'You · ':'')+(m.email_confirmed?'Email confirmed':'Invitation pending')+'</small></div><span>'+esc(labels[m.role]||m.role)+'</span><span class="userStatus">'+(m.active?'Active':'Inactive')+'</span><button type="button" class="quiet" data-user="'+m.user_id+'" '+(m.user_id===self?'disabled':'')+'>'+(m.user_id===self?'Your account':'Edit access')+'</button>'+(m.role!=='customer'?'<a class="quiet" href="profile.html?user='+m.user_id+'">Edit profile ↗</a>':'')+'</article>').join('');
+  $('userList').innerHTML=members.map(m=>'<article class="userRow"><div><strong>'+esc(m.email)+'</strong><small>'+(m.user_id===self?'You · ':'')+(m.email_confirmed?'Email confirmed':'Invitation pending')+'</small></div><span>'+esc(labels[m.role]||m.role)+'</span><span class="userStatus">'+(m.active?'Active':'Inactive')+'</span><div class="userActions"><button type="button" class="quiet" data-user="'+m.user_id+'" '+(m.user_id===self?'disabled':'')+'>'+(m.user_id===self?'Your account':'Edit access')+'</button>'+(m.role!=='customer'?'<a class="quiet" href="profile.html?user='+m.user_id+'">Edit profile ↗</a>':'')+(m.active&&!m.email_confirmed?'<button type="button" class="quiet" data-resend="'+m.user_id+'">Resend invitation</button>':'')+'</div></article>').join('');
   document.querySelectorAll('[data-user]').forEach(b=>b.onclick=()=>open(members.find(m=>m.user_id===b.dataset.user)));
+  document.querySelectorAll('[data-resend]').forEach(b=>b.onclick=()=>openResend(members.find(m=>m.user_id===b.dataset.resend)));updateResendButtons();
 }
 async function refresh(){
   const request=++epoch;
@@ -57,5 +59,27 @@ $('userForm').onsubmit=async event=>{
 $('teamSignOut').onclick=async()=>{if(busy)return;try{check(await db.auth.signOut());gate('Signed out.')}catch(e){note('teamMessage',friendlyError(e),true)}};
 if(configured)db.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT')gate('Signed out.');});
 await refresh();
-window.addEventListener('focus',()=>{if(!busy&&!$('userDialog').open)refresh()});
+window.addEventListener('focus',()=>{if(!busy&&!$('userDialog').open&&!$('resendDialog').open)refresh()});
 window.addEventListener('beforeunload',e=>{if(busy){e.preventDefault();e.returnValue=''}});
+
+function updateResendButtons(){document.querySelectorAll('[data-resend]').forEach(b=>{const seconds=Math.max(0,Math.ceil(((resendWait.get(b.dataset.resend)||0)-Date.now())/1000));b.disabled=busy||seconds>0;b.textContent=seconds?'Resend in '+seconds+'s':'Resend invitation'})}
+setInterval(updateResendButtons,1000);
+function openResend(member){
+  if(busy||!member?.active||member.email_confirmed||Date.now()<(resendWait.get(member.user_id)||0))return;
+  resendTarget={...member};$('resendEmail').textContent=member.email;note('resendError','');$('resendDialog').showModal();
+}
+$('closeResend').onclick=()=>{if(!busy)$('resendDialog').close()};
+$('resendDialog').addEventListener('cancel',e=>{if(busy)e.preventDefault()});
+$('resendForm').onsubmit=async event=>{
+  event.preventDefault();if(busy||!resendTarget)return;const target={...resendTarget};
+  if(Date.now()<(resendWait.get(target.user_id)||0))return;
+  resendWait.set(target.user_id,Date.now()+60000);lock(true);note('resendError','Requesting invitation…');
+  try{
+    const result=await db.functions.invoke('e2-invite-user',{body:{action:'resend',user_id:target.user_id}});
+    if(result.error){let detail;try{detail=await result.error.context?.json()}catch{}throw Error(detail?.error||'Invitation could not be resent. Check email sending records before retrying.')}
+    if(result.data?.error)throw Error(result.data.error);
+    if(!result.data?.resent)throw Error('The invitation service did not confirm this request. Refresh before retrying.');
+    $('resendDialog').close();resendTarget=null;await refresh();
+    if(self)note('teamMessage','Invitation requested for '+target.email+'. Ask them to check Inbox and Spam / Junk, and use the newest email link. Delivery is not yet confirmed.');
+  }catch(error){note('resendError',friendlyError(error),true)}finally{lock(false)}
+};
