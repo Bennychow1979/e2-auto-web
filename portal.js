@@ -172,11 +172,22 @@ $('loginForm').onsubmit=async e=>{
   catch(error){message('authMessage',friendlyError(error),true)}finally{button.disabled=false}
 };
 $('signOut').onclick=async()=>{if(busy){message('stockMessage','Wait for the current save or upload to finish before signing out.');return}try{check(await db.auth.signOut());await showSession(null)}catch(error){message('stockMessage',friendlyError(error),true)}};
+let resetSending=false,resetWaitUntil=0;
+try{const stored=Number(sessionStorage.getItem('e2-reset-wait'));if(Number.isFinite(stored)&&stored>Date.now())resetWaitUntil=Math.min(stored,Date.now()+60000)}catch{}
+function updateResetButton(){
+  const seconds=Math.max(0,Math.ceil((resetWaitUntil-Date.now())/1000));
+  $('resetPassword').disabled=!configured||resetSending||seconds>0;
+  $('resetPassword').textContent=resetSending?'Requesting email…':seconds?'Request again in '+seconds+'s':'Forgot password?';
+}
+setInterval(updateResetButton,1000);
 $('resetPassword').onclick=async()=>{
+  if(resetSending||Date.now()<resetWaitUntil)return;
   const email=$('loginForm').elements.email;if(!email.reportValidity())return;
-  $('resetPassword').disabled=true;
-  try{check(await db.auth.resetPasswordForEmail(email.value.trim(),{redirectTo:new URL('portal.html',location.href).href}));message('authMessage','If this account is eligible, a password reset email will arrive shortly.')}
-  catch(error){message('authMessage',friendlyError(error),true)}finally{$('resetPassword').disabled=false}
+  resetSending=true;resetWaitUntil=Date.now()+60000;
+  try{sessionStorage.setItem('e2-reset-wait',String(resetWaitUntil))}catch{}
+  updateResetButton();
+  try{check(await db.auth.resetPasswordForEmail(email.value.trim(),{redirectTo:new URL('portal.html',location.href).href}));message('authMessage','If this account is eligible, a password reset email has been requested. Check your inbox and Spam / Junk folder for E2 Auto. Use the newest email link.')}
+  catch(error){message('authMessage',friendlyError(error),true)}finally{resetSending=false;updateResetButton()}
 };
 $('passwordForm').onsubmit=async e=>{
   e.preventDefault();const f=$('passwordForm');if(f.elements.password.value!==f.elements.confirm.value){message('authMessage','The passwords do not match.',true);return}
@@ -186,7 +197,7 @@ $('passwordForm').onsubmit=async e=>{
 };
 if(!configured){message('connectionState','正式账号连接准备中 · Sign-in will be available after the E2 database project is connected.');}
 else{
-  message('connectionState','E2 staff sign-in');$('loginForm').querySelector('button[type=submit]').disabled=false;$('resetPassword').disabled=false;
+  message('connectionState','E2 staff sign-in');$('loginForm').querySelector('button[type=submit]').disabled=false;updateResetButton();
   db.auth.onAuthStateChange((event,session)=>{
     if(event==='PASSWORD_RECOVERY'){recovery=true;$('entry').hidden=false;$('workspace').hidden=true;$('loginForm').hidden=true;$('passwordForm').hidden=false;message('authMessage','Choose a new password of at least 12 characters.');return}
     if(['INITIAL_SESSION','SIGNED_IN','SIGNED_OUT'].includes(event))setTimeout(()=>showSession(session),0);
