@@ -1,4 +1,4 @@
-import {publicContact,enquiryURL,vehicleShareURL} from './referral.js';
+import {publicContact,enquiryURL,vehicleShareURL,vehiclePageURL,withVehicleLink} from './referral.js?v=vehicle-link-1';
 import {db,check,esc,rm,mileageText,getVehicles,photoURLs,coverURL,friendlyError} from './e2-data.js';
 const $=id=>document.getElementById(id);
 (async()=>{
@@ -14,7 +14,8 @@ const rows=await getVehicles({id,staff:preview});
 if(!rows.length)throw new Error('This vehicle is not currently published or is no longer accessible. Please ask E2 about availability.');
 const car=rows[0]; car.name=car.brand+' '+car.model;car.priceValue=Number(car.price);
 let contact=await publicContact(params.get('sales'),window.E2_CONFIG);
-const wa=text=>enquiryURL(contact,text);
+const pageLink=()=>vehiclePageURL(location.href,car.id,contact?.user_id);
+const wa=(text,previousLink)=>enquiryURL(contact,withVehicleLink(text,pageLink(),previousLink));
 const vehicleIntro='I am enquiring about '+car.year+' '+car.name+' '+car.variant+' (Plate '+car.plate+'). ';
 let intro='Hi '+(contact?.display_name||'E2 Auto')+', '+vehicleIntro;
 async function paintContact(){
@@ -36,13 +37,13 @@ async function refreshContact(){
   if(checkingContact||!params.get('sales'))return;
   checkingContact=true;
   try{
-    const previousIntro=intro;
+    const previousIntro=intro, previousLink=pageLink();
     contact=await publicContact(params.get('sales'),window.E2_CONFIG);
     intro='Hi '+(contact?.display_name||'E2 Auto')+', '+vehicleIntro;
     for(const key of ['enquire','tradeLink','loanLink','financeWhatsApp','bookingLink']){
       const link=$(key); if(!link.hasAttribute('href'))continue;
       const text=new URL(link.href).searchParams.get('text')||'';
-      link.href=wa(text.startsWith(previousIntro)?intro+text.slice(previousIntro.length):text);
+      link.href=wa(text.startsWith(previousIntro)?intro+text.slice(previousIntro.length):text,previousLink);
     }
     paintContact();
   }finally{checkingContact=false}

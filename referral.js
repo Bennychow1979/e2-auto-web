@@ -2,9 +2,19 @@ export const COMPANY_PHONE = '60122785126';
 export const validId = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value || '');
 export function vehicleShareURL(base, vehicleId, staffId) {
   if (!validId(vehicleId) || !validId(staffId)) throw Error('Choose a vehicle and a published staff profile.');
+  return vehiclePageURL(base, vehicleId, staffId);
+}
+export function vehiclePageURL(base, vehicleId, staffId) {
+  if (!validId(vehicleId)) throw Error('Choose a vehicle.');
   const url = new URL('car.html', base);
-  url.search = new URLSearchParams({id:vehicleId, sales:staffId}).toString();
+  url.searchParams.set('id', vehicleId);
+  if (validId(staffId)) url.searchParams.set('sales', staffId);
   return url.href;
+}
+export function withVehicleLink(text, url, previousUrl = url) {
+  const previousSuffix = '\n\nVehicle link: ' + previousUrl;
+  const message = text.endsWith(previousSuffix) ? text.slice(0, -previousSuffix.length) : text;
+  return message + '\n\nVehicle link: ' + url;
 }
 // Always anonymous, including on staff/preview pages. Never inherit staff tokens.
 // Existing public-profile RLS excludes private, inactive and customer accounts.
