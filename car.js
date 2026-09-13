@@ -16,6 +16,7 @@ if(!rows.length)throw new Error('This vehicle is not currently published or is n
 const car=rows[0]; car.name=car.brand+' '+car.model;car.priceValue=Number(car.price);
 let contact=await publicContact(params.get('sales'),window.E2_CONFIG);
 setupCarSharing(car,()=>contact);
+$('applyLoan').hidden=preview||car.stock_status!=='Available';$('applyLoan').href='my-e2.html?car='+encodeURIComponent(car.id)+(contact?'&sales='+encodeURIComponent(contact.user_id):'');
 if(!preview)import('./car-save.js?v=saved-1').then(m=>m.setupCarSave(car)).catch(()=>{$('saveCarStatus').textContent='Saved cars are temporarily unavailable. Please reload.'});
 const pageLink=()=>vehiclePageURL(location.href,car.id,contact?.user_id);
 const wa=(text,previousLink)=>enquiryURL(contact,withVehicleLink(text,pageLink(),previousLink));
