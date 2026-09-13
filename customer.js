@@ -1,3 +1,4 @@
+import {pendingSave} from './saved-intent.js';
 import {customerDB as db,check,fields} from './customer-data.js?v=customer-1';
 import {normalizeWhatsApp} from './profile-utils.js';
 const $=id=>document.getElementById(id),profile=$('customerProfile'),register=$('customerRegister'),login=$('customerSignIn');
@@ -25,6 +26,7 @@ async function hydrate(session){
       const initial={full_name:user.user_metadata.full_name,phone:user.user_metadata.phone};
       try{const created=check(await db.rpc('e2_save_customer_profile',{details:initial,expected_revision:0,accept_privacy:true}));if(run!==epoch)return;saved=Array.isArray(created)?created[0]:created}catch{if(run!==epoch)return}
     }
+    if(pendingSave()){location.replace('saved.html');return}
     fillProfile();$('customerAuth').hidden=true;$('customerRecovery').hidden=true;$('customerAccount').hidden=false;note('customerProfileMessage',saved?'Your saved details are ready.':'Complete your details to finish setting up your customer profile.');
   }catch(error){if(run===epoch){gate();note('customerAuthMessage',error.message||'Could not load your account. Please try again.',true)}}
 }
