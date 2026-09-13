@@ -1,3 +1,4 @@
+import {publicContact,enquiryURL,vehicleShareURL} from './referral.js';
 import {db,check,esc,rm,mileageText,getVehicles,photoURLs,coverURL,friendlyError} from './e2-data.js';
 const $=id=>document.getElementById(id);
 (async()=>{
@@ -12,8 +13,42 @@ if(preview) {
 const rows=await getVehicles({id,staff:preview});
 if(!rows.length)throw new Error('This vehicle is not currently published or is no longer accessible. Please ask E2 about availability.');
 const car=rows[0]; car.name=car.brand+' '+car.model;car.priceValue=Number(car.price);
-const wa=text=>'https://wa.me/60122785126?text='+encodeURIComponent(text);
-const intro='Hi E2 Auto, I am enquiring about '+car.year+' '+car.name+' '+car.variant+' (Plate '+car.plate+'). ';
+let contact=await publicContact(params.get('sales'),window.E2_CONFIG);
+const wa=text=>enquiryURL(contact,text);
+const vehicleIntro='I am enquiring about '+car.year+' '+car.name+' '+car.variant+' (Plate '+car.plate+'). ';
+let intro='Hi '+(contact?.display_name||'E2 Auto')+', '+vehicleIntro;
+async function paintContact(){
+  const person=contact;
+  $('carContact').hidden=!person;
+  $('contactName').textContent=person?.display_name||'E2 Auto';
+  $('contactPosition').textContent=person?[person.position,person.languages].filter(Boolean).join(' · '):'Our team is here to help.';
+  $('contactPhoto').src='assets/e2-logo.png';
+  $('contactProfile').hidden=!person;
+  if(person)$('contactProfile').href='consultant.html?id='+encodeURIComponent(person.user_id);
+  $('contactWhatsApp').href=wa(intro+'Please confirm availability, price and vehicle details.');
+  $('enquire').textContent=person?'WhatsApp ↗':'Ask E2 on WhatsApp ↗';
+  $('enquire').setAttribute('aria-label',person?'Contact '+person.display_name+' on WhatsApp':'Ask E2 on WhatsApp');
+  if(person?.photo_path){try{const result=await db.storage.from('staff-photos').createSignedUrl(person.photo_path,300);if(contact===person&&!result.error)$('contactPhoto').src=result.data.signedUrl}catch{}}
+}
+paintContact();
+let checkingContact=false;
+async function refreshContact(){
+  if(checkingContact||!params.get('sales'))return;
+  checkingContact=true;
+  try{
+    const previousIntro=intro;
+    contact=await publicContact(params.get('sales'),window.E2_CONFIG);
+    intro='Hi '+(contact?.display_name||'E2 Auto')+', '+vehicleIntro;
+    for(const key of ['enquire','tradeLink','loanLink','financeWhatsApp','bookingLink']){
+      const link=$(key); if(!link.hasAttribute('href'))continue;
+      const text=new URL(link.href).searchParams.get('text')||'';
+      link.href=wa(text.startsWith(previousIntro)?intro+text.slice(previousIntro.length):text);
+    }
+    paintContact();
+  }finally{checkingContact=false}
+}
+window.addEventListener('focus',refreshContact);
+setInterval(()=>{if(!document.hidden)refreshContact()},60000);
 document.title=car.name+' | E2 Auto';
 $('make').textContent=car.brand;$('model').textContent=car.model;$('heroEyebrow').textContent=[car.year,car.body_type,car.stock_status].filter(Boolean).join(' · ');
 $('heroLine').textContent=car.variant;$('heroPrice').textContent=rm(car.price);$('heroPlate').textContent='PLATE · '+car.plate;
@@ -49,7 +84,7 @@ window.addEventListener('focus',()=>{if(Date.now()-refreshedAt>240000){refreshed
 setInterval(()=>{if(!document.hidden){refreshedAt=Date.now();refreshPhotos().catch(error=>$('photoCount').textContent=friendlyError(error))}},240000);
 $('carState').hidden=true;$('carMain').hidden=false;$('carDock').hidden=false;
 const related=(await getVehicles().catch(()=>[])).filter(c=>c.id!==car.id).slice(0,3);
-$('relatedCars').innerHTML=related.map(c=>'<a class="relatedCard" href="car.html?id='+c.id+'"><div class="noPhoto" data-related="'+c.id+'">Loading photo…</div><small>'+c.year+' · '+esc(c.stock_status)+'</small><h3>'+esc(c.brand+' '+c.model)+'</h3><p>'+rm(c.price)+' <span aria-hidden="true">↗</span></p></a>').join('');
+$('relatedCars').innerHTML=related.map(c=>'<a class="relatedCard" href="'+esc(contact?vehicleShareURL(location.href,c.id,contact.user_id):'car.html?id='+c.id)+'"><div class="noPhoto" data-related="'+c.id+'">Loading photo…</div><small>'+c.year+' · '+esc(c.stock_status)+'</small><h3>'+esc(c.brand+' '+c.model)+'</h3><p>'+rm(c.price)+' <span aria-hidden="true">↗</span></p></a>').join('');
 document.querySelector('.moreCars').hidden=!related.length;
 for(const c of related)coverURL(c).then(url=>{const node=document.querySelector('[data-related="'+c.id+'"]');if(url&&node)node.innerHTML='<img src="'+esc(url)+'" alt="'+esc(c.brand+' '+c.model)+'" loading="lazy">'}).catch(()=>{});
 function calculate(){
