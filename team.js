@@ -1,7 +1,7 @@
 import {db,configured,check,esc,friendlyError} from './e2-data.js?v=staff-1';
 const $=id=>document.getElementById(id);
 const labels={super_admin:'Super Admin',admin:'Admin',sales:'Salesman',account:'Account',customer:'Customer'};
-const help={super_admin:'Can invite users, change permissions, and manage all vehicles. Give this role only to someone you trust with the whole workspace.',admin:'Can manage vehicles, photos and publication. Cannot manage users or permissions.',sales:'Can view shared inventory, including drafts. Cannot edit vehicles or manage users.',account:'Published stock only. Accounting functions are not available yet.',customer:'Published stock only. Customer account functions are not available yet.'};
+const help={super_admin:'Can invite users, change permissions, and manage all vehicles. Give this role only to someone you trust with the whole workspace.',admin:'Can manage vehicles, photos and publication. Cannot manage users or permissions.',sales:'Can view shared inventory, including drafts. Cannot edit vehicles or manage users.',account:'Published stock only. Accounting functions are not available yet.',customer:'Published stock and their own customer profile in My E2. No staff inventory management.'};
 let members=[],self=null,editing=null,busy=false,epoch=0,resendTarget=null;
 const resendWait=new Map();
 function note(id,text,error=false){$(id).textContent=text;$(id).classList.toggle('error',error)}

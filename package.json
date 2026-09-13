@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node supabase/tests/inventory.cjs && node supabase/tests/staff.cjs && node supabase/tests/invite-handler.cjs && node supabase/tests/profiles.cjs && node supabase/tests/referral.mjs",
-    "check": "node --check e2-data.js && node --check portal.js && node --check photo-sort.js && node --check showroom.js && node --check showroom-flow.js && node --check car.js && node --check team.js && node --check accept-invite.js && node --check profile.js && node --check profile-utils.js && node --check consultant.js && node --check referral.js && node --check profile-share.js && node --check car-share.js"
+    "test": "node supabase/tests/inventory.cjs && node supabase/tests/staff.cjs && node supabase/tests/invite-handler.cjs && node supabase/tests/profiles.cjs && node supabase/tests/referral.mjs && node supabase/tests/customers.cjs",
+    "check": "node --check e2-data.js && node --check portal.js && node --check photo-sort.js && node --check showroom.js && node --check showroom-flow.js && node --check car.js && node --check team.js && node --check accept-invite.js && node --check profile.js && node --check profile-utils.js && node --check consultant.js && node --check referral.js && node --check profile-share.js && node --check car-share.js && node --check customer.js && node --check customer-data.js && node --check customers.js"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14"
