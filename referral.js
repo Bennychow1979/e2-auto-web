@@ -34,3 +34,18 @@ export function enquiryURL(contact, text) {
   const phone = /^[1-9][0-9]{7,14}$/.test(contact?.whatsapp || '') ? contact.whatsapp : COMPANY_PHONE;
   return 'https://wa.me/'+phone+'?text='+encodeURIComponent(text);
 }
+// The share picker uses the same anonymous public visibility rules as enquiry routing.
+export async function publicContacts(config, request = fetch) {
+  if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(config?.supabaseUrl || '') || !/^sb_publishable_[A-Za-z0-9_-]+$/.test(config?.publishableKey || '')) throw Error('Contact list is unavailable.');
+  const contacts=[];
+  for(let offset=0; ; offset+=100){
+    const url=new URL(config.supabaseUrl+'/rest/v1/staff_profiles');
+    url.search=new URLSearchParams({select:'user_id,display_name,position,whatsapp',is_public:'eq.true',order:'display_name.asc,user_id.asc',limit:'100',offset:String(offset)});
+    const response=await request(url.href,{headers:{apikey:config.publishableKey},credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(8000)});
+    if(!response.ok)throw Error('Could not load contacts. Close and reopen Share car to retry.');
+    const rows=await response.json();
+    if(!Array.isArray(rows))throw Error('Contact list is unavailable.');
+    contacts.push(...rows.filter(row=>validId(row?.user_id)&&row.display_name&&/^[1-9][0-9]{7,14}$/.test(row.whatsapp||'')));
+    if(rows.length<100)return contacts;
+  }
+}

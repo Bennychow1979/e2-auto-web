@@ -1,4 +1,5 @@
-import {publicContact,enquiryURL,vehicleShareURL,vehiclePageURL,withVehicleLink} from './referral.js?v=vehicle-link-1';
+import {publicContact,enquiryURL,vehicleShareURL,vehiclePageURL,withVehicleLink} from './referral.js?v=car-share-1';
+import {setupCarSharing} from './car-share.js?v=car-share-1';
 import {db,check,esc,rm,mileageText,getVehicles,photoURLs,coverURL,friendlyError} from './e2-data.js';
 const $=id=>document.getElementById(id);
 (async()=>{
@@ -14,6 +15,7 @@ const rows=await getVehicles({id,staff:preview});
 if(!rows.length)throw new Error('This vehicle is not currently published or is no longer accessible. Please ask E2 about availability.');
 const car=rows[0]; car.name=car.brand+' '+car.model;car.priceValue=Number(car.price);
 let contact=await publicContact(params.get('sales'),window.E2_CONFIG);
+setupCarSharing(car,()=>contact);
 const pageLink=()=>vehiclePageURL(location.href,car.id,contact?.user_id);
 const wa=(text,previousLink)=>enquiryURL(contact,withVehicleLink(text,pageLink(),previousLink));
 const vehicleIntro='I am enquiring about '+car.year+' '+car.name+' '+car.variant+' (Plate '+car.plate+'). ';
