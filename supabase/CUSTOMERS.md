@@ -26,4 +26,4 @@ The UI imposes a shared 60-second delay between signup/resend/reset requests, wi
 
 ## Current state
 
-Code and migration prepared; live activation and a real email round-trip remain to be completed. Do not label registrations live until the database and Auth settings are applied and the frontend deployment succeeds.
+Customer registration activated on 2026-09-13 with owner approval. The production migration is applied and verified (RLS enabled, anonymous SELECT and authenticated direct INSERT denied). Both customer redirect URLs are saved. Public signup is enabled, email confirmation stays enabled, and anonymous sign-ins stay disabled. Frontend commit e685fb06ff8d3cf23b00fefb741a0c1c416e756c passed CI and Pages deployment. The live registration form and owner's admin directory were verified. A real customer's confirmation-email delivery and callback remain to be tested by the owner; no test email was sent.
