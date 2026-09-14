@@ -1,3 +1,4 @@
+import {viewVehicle} from './advertising.js?v=1';
 import {publicContact,enquiryURL,vehicleShareURL,vehiclePageURL,withVehicleLink} from './referral.js?v=car-share-1';
 import {setupCarSharing} from './car-share.js?v=car-share-1';
 import {db,check,esc,rm,mileageText,getVehicles,photoURLs,coverURL,friendlyError} from './e2-data.js';
@@ -88,6 +89,7 @@ let refreshedAt=Date.now();
 window.addEventListener('focus',()=>{if(Date.now()-refreshedAt>240000){refreshedAt=Date.now();refreshPhotos().catch(error=>$('photoCount').textContent=friendlyError(error))}});
 setInterval(()=>{if(!document.hidden){refreshedAt=Date.now();refreshPhotos().catch(error=>$('photoCount').textContent=friendlyError(error))}},240000);
 $('carState').hidden=true;$('carMain').hidden=false;$('carDock').hidden=false;
+if(!preview)viewVehicle(car);
 const related=(await getVehicles().catch(()=>[])).filter(c=>c.id!==car.id).slice(0,3);
 $('relatedCars').innerHTML=related.map(c=>'<a class="relatedCard" href="'+esc(contact?vehicleShareURL(location.href,c.id,contact.user_id):'car.html?id='+c.id)+'"><div class="noPhoto" data-related="'+c.id+'">Loading photo…</div><small>'+c.year+' · '+esc(c.stock_status)+'</small><h3>'+esc(c.brand+' '+c.model)+'</h3><p>'+rm(c.price)+' <span aria-hidden="true">↗</span></p></a>').join('');
 document.querySelector('.moreCars').hidden=!related.length;

@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import {readFileSync,readdirSync} from 'node:fs';
+import {publicURL,safeContext,readChoice,MAX_AGE,whatsapp,publicVehicle,createTracking} from '../../advertising-core.js';
+const id='763ab19c-a414-4651-aa10-076cbefe9ba9',url='https://e2auto.my/car.html?id='+id;
+const car={id,publication:'published',brand:'Honda',model:'ACCORD',price:46990,plate:'PRIVATE-NOT-SENT',email:'private@example.invalid',name:'Not sent'};
+for(const path of ['/','/index.html','/showroom.html'])assert(publicURL('https://e2auto.my'+path));
+assert(publicURL(url+'&sales='+id));assert(publicURL(url+'&fbclid=abc_123'));
+for(const path of ['/portal.html','/customer.html','/my-e2.html','/intake.html','/documents.html','/team.html','/customers.html','/filter-demo.html','/car-detail-demo.html','/loans.html','/intake-workspace.html'])assert(!publicURL('https://e2auto.my'+path));
+for(const suffix of ['&preview=1','&invite='+id,'&email=a%40b.com','#access_token=secret','&application='+id,'&unexpected=secret'])assert(!publicURL(url+suffix));
+assert(!publicURL('http://127.0.0.1/car.html?id='+id));assert(!publicURL('https://e2auto.my/car.html'));
+assert(!safeContext(url,'https://e2auto.my/my-e2.html?application='+id));assert(!safeContext(url,'https://example.com/?secret=yes'));assert(safeContext(url,'https://www.facebook.com/'));
+assert.equal(readChoice(null),null);assert.equal(readChoice('{bad'),null);assert.equal(readChoice(JSON.stringify({version:1,allowed:true,at:100}),101),true);assert.equal(readChoice(JSON.stringify({version:1,allowed:false,at:100}),101),false);assert.equal(readChoice(JSON.stringify({version:1,allowed:true,at:100}),100+MAX_AGE),null);
+assert(whatsapp('https://wa.me/6012?text=private'));assert(whatsapp('https://api.whatsapp.com/send?phone=123'));for(const v of ['https://evil.example/wa.me','https://wa.me.evil.com/','https://example.com/?next=whatsapp.com','javascript:alert(1)'])assert(!whatsapp(v));
+assert.equal(publicVehicle({...car,publication:'draft'}),null);assert.equal(publicVehicle({...car,price:'invalid'}),null);assert(!JSON.stringify(publicVehicle(car)).includes('PRIVATE'));assert(!JSON.stringify(publicVehicle(car)).includes('@'));
+function setup(eligible=true,isCar=true){const calls=[];let loads=0,revokes=0;const t=createTracking({eligible,isCar,load:()=>loads++,send:(...a)=>calls.push(a),revoke:()=>revokes++});return{t,calls,get loads(){return loads},get revokes(){return revokes}}}
+const a=setup();a.t.vehicle(car);a.t.contact('https://wa.me/123?text=private');a.t.calculate();assert.equal(a.loads,0);assert.equal(a.calls.length,0);a.t.consent(false);assert.equal(a.loads,0);a.t.consent(true);assert.equal(a.loads,1);assert.deepEqual(a.calls.map(c=>c[0]),['PageView','ViewContent']);a.t.consent(true);a.t.vehicle(car);assert.equal(a.calls.length,2);a.t.contact('https://wa.me/123?text=private');assert.deepEqual(a.calls.at(-1),['Contact',{contact_method:'WhatsApp'},false]);a.t.calculate();a.t.calculate();assert.equal(a.calls.filter(c=>c[0]==='LoanCalculator').length,1);assert(!JSON.stringify(a.calls).includes('private'));assert(!a.calls.some(c=>['Schedule','Lead','InitiateCheckout'].includes(c[0])));a.t.consent(false);const n=a.calls.length;a.t.contact('https://wa.me/123');a.t.calculate();assert.equal(a.calls.length,n);assert.equal(a.revokes,1);
+const b=setup();b.t.consent(true);assert.equal(b.loads,0);b.t.vehicle({...car,publication:'draft'});assert.equal(b.loads,0);b.t.vehicle(car);assert.equal(b.loads,1);
+const c=setup(false);c.t.consent(true);c.t.vehicle(car);c.t.contact('https://wa.me/123');assert.equal(c.loads,0);assert.equal(c.calls.length,0);
+const d=setup(true,false);d.t.consent(true);assert.deepEqual(d.calls.map(c=>c[0]),['PageView']);d.t.calculate();assert.equal(d.calls.length,1);
+const root=new URL('../../',import.meta.url),allowed=['index.html','showroom.html','car.html'];
+for(const file of readdirSync(root).filter(f=>f.endsWith('.html'))){const source=readFileSync(new URL(file,root),'utf8');if(allowed.includes(file))assert.equal((source.match(/src="advertising.js\?v=1"/g)||[]).length,1);else assert(!source.includes('src="advertising.js'),file+' must not load pixel');assert(!source.includes('facebook.com/tr?'),file+' must not bypass consent with noscript')}
+const js=readFileSync(new URL('advertising.js',root),'utf8');assert(js.includes("f('set','autoConfig',false,PIXEL)"));assert(js.includes("window.fbq.queue.length=0"));assert(!js.includes('trackCustom\', \'Lead'));assert(!js.includes('SUPABASE'));assert(!js.includes('textContent:document.title'));
+console.log('Advertising consent, page scope, event accuracy, private data exclusion and withdrawal checks passed. No external requests or real ad events sent.');
