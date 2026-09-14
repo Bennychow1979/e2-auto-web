@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
-const roles = new Set(['super_admin','admin','sales','account','customer']);
+const roles = new Set(['super_admin','admin','office_admin','sales','account','customer']);
 const origins = new Set(['https://e2auto.my','https://bennychow1979.github.io']);
 Deno.serve(async (req) => {
   const origin=req.headers.get('Origin')||'';

@@ -1,5 +1,5 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const source=fs.readFileSync('supabase/functions/e2-invite-user/index.ts','utf8').replace(/^import .*\n/,'');
+const source=fs.readFileSync('supabase/functions/e2-invite-user/index.ts','utf8').replace(/^\s*import [^\n]*\n/,'');
 async function scenario({authorization='Bearer test-user-token',origin='https://e2auto.my',allowed=true,validUser=true,body={action:'invite',email:'new@example.com',role:'sales'},inviteError=null,memberError=null,members=[],existingUser=null,userError=null,limitError=null}={}){
  let handler,sends=0,attached=0;
  const caller={auth:{getUser:async()=>({data:{user:validUser?{id:'owner'}:null},error:null})},rpc:async(name)=>{if(name==='e2_is_super_admin')return{data:allowed};if(name==='e2_list_staff')return{data:members};if(name==='e2_check_invite')return{error:limitError};if(name==='e2_add_staff_by_email'){attached++;return{data:'new-user',error:memberError}};throw Error(name)}};
@@ -9,6 +9,7 @@ async function scenario({authorization='Bearer test-user-token',origin='https://
  return {status:response.status,body:await response.json(),sends,attached};
 }
 (async()=>{
+let office=await scenario({body:{action:'invite',email:'office@example.test',role:'office_admin'}});assert.equal(office.status,200);assert.equal(office.attached,1);
 let r=await scenario({authorization:''});assert.equal(r.status,401);assert.equal(r.sends,0);
 r=await scenario({validUser:false});assert.equal(r.status,401);assert.equal(r.sends,0);
 r=await scenario({allowed:false});assert.equal(r.status,403);assert.equal(r.sends,0);

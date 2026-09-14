@@ -3,7 +3,7 @@ import {db,configured,check,esc,rm,mileageText,getVehicles,coverURL,photoURLs,co
 const MAX_PHOTOS=30;
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');
 const canManageStock=()=>['super_admin','admin'].includes(role);
-const roleLabels={super_admin:'Super Admin',admin:'Admin',sales:'Salesman · view only',account:'Account · public stock only',customer:'Customer · public stock only'};
+const roleLabels={super_admin:'Super Admin',admin:'Admin',office_admin:'Office Admin',sales:'Salesman · view only',account:'Account · public stock only',customer:'Customer · public stock only'};
 let cars=[], current=null, role=null, busy=false, dirty=false, recovery=false, authEpoch=0;
 const base=[{brand:'Honda',model:'CR-V',variant:'TC-P 2WD'},{brand:'Perodua',model:'Myvi',variant:''}];
 const value=name=>form.elements.namedItem(name).value;
@@ -163,7 +163,7 @@ async function showSession(session){
   try{
     const membership=check(await db.from('staff_memberships').select('role,active').eq('user_id',session.user.id).maybeSingle());if(epoch!==authEpoch)return;
     if(!membership?.active||!Object.hasOwn(roleLabels,membership.role)){$('entry').hidden=false;$('workspace').hidden=true;await db.auth.signOut();throw new Error('This account has no inventory access. Ask the E2 administrator to activate your staff membership.')}
-    role=membership.role;$('manageLoans').hidden=!['super_admin','admin','sales'].includes(role);$('manageCustomers').hidden=!['super_admin','admin'].includes(role);$('myProfileLink').hidden=role==='customer';$('profileName').textContent=session.user.email;$('profileRole').textContent=roleLabels[role];$('manageUsers').hidden=role!=='super_admin';$('addVehicle').hidden=!canManageStock();$('entry').hidden=true;$('workspace').hidden=false;await refresh();
+    role=membership.role;if(role==='office_admin'){location.replace('intake-workspace.html');return}$('manageLoans').hidden=!['super_admin','admin','sales'].includes(role);$('manageCustomers').hidden=!['super_admin','admin'].includes(role);$('myProfileLink').hidden=role==='customer';$('profileName').textContent=session.user.email;$('profileRole').textContent=roleLabels[role];$('manageUsers').hidden=role!=='super_admin';$('addVehicle').hidden=!canManageStock();$('entry').hidden=true;$('workspace').hidden=false;await refresh();
   }catch(error){message('authMessage',friendlyError(error),true)}
 }
 $('loginForm').onsubmit=async e=>{
