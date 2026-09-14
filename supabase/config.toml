@@ -1,2 +1,5 @@
 [functions.e2-invite-user]
 verify_jwt = true
+
+[functions.e2-guest-intake]
+verify_jwt = false
