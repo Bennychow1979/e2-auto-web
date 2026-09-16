@@ -1068,6 +1068,31 @@
       "events": [],
       "years": [
         {
+          "year": 2023,
+          "note": "NGC102 E and G referenced in the official maintenance document effective 21 March 2023. This dated reference is not proof of manufacturing year and does not include older generations in the same document.",
+          "spec_note": "NGC102 E and G referenced in the official maintenance document effective 21 March 2023. This dated reference is not proof of manufacturing year and does not include older generations in the same document.",
+          "spec_options": [
+            "E",
+            "G"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "E",
+              "G"
+            ]
+          },
+          "source_ids": [
+            "S50"
+          ],
+          "evidence_basis": "dated_maintenance_reference",
+          "evidence_date": "2023-03-21",
+          "coverage": "partial"
+        },
+        {
           "year": 2026,
           "note": "Official Sabah price list effective 29 January 2026. Confirm fuel type separately. A price-list date does not establish manufacturing year.",
           "spec_note": "Official Sabah price list effective 29 January 2026. Confirm fuel type separately. A price-list date does not establish manufacturing year.",
@@ -1183,6 +1208,606 @@
           ],
           "evidence_basis": "dated_price_list",
           "evidence_date": "2023-09-18",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "Honda",
+      "model": "CITY",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2014,
+          "note": "March 2014 fourth-generation launch lineup only. Earlier-generation vehicles in the same year are not covered.",
+          "spec_note": "March 2014 fourth-generation launch lineup only. Earlier-generation vehicles in the same year are not covered.",
+          "spec_options": [
+            "S",
+            "S+",
+            "E",
+            "V"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "S",
+              "S+",
+              "E",
+              "V"
+            ]
+          },
+          "source_ids": [
+            "S42"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2014-03-20",
+          "coverage": "partial"
+        },
+        {
+          "year": 2017,
+          "note": "March 2017 facelift petrol launch only. This entry does not cover all later additions or earlier-generation stock.",
+          "spec_note": "March 2017 facelift petrol launch only. This entry does not cover all later additions or earlier-generation stock.",
+          "spec_options": [
+            "S",
+            "E",
+            "V"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "S",
+              "E",
+              "V"
+            ]
+          },
+          "source_ids": [
+            "S43"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2017-03-02",
+          "coverage": "partial"
+        },
+        {
+          "year": 2020,
+          "note": "Fifth-generation petrol variants confirmed in November 2020. RS e:HEV is excluded here because its official price and availability announcement followed in 2021.",
+          "spec_note": "Fifth-generation petrol variants confirmed in November 2020. RS e:HEV is excluded here because its official price and availability announcement followed in 2021.",
+          "spec_options": [
+            "S",
+            "E",
+            "V"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "S",
+              "E",
+              "V"
+            ]
+          },
+          "source_ids": [
+            "S44"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2020-11-19",
+          "coverage": "partial"
+        },
+        {
+          "year": 2021,
+          "note": "Verified 2021 additions only: RS hybrid in March and V-SENSING petrol in November. This is not the complete City lineup. Confirm fuel type separately.",
+          "spec_note": "Verified 2021 additions only: RS hybrid in March and V-SENSING petrol in November. This is not the complete City lineup. Confirm fuel type separately.",
+          "spec_options": [
+            "V-SENSING",
+            "RS"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "V-SENSING",
+              "RS"
+            ]
+          },
+          "source_ids": [
+            "S45",
+            "S46"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2021-11-02",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "Honda",
+      "model": "CIVIC",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2016,
+          "note": "June 2016 tenth-generation launch only. Turbocharged and Turbocharged Premium retain the source naming, with engine size stored separately. Earlier-generation stock is not covered.",
+          "spec_note": "June 2016 tenth-generation launch only. Turbocharged and Turbocharged Premium retain the source naming, with engine size stored separately. Earlier-generation stock is not covered.",
+          "spec_options": [
+            "S",
+            "Turbocharged",
+            "Turbocharged Premium"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.8,
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.8": [
+              "S"
+            ],
+            "1.5": [
+              "Turbocharged",
+              "Turbocharged Premium"
+            ]
+          },
+          "source_ids": [
+            "S60"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2016-06-09",
+          "coverage": "partial"
+        },
+        {
+          "year": 2020,
+          "note": "February 2020 tenth-generation facelift launch only. Earlier stock is not covered.",
+          "spec_note": "February 2020 tenth-generation facelift launch only. Earlier stock is not covered.",
+          "spec_options": [
+            "S",
+            "TC",
+            "TC-P"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.8,
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.8": [
+              "S"
+            ],
+            "1.5": [
+              "TC",
+              "TC-P"
+            ]
+          },
+          "source_ids": [
+            "S61"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2020-02-26",
+          "coverage": "partial"
+        },
+        {
+          "year": 2022,
+          "note": "Eleventh-generation 1.5 Turbo variants launched in January 2022; the 2.0 hybrid RS was added in November. Engine size selects the matching reference; confirm fuel type separately.",
+          "spec_note": "Eleventh-generation 1.5 Turbo variants launched in January 2022; the 2.0 hybrid RS was added in November. Engine size selects the matching reference; confirm fuel type separately.",
+          "spec_options": [
+            "E",
+            "V",
+            "RS"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.5,
+            2
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "E",
+              "V",
+              "RS"
+            ],
+            "2.0": [
+              "RS"
+            ]
+          },
+          "source_ids": [
+            "S47",
+            "S48"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2022-11-15",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "Honda",
+      "model": "HR-V",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2015,
+          "note": "February 2015 Malaysian launch lineup only.",
+          "spec_note": "February 2015 Malaysian launch lineup only.",
+          "spec_options": [
+            "S",
+            "E",
+            "V"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.8
+          ],
+          "spec_by_engine": {
+            "1.8": [
+              "S",
+              "E",
+              "V"
+            ]
+          },
+          "source_ids": [
+            "S57"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2015-02-05",
+          "coverage": "partial"
+        },
+        {
+          "year": 2019,
+          "note": "January 2019 facelift: this entry covers the explicitly documented Hybrid 1.5 and RS 1.8 engine mappings only. E and V engine mappings remain pending.",
+          "spec_note": "January 2019 facelift: this entry covers the explicitly documented Hybrid 1.5 and RS 1.8 engine mappings only. E and V engine mappings remain pending.",
+          "spec_options": [
+            "Hybrid",
+            "RS"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.5,
+            1.8
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "Hybrid"
+            ],
+            "1.8": [
+              "RS"
+            ]
+          },
+          "source_ids": [
+            "S58"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2019-01-16",
+          "coverage": "partial"
+        },
+        {
+          "year": 2022,
+          "note": "July 2022 new-generation launch: S is naturally aspirated, E and V are turbocharged, RS is hybrid. All use 1.5 L; confirm fuel type and powertrain separately. Earlier-generation stock is not covered.",
+          "spec_note": "July 2022 new-generation launch: S is naturally aspirated, E and V are turbocharged, RS is hybrid. All use 1.5 L; confirm fuel type and powertrain separately. Earlier-generation stock is not covered.",
+          "spec_options": [
+            "S",
+            "E",
+            "V",
+            "RS"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "S",
+              "E",
+              "V",
+              "RS"
+            ]
+          },
+          "source_ids": [
+            "S49"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2022-07-14",
+          "coverage": "partial"
+        },
+        {
+          "year": 2025,
+          "note": "July 2025 facelift lineup only. All three powertrains are 1.5 litres; RS is the e:HEV hybrid. Earlier stock is not covered.",
+          "spec_note": "July 2025 facelift lineup only. All three powertrains are 1.5 litres; RS is the e:HEV hybrid. Earlier stock is not covered.",
+          "spec_options": [
+            "S",
+            "E",
+            "V",
+            "RS"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "S",
+              "E",
+              "V",
+              "RS"
+            ]
+          },
+          "source_ids": [
+            "S59"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2025-07-17",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "BMW",
+      "model": "X1",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2023,
+          "note": "October 2023 third-generation sDrive20i xLine launch only. Earlier-generation vehicles and other variants are not covered.",
+          "spec_note": "October 2023 third-generation sDrive20i xLine launch only. Earlier-generation vehicles and other variants are not covered.",
+          "spec_options": [
+            "xLine"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            2
+          ],
+          "spec_by_engine": {
+            "2.0": [
+              "xLine"
+            ]
+          },
+          "source_ids": [
+            "S51"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2023-10-09",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "BMW",
+      "model": "530i",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2025,
+          "note": "Locally assembled G60 M Sport with the 2.0-litre mild-hybrid engine. Final Malaysian availability confirmed in February 2025.",
+          "spec_note": "Locally assembled G60 M Sport with the 2.0-litre mild-hybrid engine. Final Malaysian availability confirmed in February 2025.",
+          "spec_options": [
+            "M Sport"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            2
+          ],
+          "spec_by_engine": {
+            "2.0": [
+              "M Sport"
+            ]
+          },
+          "source_ids": [
+            "S52",
+            "S53"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2025-02-13",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "BMW",
+      "model": "i4",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2025,
+          "note": "January 2025 eDrive35 M Sport reference only. Fully electric; 0.0 is the engine-size convention. Other motor versions are not covered.",
+          "spec_note": "January 2025 eDrive35 M Sport reference only. Fully electric; 0.0 is the engine-size convention. Other motor versions are not covered.",
+          "spec_options": [
+            "M Sport"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            0
+          ],
+          "spec_by_engine": {
+            "0.0": [
+              "M Sport"
+            ]
+          },
+          "source_ids": [
+            "S52"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2025-01-16",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "BMW",
+      "model": "520i",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2025,
+          "note": "M Sport with the 2.0-litre mild-hybrid engine, listed in the Malaysian campaign valid through March 2025. Other equipment lines are not covered.",
+          "spec_note": "M Sport with the 2.0-litre mild-hybrid engine, listed in the Malaysian campaign valid through March 2025. Other equipment lines are not covered.",
+          "spec_options": [
+            "M Sport"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            2
+          ],
+          "spec_by_engine": {
+            "2.0": [
+              "M Sport"
+            ]
+          },
+          "source_ids": [
+            "S54"
+          ],
+          "evidence_basis": "dated_campaign_reference",
+          "evidence_date": "2025-03-31",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "BMW",
+      "model": "X5",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2025,
+          "note": "July 2025 xDrive40i M Sport mild-hybrid launch only; available from 25 July. This reference does not cover the xDrive50e plug-in hybrid.",
+          "spec_note": "July 2025 xDrive40i M Sport mild-hybrid launch only; available from 25 July. This reference does not cover the xDrive50e plug-in hybrid.",
+          "spec_options": [
+            "M Sport"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            3
+          ],
+          "spec_by_engine": {
+            "3.0": [
+              "M Sport"
+            ]
+          },
+          "source_ids": [
+            "S55"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2025-07-21",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "BMW",
+      "model": "iX",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2025,
+          "note": "July 2025 facelift launch: Sport refers to xDrive45; M Sport Pro refers to xDrive60. Fully electric; 0.0 is the engine-size convention. Available from 25 July.",
+          "spec_note": "July 2025 facelift launch: Sport refers to xDrive45; M Sport Pro refers to xDrive60. Fully electric; 0.0 is the engine-size convention. Available from 25 July.",
+          "spec_options": [
+            "Sport",
+            "M Sport Pro"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            0
+          ],
+          "spec_by_engine": {
+            "0.0": [
+              "Sport",
+              "M Sport Pro"
+            ]
+          },
+          "source_ids": [
+            "S55"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2025-07-21",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "BMW",
+      "model": "X3",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2026,
+          "note": "April 2026 X3 30 xDrive M Sport with the 2.0-litre mild-hybrid engine only. Other engine versions are not covered.",
+          "spec_note": "April 2026 X3 30 xDrive M Sport with the 2.0-litre mild-hybrid engine only. Other engine versions are not covered.",
+          "spec_options": [
+            "M Sport"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            2
+          ],
+          "spec_by_engine": {
+            "2.0": [
+              "M Sport"
+            ]
+          },
+          "source_ids": [
+            "S56"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2026-04-27",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "BMW",
+      "model": "iX1",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2026,
+          "note": "April 2026 eDrive20L M Sport long-wheelbase Malaysian release only. Fully electric; 0.0 is the engine-size convention. Other body or motor versions are not covered.",
+          "spec_note": "April 2026 eDrive20L M Sport long-wheelbase Malaysian release only. Fully electric; 0.0 is the engine-size convention. Other body or motor versions are not covered.",
+          "spec_options": [
+            "M Sport"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            0
+          ],
+          "spec_by_engine": {
+            "0.0": [
+              "M Sport"
+            ]
+          },
+          "source_ids": [
+            "S56"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2026-04-27",
           "coverage": "partial"
         }
       ]
@@ -1448,9 +2073,190 @@
       "document_date": "2023-09-18",
       "retrieved_on": "2026-09-17",
       "note": "Dated price-list evidence, not proof of manufacturing year or a complete annual lineup."
+    },
+    {
+      "source_id": "S42",
+      "title": "City 2014 Malaysia launch",
+      "publisher": "Honda Malaysia",
+      "document_date": "2014-03-20",
+      "url": "https://www.honda.com.my/press-release/view/542/Honda-Malaysia-Introduces-The-All-New-City-At-RM-75",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S43",
+      "title": "City 2017 Malaysia facelift launch",
+      "publisher": "Honda Malaysia",
+      "document_date": "2017-03-02",
+      "url": "https://www.honda.com.my/press-release/view/614/Honda-Malaysia-Introduces-The-New-City-That-Further-Elevates-B-Segment-Benchmark",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S44",
+      "title": "City November 2020 Malaysia delivery and variant update",
+      "publisher": "Honda Malaysia",
+      "document_date": "2020-11-19",
+      "url": "https://www.honda.com.my/press-release/view/747/all-new-city-impresses-with-a-breakthrough-bookings-of-close-to-9000-units",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S45",
+      "title": "City RS e:HEV 2021 Malaysia price announcement",
+      "publisher": "Honda Malaysia",
+      "document_date": "2021-03-10",
+      "url": "https://www.honda.com.my/press-release/view/759/the-no1-non-national-b-segment-all-new-city-brrs-ehev-priced-at-rm105950451",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S46",
+      "title": "City V-SENSING 2021 Malaysia introduction",
+      "publisher": "Honda Malaysia",
+      "document_date": "2021-11-02",
+      "url": "https://www.honda.com.my/press-release/view/779/honda-malaysia-presents-new-variant-for-city-with-next-generation-advanced-safety-technology",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S47",
+      "title": "Civic 2022 Malaysia petrol launch",
+      "publisher": "Honda Malaysia",
+      "document_date": "2022-01-13",
+      "url": "https://www.honda.com.my/press-release/view/785/designed-with-passion-inspired-by-legacy-and-built-for-the-future-honda-malaysia-launches-the-allnew-civic",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S48",
+      "title": "Civic 2022 Malaysia hybrid launch",
+      "publisher": "Honda Malaysia",
+      "document_date": "2022-11-15",
+      "url": "https://www.honda.com.my/press-release/view/804/honda-malaysia-launches-new-advanced-hybrid-with-20l-ehev-powertrain-for-the-civic",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S49",
+      "title": "HR-V 2022 Malaysia launch",
+      "publisher": "Honda Malaysia",
+      "document_date": "2022-07-15",
+      "url": "https://www.honda.com.my/press-release/view/797/honda-malaysia-launches-the-stylish-allnew-hrv-in-four-variants",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S50",
+      "title": "Vios NGC102 March 2023 Malaysia maintenance reference",
+      "publisher": "UMW Toyota Motor",
+      "document_date": "2023-03-21",
+      "url": "https://www.toyota.com.my/content/dam/malaysia/price-list-maintenance-packages/periodic-maintenance/march-2023-v2/Vios-Mar-2023.pdf",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S51",
+      "title": "BMW X1 sDrive20i xLine Malaysia launch",
+      "publisher": "BMW Group Malaysia",
+      "document_date": "2023-10-09",
+      "url": "https://www.bmw.com.my/en/topics/discover/news/2023-news/the-new-bmw-x1-sdrive20i-xline.html",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S52",
+      "title": "BMW 530i M Sport and i4 eDrive35 M Sport Malaysia introduction",
+      "publisher": "BMW Group Malaysia",
+      "document_date": "2025-01-16",
+      "url": "https://www.bmw.com.my/en/topics/discover/news/2025-news/the-new-530i-m-sport-and-i4-edrive-35-m-sport.html",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S53",
+      "title": "BMW 530i M Sport Malaysia availability and final price",
+      "publisher": "BMW Group Malaysia",
+      "document_date": "2025-02-13",
+      "url": "https://www.bmw.com.my/en/topics/discover/news/2025-news/the-all-new-bmw-530i-m-sport.html",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S54",
+      "title": "BMW Malaysia March Into Joy 2025 campaign",
+      "publisher": "BMW Group Malaysia",
+      "document_date": "2025-03-31",
+      "url": "https://www.bmw.com.my/en/more-bmw/bmw-exclusive-offers/bmw-march-into-joy-2025.html",
+      "retrieved_on": "2026-09-17",
+      "note": "Date is the stated campaign expiry, not a publication or launch date. No adjacent-year availability is inferred."
+    },
+    {
+      "source_id": "S55",
+      "title": "BMW X5 xDrive40i M Sport and iX Malaysia introduction",
+      "publisher": "BMW Group Malaysia",
+      "document_date": "2025-07-21",
+      "url": "https://www.bmw.com.my/en/topics/discover/news/2025-news/the-new-bmw-x5-ix.html",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S56",
+      "title": "BMW X3 30 xDrive M Sport and iX1 eDrive20L M Sport Malaysia release",
+      "publisher": "BMW Group Malaysia",
+      "document_date": "2026-04-27",
+      "url": "https://www.bmw.com.my/en/topics/discover/news/2026-news/New-BMW-X3-Arrives,-BMW-iX1L-Pricing-Announced.html",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S57",
+      "title": "HR-V 2015 Malaysia launch",
+      "publisher": "Honda Malaysia",
+      "document_date": "2015-02-05",
+      "url": "https://www.honda.com.my/press-release/view/558/ALL-NEW-HR-V-DEBUTS-IN-MALAYSIA-AT-RM99800",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S58",
+      "title": "HR-V 2019 Malaysia facelift launch",
+      "publisher": "Honda Malaysia",
+      "document_date": "2019-01-16",
+      "url": "https://www.honda.com.my/press-release/view/688/Malaysias-Compact-SUV-Market-Leader-Continue-To-Excite-With-The-Launch-Of-The-New-Honda-HR-V",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S59",
+      "title": "HR-V 2025 Malaysia facelift launch",
+      "publisher": "Honda Malaysia",
+      "document_date": "2025-07-17",
+      "url": "https://www.honda.com.my/press-release/view/837/the-new-hr-v-redefined-for-the-way-you-move",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S60",
+      "title": "Civic 2016 Malaysia launch",
+      "publisher": "Honda Malaysia",
+      "document_date": "2016-06-09",
+      "url": "https://www.honda.com.my/press-release/view/585/Honda-Launches-10th-Generation-Civic-Offering-D-Segment-Value-At-C-Segment-Pricing",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
+    },
+    {
+      "source_id": "S61",
+      "title": "Civic 2020 Malaysia facelift launch",
+      "publisher": "Honda Malaysia",
+      "document_date": "2020-02-26",
+      "url": "https://www.honda.com.my/press-release/view/721/Honda-Malaysia-Launches-The-Most-Exciting-Advanced-New-Civic-With-Honda-Sensing",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated Malaysian reference only; no availability in adjacent years is inferred."
     }
   ],
   "spec_scope": "Named MY trims only; selectable references, not automatic equipment certification. Empty trim lists do not invent a Standard trim. Special editions require vehicle confirmation.",
   "engine_scope": "Engine size in litres; no inferred exact displacement_cc, no automatic fuel, drive or feature assignment.",
   "reference_year_policy": "Year options include explicitly named model years, dated Malaysian launch or price-list snapshots, and identified manufactured-year records. Each added row states its evidence basis. These are selectable references, not proof that every car manufactured in that year has those specifications; no adjacent-year availability is inferred."
 }
+
