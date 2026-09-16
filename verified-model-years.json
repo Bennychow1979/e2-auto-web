@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "verified_on": "2026-09-17",
   "scope": "Malaysia official model-year references; no per-vehicle equipment assertions",
   "models": [
@@ -182,87 +182,356 @@
         {
           "year": 2010,
           "generation": "第三代；3 月改款",
-          "note": "2010-03-11 改款；当年车辆仍需区分改款前／后。"
+          "note": "2010-03-11 改款；当年车辆仍需区分改款前／后。",
+          "spec_options": [],
+          "no_named_spec": true,
+          "spec_note": "",
+          "engine_options": [
+            2
+          ],
+          "spec_by_engine": {
+            "2.0": []
+          }
         },
         {
           "year": 2011,
           "generation": "第三代改款",
-          "note": "YM 直接覆盖；该年逐项装备变化尚未完整比对。"
+          "note": "YM 直接覆盖；该年逐项装备变化尚未完整比对。",
+          "spec_options": [],
+          "no_named_spec": true,
+          "spec_note": "",
+          "engine_options": [
+            2
+          ],
+          "spec_by_engine": {
+            "2.0": []
+          }
         },
         {
           "year": 2012,
           "generation": "第三代改款",
-          "note": "10-18 推出 Limited；普通版与特别版分开。"
+          "note": "10-18 推出 Limited；普通版与特别版分开。",
+          "spec_options": [
+            "Limited"
+          ],
+          "no_named_spec": true,
+          "spec_note": "特别版仅按已查到的发布年份列出，后续供应年份未外推。",
+          "engine_options": [
+            2
+          ],
+          "spec_by_engine": {
+            "2.0": [
+              "Limited"
+            ]
+          }
         },
         {
           "year": 2013,
           "generation": "第四代",
-          "note": "03-05 上市 2.0；07-02 增加 2.4。旧代注册年不等于 YM。"
+          "note": "03-05 上市 2.0；07-02 增加 2.4。旧代注册年不等于 YM。",
+          "spec_options": [],
+          "no_named_spec": true,
+          "spec_note": "",
+          "engine_options": [
+            2,
+            2.4
+          ],
+          "spec_by_engine": {
+            "2.0": [],
+            "2.4": []
+          }
         },
         {
           "year": 2014,
           "generation": "第四代",
-          "note": "由官方 YM 区间确认；版本名称参考 2013 发布，未宣称全年装备完全相同。"
+          "note": "由官方 YM 区间确认；版本名称参考 2013 发布，未宣称全年装备完全相同。",
+          "spec_options": [],
+          "no_named_spec": true,
+          "spec_note": "",
+          "engine_options": [
+            2,
+            2.4
+          ],
+          "spec_by_engine": {
+            "2.0": [],
+            "2.4": []
+          }
         },
         {
           "year": 2015,
           "generation": "第四代改款",
-          "note": "01-21 改款并增加 2WD；改款前库存须另辨。"
+          "note": "01-21 改款并增加 2WD；改款前库存须另辨。",
+          "spec_options": [],
+          "no_named_spec": true,
+          "spec_note": "",
+          "engine_options": [
+            2,
+            2.4
+          ],
+          "spec_by_engine": {
+            "2.0": [],
+            "2.4": []
+          }
         },
         {
           "year": 2016,
           "generation": "第四代改款",
-          "note": "官方 4WD 组覆盖至 2016YM；2WD 组另覆盖至 2017YM。"
+          "note": "官方 4WD 组覆盖至 2016YM；2WD 组另覆盖至 2017YM。",
+          "spec_options": [],
+          "no_named_spec": true,
+          "spec_note": "",
+          "engine_options": [
+            2,
+            2.4
+          ],
+          "spec_by_engine": {
+            "2.0": [],
+            "2.4": []
+          }
         },
         {
           "year": 2017,
           "generation": "第四代 + 第五代",
-          "note": "07-12 换代。不要将第四代 2.4 的 2017 注册年当成已核实 2017YM。"
+          "note": "07-12 换代。不要将第四代 2.4 的 2017 注册年当成已核实 2017YM。",
+          "spec_options": [
+            "TC",
+            "TC-P"
+          ],
+          "no_named_spec": false,
+          "spec_note": "同年有第四、第五代；TC／TC-P 属于第五代 1.5 Turbo。",
+          "engine_options": [
+            1.5,
+            2
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "TC",
+              "TC-P"
+            ],
+            "2.0": []
+          }
         },
         {
           "year": 2018,
           "generation": "第五代",
-          "note": "车型／动力组 YM 已确认；当年设备差异仍须按版本比对。"
+          "note": "车型／动力组 YM 已确认；当年设备差异仍须按版本比对。",
+          "spec_options": [
+            "TC",
+            "TC-P"
+          ],
+          "no_named_spec": false,
+          "spec_note": "",
+          "engine_options": [
+            1.5,
+            2
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "TC",
+              "TC-P"
+            ],
+            "2.0": []
+          }
         },
         {
           "year": 2019,
           "generation": "第五代",
-          "note": "07-18 推出 1.5 Turbo 2WD Mugen 限量版。"
+          "note": "07-18 推出 1.5 Turbo 2WD Mugen 限量版。",
+          "spec_options": [
+            "TC",
+            "TC-P",
+            "Mugen"
+          ],
+          "no_named_spec": false,
+          "spec_note": "特别版仅按已查到的发布年份列出，后续供应年份未外推。",
+          "engine_options": [
+            1.5,
+            2
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "TC",
+              "TC-P",
+              "Mugen"
+            ],
+            "2.0": []
+          }
         },
         {
           "year": 2020,
           "generation": "第五代改款前 + 改款后",
-          "note": "11-05 改款；TC 与 TC-P、2WD 与 4WD 分开。"
+          "note": "11-05 改款；TC 与 TC-P、2WD 与 4WD 分开。",
+          "spec_options": [
+            "TC",
+            "TC-P"
+          ],
+          "no_named_spec": false,
+          "spec_note": "改款前有 TC；改款后为 TC-P，需确认实车。",
+          "engine_options": [
+            1.5,
+            2
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "TC",
+              "TC-P"
+            ],
+            "2.0": []
+          }
         },
         {
           "year": 2021,
           "generation": "第五代改款",
-          "note": "10-28 新增 1.5 TC-P 2WD Black Edition。"
+          "note": "10-28 新增 1.5 TC-P 2WD Black Edition。",
+          "spec_options": [
+            "TC-P",
+            "Black Edition"
+          ],
+          "no_named_spec": false,
+          "spec_note": "特别版仅按已查到的发布年份列出，后续供应年份未外推。",
+          "engine_options": [
+            1.5,
+            2
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "TC-P",
+              "Black Edition"
+            ],
+            "2.0": []
+          }
         },
         {
           "year": 2022,
           "generation": "第五代改款",
-          "note": "动力组由 YM 确认；Black Edition 当年供应期未仅凭 2021 发布外推。"
+          "note": "动力组由 YM 确认；Black Edition 当年供应期未仅凭 2021 发布外推。",
+          "spec_options": [
+            "TC-P"
+          ],
+          "no_named_spec": false,
+          "spec_note": "",
+          "engine_options": [
+            1.5,
+            2
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "TC-P"
+            ],
+            "2.0": []
+          }
         },
         {
           "year": 2023,
           "generation": "第五代 + 第六代",
-          "note": "12-14 六代上市；RS 亮相与 2024-01-11 公布售价分别记录。"
+          "note": "12-14 六代上市；RS 亮相与 2024-01-11 公布售价分别记录。",
+          "spec_options": [
+            "TC-P",
+            "S",
+            "E",
+            "V",
+            "RS"
+          ],
+          "no_named_spec": false,
+          "spec_note": "RS 于 2023-12 介绍、2024-01 公布售价；不要据此认定 2023 制造或交付。",
+          "engine_options": [
+            1.5,
+            2
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "TC-P",
+              "S",
+              "E",
+              "V"
+            ],
+            "2.0": [
+              "RS"
+            ]
+          }
         },
         {
           "year": 2024,
           "generation": "第六代",
-          "note": "01-11 公布 e:HEV RS 售价；不能把汽油 E 和未来 Hybrid E 混同。"
+          "note": "01-11 公布 e:HEV RS 售价；不能把汽油 E 和未来 Hybrid E 混同。",
+          "spec_options": [
+            "S",
+            "E",
+            "V",
+            "RS"
+          ],
+          "no_named_spec": false,
+          "spec_note": "",
+          "engine_options": [
+            1.5,
+            2
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "S",
+              "E",
+              "V"
+            ],
+            "2.0": [
+              "RS"
+            ]
+          }
         },
         {
           "year": 2025,
           "generation": "第六代",
-          "note": "11-13 E、V 增加 300 辆 Dual-Tone 限量版。"
+          "note": "11-13 E、V 增加 300 辆 Dual-Tone 限量版。",
+          "spec_options": [
+            "S",
+            "E",
+            "V",
+            "RS",
+            "E Dual-Tone",
+            "V Dual-Tone"
+          ],
+          "no_named_spec": false,
+          "spec_note": "特别版仅按已查到的发布年份列出，后续供应年份未外推。",
+          "engine_options": [
+            1.5,
+            2
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "S",
+              "E",
+              "V",
+              "E Dual-Tone",
+              "V Dual-Tone"
+            ],
+            "2.0": [
+              "RS"
+            ]
+          }
         },
         {
           "year": 2026,
           "generation": "第六代；3 月调整",
-          "note": "年初承接旧系列；03-03 调整新车组合。旧库存不据此认定停售／报废。"
+          "note": "年初承接旧系列；03-03 调整新车组合。旧库存不据此认定停售／报废。",
+          "spec_options": [
+            "E",
+            "V",
+            "RS"
+          ],
+          "no_named_spec": false,
+          "spec_note": "2026-03 起的新系列：1.5 Turbo V／2.0 e:HEV E、RS。旧系列库存请按实车手动填写。",
+          "engine_options": [
+            1.5,
+            2
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "V"
+            ],
+            "2.0": [
+              "E",
+              "RS"
+            ]
+          }
         }
       ],
       "events": [
@@ -397,6 +666,39 @@
           "note": "E 已由旧系列 1.5 Turbo 转为 Hybrid；不能只按字母 E 合并。"
         }
       ]
+    },
+    {
+      "brand": "PROTON",
+      "model": "X50",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2024,
+          "generation": "2024 更新款",
+          "note": "2024-06-04 官方发布版本；不外推其它年份。",
+          "spec_options": [
+            "Standard",
+            "Executive",
+            "Premium",
+            "Flagship"
+          ],
+          "no_named_spec": false,
+          "spec_note": "Spec 已与 1.5T／TGDi 排量和动力名称分开。",
+          "engine_options": [
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "Standard",
+              "Executive",
+              "Premium",
+              "Flagship"
+            ]
+          }
+        }
+      ]
     }
   ],
   "sources": [
@@ -525,6 +827,16 @@
       "document_date": "2026-03-03",
       "retrieved_on": "2026-09-17",
       "note": "官方发布事件；不能仅由发布日期推断制造年或最后销售日。"
+    },
+    {
+      "source_id": "S22",
+      "title": "X50 2024 马来西亚发布",
+      "publisher": "PROTON",
+      "url": "https://www.proton.com/happenings/2024/june/proton-launches-revamped-market-leading-2024-proton-x50",
+      "document_date": "2024-06-04",
+      "retrieved_on": "2026-09-17"
     }
-  ]
+  ],
+  "spec_scope": "Named MY trims only; selectable references, not automatic equipment certification. Empty trim lists do not invent a Standard trim. Special editions require vehicle confirmation.",
+  "engine_scope": "Engine size in litres; no inferred exact displacement_cc, no automatic fuel, drive or feature assignment."
 }

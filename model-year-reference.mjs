@@ -3,7 +3,7 @@ export function matchingYear(catalogue,brand,model,year) {
  if(!Number.isInteger(Number(year))||String(year).trim()==='')return null;
  const item=catalogue.models.find(r=>r.brand.toLowerCase()===brand.trim().toLowerCase()&&r.model.toLowerCase()===model.trim().toLowerCase());
  const entry=item?.years.find(r=>r.year===Number(year));
- return entry?{item,entry,ranges:item.ranges.filter(r=>r.start_year<=Number(year)&&r.verified_through_year>=Number(year))}:null;
+ return entry&&item.ranges.length?{item,entry,ranges:item.ranges.filter(r=>r.start_year<=Number(year)&&r.verified_through_year>=Number(year))}:null;
 }
 export function setupYearReference({form,identity}) {
  const panel=document.createElement('details');panel.id='modelYearReference';panel.className='realMedia';panel.hidden=true;
@@ -30,6 +30,7 @@ export function setupYearReference({form,identity}) {
   paragraph('核查日期 '+catalogue.verified_on+' · Current 仅核实至 '+catalogue.verified_on+'。未包含完整年度装备清单。');
  }
  form.addEventListener('input',render);form.addEventListener('change',render);
- fetch(new URL('./verified-model-years.json?v=crv-1',import.meta.url)).then(r=>{if(!r.ok)throw Error('Catalogue unavailable');return r.json()}).then(data=>{catalogue=data;render()}).catch(()=>{panel.hidden=true});
+ fetch(new URL('./verified-model-years.json?v=spec-select-1',import.meta.url)).then(r=>{if(!r.ok)throw Error('Catalogue unavailable');return r.json()}).then(data=>{catalogue=data;render()}).catch(()=>{panel.hidden=true});
  return {refresh:render};
 }
+

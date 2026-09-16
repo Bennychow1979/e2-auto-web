@@ -1,4 +1,5 @@
 import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
+import {setupYearSpecSelect} from './year-spec-select.mjs?v=1';
 import {setupYearReference} from './model-year-reference.mjs?v=crv-1';
 import {db,configured,check,esc,rm,mileageText,getVehicles,coverURL,photoURLs,compressPhoto,friendlyError} from './e2-data.js?v=customer-1';
 const MAX_PHOTOS=30;
@@ -24,6 +25,7 @@ const base=[...hondaModels.map(model=>({brand:'Honda',model,variant:''})),{brand
 const value=name=>form.elements.namedItem(name).value;
 const identity=name=>value(name)==='__manual__'?value(name+'Manual').trim():value(name);
 const yearReference=setupYearReference({form,identity});
+const yearSpecSelect=setupYearSpecSelect({form,identity,inventory:()=>cars,current:()=>current});
 function message(id,text,error=false){$(id).textContent=text;$(id).classList.toggle('error',error)}
 function editorError(error){message('editorMessage',friendlyError(error),true)}
 function setBusy(state){busy=state;fields.disabled=state||current?.publication==='published';$('saveVehicle').disabled=fields.disabled;$('closeEditor').disabled=state;$('publishVehicle').disabled=state||!current||dirty||!current.photos.length;$('photoInput').disabled=state||dirty||!current||current.publication==='published'||current.photos.length>=MAX_PHOTOS;document.querySelectorAll('#photos button').forEach(b=>b.disabled=state||dirty||current?.publication==='published'||b.dataset.boundary==='true');}
@@ -37,7 +39,7 @@ function selectOptions(name,choices,selected=''){
 function choices(name){const all=[...base,...cars];if(name==='brand')return all.map(c=>c.brand);if(name==='model')return all.filter(c=>c.brand===identity('brand')).map(c=>c.model);return all.filter(c=>c.brand===identity('brand')&&c.model===identity('model')).map(c=>c.variant)}
 function identityChanged(name){const select=form.elements.namedItem(name),manual=form.elements.namedItem(name+'Manual');manual.hidden=select.value!=='__manual__';manual.disabled=manual.hidden;manual.required=!manual.hidden;
   if(name==='brand'){selectOptions('model',choices('model'));selectOptions('variant',[])}
-  if(name==='model')selectOptions('variant',choices('variant'));
+  if(name==='brand'||name==='model')yearSpecSelect.refresh();
   form.elements.namedItem('model').disabled=!identity('brand');form.elements.namedItem('variant').disabled=!identity('model');
 }
 ['brand','model','variant'].forEach(name=>{form.elements.namedItem(name).addEventListener('change',()=>identityChanged(name));form.elements.namedItem(name+'Manual').addEventListener('input',()=>identityChanged(name))});
@@ -77,7 +79,7 @@ async function renderPhotos(){
 }
 function populate(car){
   form.reset();current=car;dirty=false;
-  selectOptions('brand',choices('brand'),car?.brand||'');selectOptions('model',choices('model'),car?.model||'');selectOptions('variant',choices('variant'),car?.variant||'');
+  selectOptions('brand',choices('brand'),car?.brand||'');selectOptions('model',choices('model'),car?.model||'');
   form.elements.namedItem('model').disabled=!car;form.elements.namedItem('variant').disabled=!car;
   for(const name of ['plate','year','engine_litres','transmission','fuel_type','mileage','price','body_type','stock_status','description'])if(car)form.elements.namedItem(name).value=car[name]??'';
   if(car)form.elements.namedItem('engine_litres').value=Number(car.engine_litres).toFixed(1);
@@ -86,7 +88,7 @@ function populate(car){
   $('saveHint').textContent=car?.publication==='published'?'Move this vehicle to draft to edit its details or photos.':car?'Details saved. You can add photos and preview this draft.':'Save vehicle details before adding photos.';
   $('publishVehicle').textContent=car?.publication==='published'?'Move to draft':'Publish to website';
   if(car)$('previewVehicle').href='car.html?id='+car.id+'&preview=1';else $('previewVehicle').removeAttribute('href');
-  $('photos').replaceChildren();setBusy(false);yearReference.refresh();
+  $('photos').replaceChildren();yearSpecSelect.refresh({selected:car?.variant||'',engine:car?.engine_litres??'',reset:true});setBusy(false);yearReference.refresh();
 }
 async function openEditor(car=null){populate(car);message('editorMessage','');$('vehicleEditor').showModal();try{await renderPhotos()}catch(error){editorError(error)}}
 function closeEditor(){if(busy)return;if(dirty&&!confirm('Discard unsaved vehicle details? Uploaded photos are already saved.'))return;$('vehicleEditor').close();current=null;dirty=false}
@@ -97,7 +99,7 @@ form.onsubmit=async event=>{
   const mileage=value('mileage')===''?null:Number(value('mileage'));
   const confirmed=form.elements.namedItem('mileage_confirmed').checked;
   if(confirmed&&mileage===null){editorError(new Error('Enter the mileage before marking it confirmed.'));return}
-  const data={plate:value('plate').toUpperCase().replace(/\s/g,''),brand:identity('brand'),model:identity('model'),variant:identity('variant'),year:Number(value('year')),engine_litres:Number(value('engine_litres')),transmission:value('transmission'),fuel_type:value('fuel_type'),mileage,mileage_confirmed:confirmed,price:Number(value('price')),body_type:value('body_type'),stock_status:value('stock_status'),description:value('description').trim()};
+  const data={plate:value('plate').toUpperCase().replace(/\s/g,''),brand:identity('brand'),model:identity('model'),variant:identity('variant'),year:Number(value('year')),engine_litres:Number(identity('engine_litres')),transmission:value('transmission'),fuel_type:value('fuel_type'),mileage,mileage_confirmed:confirmed,price:Number(value('price')),body_type:value('body_type'),stock_status:value('stock_status'),description:value('description').trim()};
   setBusy(true);message('editorMessage','Saving vehicle details…');
   try{
     const saved=check(await (current?db.from('vehicles').update(data).eq('id',current.id).eq('updated_at',current.updated_at):db.from('vehicles').insert({...data,id:crypto.randomUUID()})).select().maybeSingle());
@@ -220,3 +222,4 @@ else{
   });
 }
 window.addEventListener('beforeunload',e=>{if(dirty||busy){e.preventDefault();e.returnValue=''}});
+
