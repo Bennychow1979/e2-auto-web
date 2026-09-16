@@ -1,4 +1,5 @@
 import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
+import {setupYearReference} from './model-year-reference.mjs?v=crv-1';
 import {db,configured,check,esc,rm,mileageText,getVehicles,coverURL,photoURLs,compressPhoto,friendlyError} from './e2-data.js?v=customer-1';
 const MAX_PHOTOS=30;
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');
@@ -22,6 +23,7 @@ const hondaModels=["1300","ACCORD","Airwave","BR-V","CITY","City GM6","City RS",
 const base=[...hondaModels.map(model=>({brand:'Honda',model,variant:''})),{brand:'Honda',model:'CR-V',variant:'TC-P 2WD'},...bmwModels.map(model=>({brand:'BMW',model,variant:''})),...subaruModels.map(model=>({brand:'SUBARU',model,variant:''})),...fordModels.map(model=>({brand:'FORD',model,variant:''})),...mazdaModels.map(model=>({brand:'MAZDA',model,variant:''})),...mercedesModels.map(model=>({brand:'MERCEDES-BENZ',model,variant:''})),...nissanModels.map(model=>({brand:'NISSAN',model,variant:''})),...peroduaModels.map(model=>({brand:'Perodua',model,variant:''})),...protonModels.map(model=>({brand:'PROTON',model,variant:''})),...toyotaModels.map(model=>({brand:'TOYOTA',model,variant:''})),...mitsubishiModels.map(model=>({brand:'MITSUBISHI',model,variant:''})),...suzukiModels.map(model=>({brand:'SUZUKI',model,variant:''})),...volkswagenModels.map(model=>({brand:'VOLKSWAGEN',model,variant:''}))];
 const value=name=>form.elements.namedItem(name).value;
 const identity=name=>value(name)==='__manual__'?value(name+'Manual').trim():value(name);
+const yearReference=setupYearReference({form,identity});
 function message(id,text,error=false){$(id).textContent=text;$(id).classList.toggle('error',error)}
 function editorError(error){message('editorMessage',friendlyError(error),true)}
 function setBusy(state){busy=state;fields.disabled=state||current?.publication==='published';$('saveVehicle').disabled=fields.disabled;$('closeEditor').disabled=state;$('publishVehicle').disabled=state||!current||dirty||!current.photos.length;$('photoInput').disabled=state||dirty||!current||current.publication==='published'||current.photos.length>=MAX_PHOTOS;document.querySelectorAll('#photos button').forEach(b=>b.disabled=state||dirty||current?.publication==='published'||b.dataset.boundary==='true');}
@@ -84,7 +86,7 @@ function populate(car){
   $('saveHint').textContent=car?.publication==='published'?'Move this vehicle to draft to edit its details or photos.':car?'Details saved. You can add photos and preview this draft.':'Save vehicle details before adding photos.';
   $('publishVehicle').textContent=car?.publication==='published'?'Move to draft':'Publish to website';
   if(car)$('previewVehicle').href='car.html?id='+car.id+'&preview=1';else $('previewVehicle').removeAttribute('href');
-  $('photos').replaceChildren();setBusy(false);
+  $('photos').replaceChildren();setBusy(false);yearReference.refresh();
 }
 async function openEditor(car=null){populate(car);message('editorMessage','');$('vehicleEditor').showModal();try{await renderPhotos()}catch(error){editorError(error)}}
 function closeEditor(){if(busy)return;if(dirty&&!confirm('Discard unsaved vehicle details? Uploaded photos are already saved.'))return;$('vehicleEditor').close();current=null;dirty=false}
