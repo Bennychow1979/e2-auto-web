@@ -37,7 +37,7 @@ export function setupYearSpecSelect({form,identity,inventory,current}) {
   select.replaceChildren(new Option('Not specified (optional)',''));
   for(const origin of ['catalogue','inventory']){
    const items=result.options.filter(r=>r.origin===origin);if(!items.length)continue;
-   const group=document.createElement('optgroup');group.label=origin==='catalogue'?'Malaysia · '+ctx.year+' model-year references':'Saved vehicles · '+ctx.year+' (verify spec)';
+   const group=document.createElement('optgroup');group.label=origin==='catalogue'?'Malaysia · '+ctx.year+' spec references':'Saved vehicles · '+ctx.year+' (verify spec)';
    for(const option of items)group.append(new Option(option.value,option.value));select.append(group);
   }
   const eligible=result.options.some(r=>r.value===old);
@@ -59,6 +59,6 @@ export function setupYearSpecSelect({form,identity,inventory,current}) {
  form.elements.namedItem('year').addEventListener('change',()=>refresh());
  engineSelect.addEventListener('change',()=>refresh({preserveManual:true}));
  engineManual.addEventListener('input',()=>refresh({preserveManual:true}));
- const ready=fetch(new URL('./verified-model-years.json?v=english-spec-1',import.meta.url)).then(r=>{if(!r.ok)throw Error('Catalogue unavailable');return r.json()}).then(data=>{catalogue=data;refresh({preserveManual:true})}).catch(()=>{loadFailed=true;refresh({preserveManual:true})});
+ const ready=fetch(new URL('./verified-model-years.json?v=verified-spec-batch-1',import.meta.url)).then(r=>{if(!r.ok)throw Error('Catalogue unavailable');return r.json()}).then(data=>{catalogue=data;refresh({preserveManual:true})}).catch(()=>{loadFailed=true;refresh({preserveManual:true})});
  return {refresh,ready};
 }

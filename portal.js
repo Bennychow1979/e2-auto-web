@@ -1,6 +1,6 @@
 import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
-import {setupYearSpecSelect} from './year-spec-select.mjs?v=english-spec-1';
-import {setupYearReference} from './model-year-reference.mjs?v=english-spec-1';
+import {setupYearSpecSelect} from './year-spec-select.mjs?v=verified-spec-batch-1';
+import {setupYearReference} from './model-year-reference.mjs?v=verified-spec-batch-1';
 import {db,configured,check,esc,rm,mileageText,getVehicles,coverURL,photoURLs,compressPhoto,friendlyError} from './e2-data.js?v=customer-1';
 const MAX_PHOTOS=30;
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');

@@ -30,7 +30,7 @@ export function setupYearReference({form,identity}) {
   paragraph('Verified on '+catalogue.verified_on+'. Current means verified through this date. A complete equipment list for each year is not included.');
  }
  form.addEventListener('input',render);form.addEventListener('change',render);
- fetch(new URL('./verified-model-years.json?v=english-spec-1',import.meta.url)).then(r=>{if(!r.ok)throw Error('Catalogue unavailable');return r.json()}).then(data=>{catalogue=data;render()}).catch(()=>{panel.hidden=true});
+ fetch(new URL('./verified-model-years.json?v=verified-spec-batch-1',import.meta.url)).then(r=>{if(!r.ok)throw Error('Catalogue unavailable');return r.json()}).then(data=>{catalogue=data;render()}).catch(()=>{panel.hidden=true});
  return {refresh:render};
 }
 

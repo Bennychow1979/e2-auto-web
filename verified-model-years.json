@@ -699,6 +699,493 @@
           }
         }
       ]
+    },
+    {
+      "brand": "PROTON",
+      "model": "X70",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2020,
+          "note": "2020 locally assembled lineup. Not extrapolated to other years.",
+          "spec_note": "2020 locally assembled lineup. Not extrapolated to other years.",
+          "spec_options": [
+            "Standard",
+            "Executive",
+            "Premium",
+            "Premium X"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.8
+          ],
+          "spec_by_engine": {
+            "1.8": [
+              "Standard",
+              "Executive",
+              "Premium",
+              "Premium X"
+            ]
+          },
+          "source_ids": [
+            "S04"
+          ],
+          "evidence_basis": "official_model_year",
+          "evidence_date": "2020-02-12",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "MAZDA",
+      "model": "CX-5",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2024,
+          "note": "2024 update. The 2.5 High name covers both naturally aspirated 2WD and turbo AWD versions; confirm the actual powertrain and drivetrain.",
+          "spec_note": "2024 update. The 2.5 High name covers both naturally aspirated 2WD and turbo AWD versions; confirm the actual powertrain and drivetrain.",
+          "spec_options": [
+            "Mid",
+            "High"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            2,
+            2.2,
+            2.5
+          ],
+          "spec_by_engine": {
+            "2.0": [
+              "Mid",
+              "High"
+            ],
+            "2.2": [
+              "High"
+            ],
+            "2.5": [
+              "High"
+            ]
+          },
+          "source_ids": [
+            "S06"
+          ],
+          "evidence_basis": "official_model_year",
+          "evidence_date": "2024-01-29",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "SUBARU",
+      "model": "FORESTER",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2019,
+          "note": "August 2019 fifth-generation launch lineup. Earlier-generation 2019 vehicles are not covered.",
+          "spec_note": "August 2019 fifth-generation launch lineup. Earlier-generation 2019 vehicles are not covered.",
+          "spec_options": [
+            "i-L",
+            "i-S",
+            "i-S EyeSight"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            2
+          ],
+          "spec_by_engine": {
+            "2.0": [
+              "i-L",
+              "i-S",
+              "i-S EyeSight"
+            ]
+          },
+          "source_ids": [
+            "S07"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2019-08-23",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "FORD",
+      "model": "Ranger",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2022,
+          "note": "November 2022 XL Single Cab addition only, not the complete Ranger lineup.",
+          "spec_note": "November 2022 XL Single Cab addition only, not the complete Ranger lineup.",
+          "spec_options": [
+            "XL Single Cab"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            2
+          ],
+          "spec_by_engine": {
+            "2.0": [
+              "XL Single Cab"
+            ]
+          },
+          "source_ids": [
+            "S08"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2022-11-01",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "MERCEDES-BENZ",
+      "model": "C200",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2022,
+          "note": "August 2022 locally assembled C-Class lineup. Check earlier-generation vehicles separately.",
+          "spec_note": "August 2022 locally assembled C-Class lineup. Check earlier-generation vehicles separately.",
+          "spec_options": [
+            "Avantgarde Line"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "Avantgarde Line"
+            ]
+          },
+          "source_ids": [
+            "S09"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2022-08-23",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "MERCEDES-BENZ",
+      "model": "C300",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2022,
+          "note": "August 2022 locally assembled C-Class lineup. Check earlier-generation vehicles separately.",
+          "spec_note": "August 2022 locally assembled C-Class lineup. Check earlier-generation vehicles separately.",
+          "spec_options": [
+            "AMG Line"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            2
+          ],
+          "spec_by_engine": {
+            "2.0": [
+              "AMG Line"
+            ]
+          },
+          "source_ids": [
+            "S09"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2022-08-23",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "Perodua",
+      "model": "Myvi",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2021,
+          "note": "November 2021 facelift booking lineup. G was offered with or without PSDA; confirm equipment separately. Earlier 2021 vehicles are not covered.",
+          "spec_note": "November 2021 facelift booking lineup. G was offered with or without PSDA; confirm equipment separately. Earlier 2021 vehicles are not covered.",
+          "spec_options": [
+            "G",
+            "X",
+            "H",
+            "AV"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.3,
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.3": [
+              "G"
+            ],
+            "1.5": [
+              "X",
+              "H",
+              "AV"
+            ]
+          },
+          "source_ids": [
+            "S11"
+          ],
+          "evidence_basis": "dated_booking_lineup",
+          "evidence_date": "2021-11-09",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "NISSAN",
+      "model": "Almera",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2020,
+          "note": "2020 Almera Turbo lineup. Earlier 1.5-litre stock is not covered by this entry.",
+          "spec_note": "2020 Almera Turbo lineup. Earlier 1.5-litre stock is not covered by this entry.",
+          "spec_options": [
+            "VL",
+            "VLP",
+            "VLT"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1
+          ],
+          "spec_by_engine": {
+            "1.0": [
+              "VL",
+              "VLP",
+              "VLT"
+            ]
+          },
+          "source_ids": [
+            "S13",
+            "S14"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2020-12-10",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "MITSUBISHI",
+      "model": "Triton",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2024,
+          "note": "October 2024 sixth-generation launch. GL was offered with automatic or manual transmission; confirm transmission separately. Earlier-generation vehicles are not covered.",
+          "spec_note": "October 2024 sixth-generation launch. GL was offered with automatic or manual transmission; confirm transmission separately. Earlier-generation vehicles are not covered.",
+          "spec_options": [
+            "Athlete",
+            "Premium",
+            "GL",
+            "Single Cab"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            2.4
+          ],
+          "spec_by_engine": {
+            "2.4": [
+              "Athlete",
+              "Premium",
+              "GL",
+              "Single Cab"
+            ]
+          },
+          "source_ids": [
+            "S15"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2024-10-16",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "VOLKSWAGEN",
+      "model": "Golf",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2025,
+          "note": "November 2025 GTI launch only. The preview-only R-Line is excluded; this is not a complete 2025 lineup.",
+          "spec_note": "November 2025 GTI launch only. The preview-only R-Line is excluded; this is not a complete 2025 lineup.",
+          "spec_options": [
+            "GTI"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            2
+          ],
+          "spec_by_engine": {
+            "2.0": [
+              "GTI"
+            ]
+          },
+          "source_ids": [
+            "S18"
+          ],
+          "evidence_basis": "dated_launch",
+          "evidence_date": "2025-11-05",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "TOYOTA",
+      "model": "VIOS",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2026,
+          "note": "Official Sabah price list effective 29 January 2026. Confirm fuel type separately. A price-list date does not establish manufacturing year.",
+          "spec_note": "Official Sabah price list effective 29 January 2026. Confirm fuel type separately. A price-list date does not establish manufacturing year.",
+          "spec_options": [
+            "E",
+            "G",
+            "HEV",
+            "HEV GR-S"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "E",
+              "G",
+              "HEV",
+              "HEV GR-S"
+            ]
+          },
+          "source_ids": [
+            "S21"
+          ],
+          "evidence_basis": "dated_price_list",
+          "evidence_date": "2026-01-29",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "HYUNDAI",
+      "model": "GRAND STAREX",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2017,
+          "note": "Officially described as the 2017 facelift, announced in November 2016. The announcement date does not establish manufacturing year.",
+          "spec_note": "Officially described as the 2017 facelift, announced in November 2016. The announcement date does not establish manufacturing year.",
+          "spec_options": [
+            "Royale Deluxe GLS"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            2.5
+          ],
+          "spec_by_engine": {
+            "2.5": [
+              "Royale Deluxe GLS"
+            ]
+          },
+          "source_ids": [
+            "S25"
+          ],
+          "evidence_basis": "official_model_year",
+          "evidence_date": "2016-11-23",
+          "coverage": "partial"
+        },
+        {
+          "year": 2021,
+          "note": "Supported by an official dealer record for a vehicle manufactured in 2021. This is not a complete 2021 lineup.",
+          "spec_note": "Supported by an official dealer record for a vehicle manufactured in 2021. This is not a complete 2021 lineup.",
+          "spec_options": [
+            "Executive Plus"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            2.5
+          ],
+          "spec_by_engine": {
+            "2.5": [
+              "Executive Plus"
+            ]
+          },
+          "source_ids": [
+            "S26"
+          ],
+          "evidence_basis": "official_vehicle_record",
+          "evidence_date": "2026-01-31",
+          "coverage": "partial"
+        }
+      ]
+    },
+    {
+      "brand": "TOYOTA",
+      "model": "Yaris",
+      "market": "MY",
+      "ranges": [],
+      "events": [],
+      "years": [
+        {
+          "year": 2023,
+          "note": "Official Peninsular Malaysia price list effective 18 September 2023. A price-list date does not establish manufacturing year.",
+          "spec_note": "Official Peninsular Malaysia price list effective 18 September 2023. A price-list date does not establish manufacturing year.",
+          "spec_options": [
+            "E",
+            "G"
+          ],
+          "no_named_spec": false,
+          "engine_options": [
+            1.5
+          ],
+          "spec_by_engine": {
+            "1.5": [
+              "E",
+              "G"
+            ]
+          },
+          "source_ids": [
+            "S41"
+          ],
+          "evidence_basis": "dated_price_list",
+          "evidence_date": "2023-09-18",
+          "coverage": "partial"
+        }
+      ]
     }
   ],
   "sources": [
@@ -835,8 +1322,135 @@
       "url": "https://www.proton.com/happenings/2024/june/proton-launches-revamped-market-leading-2024-proton-x50",
       "document_date": "2024-06-04",
       "retrieved_on": "2026-09-17"
+    },
+    {
+      "source_id": "S04",
+      "title": "X70 2020 Malaysia launch",
+      "publisher": "PROTON",
+      "url": "https://www.proton.com/happenings/2020/february/proton-launches-the-2020-proton-x70",
+      "document_date": "2020-02-12",
+      "retrieved_on": "2026-09-17",
+      "note": "Evidence is limited to the dated lineup or vehicle record. No availability in other years is inferred."
+    },
+    {
+      "source_id": "S06",
+      "title": "CX-5 2024 Malaysia update",
+      "publisher": "Mazda Malaysia",
+      "url": "https://mazda.com.my/news-and-events/news-and-events-content/news-and-events/the-new-mazda-cx-5-refined-elegant",
+      "document_date": "2024-01-29",
+      "retrieved_on": "2026-09-17",
+      "note": "Evidence is limited to the dated lineup or vehicle record. No availability in other years is inferred."
+    },
+    {
+      "source_id": "S07",
+      "title": "Forester 2019 Malaysia launch",
+      "publisher": "Motor Image / Subaru",
+      "url": "https://www.subaru.asia/mig/en/news/122/all-new-subaru-forester-launched-in-malaysia",
+      "document_date": "2019-08-23",
+      "retrieved_on": "2026-09-17",
+      "note": "Evidence is limited to the dated lineup or vehicle record. No availability in other years is inferred."
+    },
+    {
+      "source_id": "S08",
+      "title": "Ranger XL Single Cab Malaysia launch",
+      "publisher": "SDAC Ford",
+      "url": "https://ford.simemotors.my/about-ford/newsroom/xl-single-cab",
+      "document_date": "2022-11-01",
+      "retrieved_on": "2026-09-17",
+      "note": "Evidence is limited to the dated lineup or vehicle record. No availability in other years is inferred."
+    },
+    {
+      "source_id": "S09",
+      "title": "C-Class Malaysia locally assembled launch",
+      "publisher": "Mercedes-Benz Malaysia",
+      "url": "https://www.mercedes-benz.com.my/passengercars/brand/news/c-class-ckd.html",
+      "document_date": "2022-08-23",
+      "retrieved_on": "2026-09-17",
+      "note": "Evidence is limited to the dated lineup or vehicle record. No availability in other years is inferred."
+    },
+    {
+      "source_id": "S11",
+      "title": "Myvi November 2021 booking lineup",
+      "publisher": "Perodua",
+      "url": "https://www.perodua.com.my/articles/new-myvi-now-open-for-booking",
+      "document_date": "2021-11-09",
+      "retrieved_on": "2026-09-17",
+      "note": "Evidence is limited to the dated lineup or vehicle record. No availability in other years is inferred."
+    },
+    {
+      "source_id": "S13",
+      "title": "Almera Turbo 2020 Malaysia variants",
+      "publisher": "Nissan Malaysia / ETCM",
+      "url": "https://nissan.com.my/all-new-nissan-almera-turbo-innovation-that-looks-out-for-you/",
+      "document_date": "2020-12-10",
+      "retrieved_on": "2026-09-17",
+      "note": "Evidence is limited to the dated lineup or vehicle record. No availability in other years is inferred."
+    },
+    {
+      "source_id": "S14",
+      "title": "Almera Turbo 2020 Malaysia powertrain",
+      "publisher": "Nissan Malaysia / ETCM",
+      "url": "https://nissan.com.my/all-new-nissan-almera-turbo-now-open-for-booking/",
+      "document_date": "2020-09-04",
+      "retrieved_on": "2026-09-17",
+      "note": "Evidence is limited to the dated lineup or vehicle record. No availability in other years is inferred."
+    },
+    {
+      "source_id": "S15",
+      "title": "Sixth-generation Triton Malaysia launch",
+      "publisher": "Mitsubishi Motors Malaysia",
+      "url": "https://www.mitsubishi-motors.com.my/ms/news-events/all-new-mitsubishi-triton-officially-launched/",
+      "document_date": "2024-10-16",
+      "retrieved_on": "2026-09-17",
+      "note": "Evidence is limited to the dated lineup or vehicle record. No availability in other years is inferred."
+    },
+    {
+      "source_id": "S18",
+      "title": "Golf GTI launch and R-Line preview in Malaysia",
+      "publisher": "Volkswagen Malaysia",
+      "url": "https://www.volkswagen.com.my/news/volkswagen-malaysia-unveils-the-new-golf-family",
+      "document_date": "2025-11-05",
+      "retrieved_on": "2026-09-17",
+      "note": "Evidence is limited to the dated lineup or vehicle record. No availability in other years is inferred."
+    },
+    {
+      "source_id": "S21",
+      "title": "Vios January 2026 Sabah price list",
+      "publisher": "UMW Toyota Motor",
+      "url": "https://www.toyota.com.my/content/dam/malaysia/price-list-maintenance-packages/new-vios/january-2026/v2/3.0-sbh%28ip%29-vios-hev-price-list.pdf",
+      "document_date": "2026-01-29",
+      "retrieved_on": "2026-09-17",
+      "note": "Evidence is limited to the dated lineup or vehicle record. No availability in other years is inferred."
+    },
+    {
+      "source_id": "S25",
+      "title": "Grand Starex Royale 2017 facelift announcement",
+      "publisher": "Hyundai / Sime Darby Motors",
+      "url": "https://hyundai.simemotors.my/news-room/press-release/2016-11-23-News.aspx",
+      "document_date": "2016-11-23",
+      "retrieved_on": "2026-09-17",
+      "note": "Evidence is limited to the dated lineup or vehicle record. No availability in other years is inferred."
+    },
+    {
+      "source_id": "S26",
+      "title": "Official 2021 Grand Starex Executive Plus vehicle record",
+      "publisher": "Auto Hyundai Ara Damansara / Sime Motors",
+      "url": "https://hyundai.simemotors.my/pre-ownedcar/Details?ID=081b44c5-7aad-44f5-904e-647332f30126",
+      "document_date": "2026-01-31",
+      "retrieved_on": "2026-09-17",
+      "note": "Evidence is limited to the dated lineup or vehicle record. No availability in other years is inferred."
+    },
+    {
+      "source_id": "S41",
+      "title": "Yaris September 2023 Peninsular Malaysia price list",
+      "publisher": "UMW Toyota Motor",
+      "url": "https://www.toyota.com.my/content/dam/malaysia/price-list-maintenance-packages/yaris/peninsular-my/sept2023/1.0-PM-%28IPte%29-Yaris-Price-List.pdf",
+      "document_date": "2023-09-18",
+      "retrieved_on": "2026-09-17",
+      "note": "Dated price-list evidence, not proof of manufacturing year or a complete annual lineup."
     }
   ],
   "spec_scope": "Named MY trims only; selectable references, not automatic equipment certification. Empty trim lists do not invent a Standard trim. Special editions require vehicle confirmation.",
-  "engine_scope": "Engine size in litres; no inferred exact displacement_cc, no automatic fuel, drive or feature assignment."
+  "engine_scope": "Engine size in litres; no inferred exact displacement_cc, no automatic fuel, drive or feature assignment.",
+  "reference_year_policy": "Year options include explicitly named model years, dated Malaysian launch or price-list snapshots, and identified manufactured-year records. Each added row states its evidence basis. These are selectable references, not proof that every car manufactured in that year has those specifications; no adjacent-year availability is inferred."
 }
