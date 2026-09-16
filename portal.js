@@ -5,7 +5,9 @@ const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicl
 const canManageStock=()=>['super_admin','admin'].includes(role);
 const roleLabels={super_admin:'Super Admin',admin:'Admin',office_admin:'Office Admin',sales:'Salesman · view only',account:'Account · public stock only',customer:'Customer · public stock only'};
 let cars=[], current=null, role=null, busy=false, dirty=false, recovery=false, authEpoch=0;
-const base=[{brand:'Honda',model:'CR-V',variant:'TC-P 2WD'},{brand:'Perodua',model:'Myvi',variant:''}];
+// BMW model labels supplied by E2, 2026-09-16. Models only; specifications remain separately entered.
+const bmwModels=["1 M","116i","118i","120i","125i","130i","135i","2002","218i","220i","235i","316i","318Ci","318i","320Ci","320d","320d GT","320i","323Ci","323i","325Ci","325d","325i","328Ci","328i","328i GT","330Ci","330e","330i","330Li","335Ci","335i","340i","420i","428i","428i Gran Coupe","430i","440i","435i","520d","520i","523d","523i","525d","525i","528i","530d","530e","530i","535i","540i","545i","550i","630Ci","630i","635CSi","640Ci","640i","640i Gran Coupe","645Ci","650Ci","650i","728i","730i","730Ld","730Li","735i","735iL","740i","740Le","740Li","745Li","750e","750i","750Li","760Li","840D","840i","850Ci","850i","ActiveHybrid 3","ActiveHybrid 5","ActiveHybrid 7 L","Alpina B3","E3","i3","i4","i5","i7","i8","iX","iX1","iX2","iX3","M2","M3","M4","M5","M6","M6 Gran Coupe","M8","M140i","X1","X2","X3","X4","X4 M","X5","X5 M","X6","X6 M","XM","X7","Z3","Z4","Z4 coupe","Z4 M"];
+const base=[{brand:'Honda',model:'CR-V',variant:'TC-P 2WD'},{brand:'Perodua',model:'Myvi',variant:''},...bmwModels.map(model=>({brand:'BMW',model,variant:''}))];
 const value=name=>form.elements.namedItem(name).value;
 const identity=name=>value(name)==='__manual__'?value(name+'Manual').trim():value(name);
 function message(id,text,error=false){$(id).textContent=text;$(id).classList.toggle('error',error)}
