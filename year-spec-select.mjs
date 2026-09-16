@@ -51,14 +51,14 @@ export function setupYearSpecSelect({form,identity,inventory,current}) {
   // An explicit stored value may have originated from a manual entry; preserve it on opening.
   if(reset&&old&&!eligible&&old!==saved){select.value='__manual__';manual.value=old;manual.hidden=false;manual.disabled=false;manual.required=false}
   select.disabled=!ctx.model;
-  hint.textContent=!result.ready?'Choose Brand → Model → Year → Engine size. Spec is optional.':!result.engineReady?'先选排量，再选对应的 Spec；不确定可以留空。':result.verified&&!result.engines.includes(Number(ctx.engine))?'该年款的此排量尚未核实，可留空，或按实车手动填写。':result.verified?
-   (result.noNamedSpec?'该年普通版没有独立 Spec 名称；有已核实特别版才列出，其他可留空，或按实车手动填写。':'按所选年份列出参考 Spec；排量及驱动不写进新 Spec 名称。')+(result.note?' '+result.note:''):
-   (result.options.length?'仅列同年已存车辆的 Spec，尚未完成原厂核实。':'该车型／年份的 Spec 尚未核实，可留空或手动填写。')+(loadFailed?' 参考资料暂时无法加载。':'');
+  hint.textContent=!result.ready?'Choose Brand → Model → Year → Engine size. Spec is optional.':!result.engineReady?'Choose the engine size first, then the spec. Leave Spec blank if unsure.':result.verified&&!result.engines.includes(Number(ctx.engine))?'Specs for this year and engine size have not been verified. Leave Spec blank or enter the confirmed spec manually.':result.verified?
+   (result.noNamedSpec?'No separate spec name is recorded for the regular model this year. Only verified special editions are listed. Leave Spec blank or enter a confirmed spec manually.':'Specs are listed for the selected year. Spec names exclude engine size and drivetrain.')+(result.note?' '+result.note:''):
+   (result.options.length?'These specs come from saved vehicles of the same year and have not yet been verified against manufacturer sources.':'Specs for this model and year have not been verified. Leave Spec blank or enter it manually.')+(loadFailed?' Reference data is temporarily unavailable.':'');
  }
  form.elements.namedItem('year').addEventListener('input',()=>refresh());
  form.elements.namedItem('year').addEventListener('change',()=>refresh());
  engineSelect.addEventListener('change',()=>refresh({preserveManual:true}));
  engineManual.addEventListener('input',()=>refresh({preserveManual:true}));
- const ready=fetch(new URL('./verified-model-years.json?v=spec-select-1',import.meta.url)).then(r=>{if(!r.ok)throw Error('Catalogue unavailable');return r.json()}).then(data=>{catalogue=data;refresh({preserveManual:true})}).catch(()=>{loadFailed=true;refresh({preserveManual:true})});
+ const ready=fetch(new URL('./verified-model-years.json?v=english-spec-1',import.meta.url)).then(r=>{if(!r.ok)throw Error('Catalogue unavailable');return r.json()}).then(data=>{catalogue=data;refresh({preserveManual:true})}).catch(()=>{loadFailed=true;refresh({preserveManual:true})});
  return {refresh,ready};
 }

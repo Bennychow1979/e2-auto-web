@@ -16,10 +16,10 @@
           "end_year": 2012,
           "verified_through_year": 2012,
           "powertrain": "2.0",
-          "generation": "第三代",
+          "generation": "Third generation",
           "source_id": "S27",
-          "basis": "Honda Malaysia 官方保养目录 YM 区间",
-          "note": "代数结合官方换代发布对应。区间含首尾年；Current 不外推 2027。动力组别不等于所有 Spec 装备连续不变。"
+          "basis": "Model-year ranges from Honda Malaysia's official maintenance directory",
+          "note": "Generations are matched to official launch announcements. Year ranges are inclusive; Current does not extend to 2027. A shared powertrain group does not mean equipment remained unchanged."
         },
         {
           "range_id": "CRV-YM02",
@@ -29,10 +29,10 @@
           "end_year": 2016,
           "verified_through_year": 2016,
           "powertrain": "2.0 (4WD)",
-          "generation": "第四代",
+          "generation": "Fourth generation",
           "source_id": "S27",
-          "basis": "Honda Malaysia 官方保养目录 YM 区间",
-          "note": "代数结合官方换代发布对应。区间含首尾年；Current 不外推 2027。动力组别不等于所有 Spec 装备连续不变。"
+          "basis": "Model-year ranges from Honda Malaysia's official maintenance directory",
+          "note": "Generations are matched to official launch announcements. Year ranges are inclusive; Current does not extend to 2027. A shared powertrain group does not mean equipment remained unchanged."
         },
         {
           "range_id": "CRV-YM03",
@@ -42,10 +42,10 @@
           "end_year": 2016,
           "verified_through_year": 2016,
           "powertrain": "2.4 (4WD)",
-          "generation": "第四代",
+          "generation": "Fourth generation",
           "source_id": "S27",
-          "basis": "Honda Malaysia 官方保养目录 YM 区间",
-          "note": "代数结合官方换代发布对应。区间含首尾年；Current 不外推 2027。动力组别不等于所有 Spec 装备连续不变。"
+          "basis": "Model-year ranges from Honda Malaysia's official maintenance directory",
+          "note": "Generations are matched to official launch announcements. Year ranges are inclusive; Current does not extend to 2027. A shared powertrain group does not mean equipment remained unchanged."
         },
         {
           "range_id": "CRV-YM04",
@@ -55,10 +55,10 @@
           "end_year": 2017,
           "verified_through_year": 2017,
           "powertrain": "2.0 (2WD)",
-          "generation": "第四代",
+          "generation": "Fourth generation",
           "source_id": "S27",
-          "basis": "Honda Malaysia 官方保养目录 YM 区间",
-          "note": "代数结合官方换代发布对应。区间含首尾年；Current 不外推 2027。动力组别不等于所有 Spec 装备连续不变。"
+          "basis": "Model-year ranges from Honda Malaysia's official maintenance directory",
+          "note": "Generations are matched to official launch announcements. Year ranges are inclusive; Current does not extend to 2027. A shared powertrain group does not mean equipment remained unchanged."
         },
         {
           "range_id": "CRV-YM05",
@@ -68,10 +68,10 @@
           "end_year": 2020,
           "verified_through_year": 2020,
           "powertrain": "2.0 (2WD)",
-          "generation": "第五代",
+          "generation": "Fifth generation",
           "source_id": "S27",
-          "basis": "Honda Malaysia 官方保养目录 YM 区间",
-          "note": "代数结合官方换代发布对应。区间含首尾年；Current 不外推 2027。动力组别不等于所有 Spec 装备连续不变。"
+          "basis": "Model-year ranges from Honda Malaysia's official maintenance directory",
+          "note": "Generations are matched to official launch announcements. Year ranges are inclusive; Current does not extend to 2027. A shared powertrain group does not mean equipment remained unchanged."
         },
         {
           "range_id": "CRV-YM06",
@@ -81,10 +81,10 @@
           "end_year": 2020,
           "verified_through_year": 2020,
           "powertrain": "1.5TC (2WD)",
-          "generation": "第五代",
+          "generation": "Fifth generation",
           "source_id": "S27",
-          "basis": "Honda Malaysia 官方保养目录 YM 区间",
-          "note": "代数结合官方换代发布对应。区间含首尾年；Current 不外推 2027。动力组别不等于所有 Spec 装备连续不变。"
+          "basis": "Model-year ranges from Honda Malaysia's official maintenance directory",
+          "note": "Generations are matched to official launch announcements. Year ranges are inclusive; Current does not extend to 2027. A shared powertrain group does not mean equipment remained unchanged."
         },
         {
           "range_id": "CRV-YM07",
@@ -94,10 +94,10 @@
           "end_year": 2020,
           "verified_through_year": 2020,
           "powertrain": "1.5TC (4WD)",
-          "generation": "第五代",
+          "generation": "Fifth generation",
           "source_id": "S27",
-          "basis": "Honda Malaysia 官方保养目录 YM 区间",
-          "note": "代数结合官方换代发布对应。区间含首尾年；Current 不外推 2027。动力组别不等于所有 Spec 装备连续不变。"
+          "basis": "Model-year ranges from Honda Malaysia's official maintenance directory",
+          "note": "Generations are matched to official launch announcements. Year ranges are inclusive; Current does not extend to 2027. A shared powertrain group does not mean equipment remained unchanged."
         },
         {
           "range_id": "CRV-YM08",
@@ -107,10 +107,10 @@
           "end_year": 2023,
           "verified_through_year": 2023,
           "powertrain": "2.0 (2WD)",
-          "generation": "第五代改款",
+          "generation": "Fifth generation facelift",
           "source_id": "S27",
-          "basis": "Honda Malaysia 官方保养目录 YM 区间",
-          "note": "代数结合官方换代发布对应。区间含首尾年；Current 不外推 2027。动力组别不等于所有 Spec 装备连续不变。"
+          "basis": "Model-year ranges from Honda Malaysia's official maintenance directory",
+          "note": "Generations are matched to official launch announcements. Year ranges are inclusive; Current does not extend to 2027. A shared powertrain group does not mean equipment remained unchanged."
         },
         {
           "range_id": "CRV-YM09",
@@ -120,10 +120,10 @@
           "end_year": 2023,
           "verified_through_year": 2023,
           "powertrain": "1.5TC (2WD)",
-          "generation": "第五代改款",
+          "generation": "Fifth generation facelift",
           "source_id": "S27",
-          "basis": "Honda Malaysia 官方保养目录 YM 区间",
-          "note": "代数结合官方换代发布对应。区间含首尾年；Current 不外推 2027。动力组别不等于所有 Spec 装备连续不变。"
+          "basis": "Model-year ranges from Honda Malaysia's official maintenance directory",
+          "note": "Generations are matched to official launch announcements. Year ranges are inclusive; Current does not extend to 2027. A shared powertrain group does not mean equipment remained unchanged."
         },
         {
           "range_id": "CRV-YM10",
@@ -133,10 +133,10 @@
           "end_year": 2023,
           "verified_through_year": 2023,
           "powertrain": "1.5TC (4WD)",
-          "generation": "第五代改款",
+          "generation": "Fifth generation facelift",
           "source_id": "S27",
-          "basis": "Honda Malaysia 官方保养目录 YM 区间",
-          "note": "代数结合官方换代发布对应。区间含首尾年；Current 不外推 2027。动力组别不等于所有 Spec 装备连续不变。"
+          "basis": "Model-year ranges from Honda Malaysia's official maintenance directory",
+          "note": "Generations are matched to official launch announcements. Year ranges are inclusive; Current does not extend to 2027. A shared powertrain group does not mean equipment remained unchanged."
         },
         {
           "range_id": "CRV-YM11",
@@ -146,10 +146,10 @@
           "end_year": null,
           "verified_through_year": 2026,
           "powertrain": "1.5TC (2WD)",
-          "generation": "第六代",
+          "generation": "Sixth generation",
           "source_id": "S27",
-          "basis": "Honda Malaysia 官方保养目录 YM 区间",
-          "note": "代数结合官方换代发布对应。区间含首尾年；Current 不外推 2027。动力组别不等于所有 Spec 装备连续不变。"
+          "basis": "Model-year ranges from Honda Malaysia's official maintenance directory",
+          "note": "Generations are matched to official launch announcements. Year ranges are inclusive; Current does not extend to 2027. A shared powertrain group does not mean equipment remained unchanged."
         },
         {
           "range_id": "CRV-YM12",
@@ -159,10 +159,10 @@
           "end_year": null,
           "verified_through_year": 2026,
           "powertrain": "1.5TC (4WD)",
-          "generation": "第六代",
+          "generation": "Sixth generation",
           "source_id": "S27",
-          "basis": "Honda Malaysia 官方保养目录 YM 区间",
-          "note": "代数结合官方换代发布对应。区间含首尾年；Current 不外推 2027。动力组别不等于所有 Spec 装备连续不变。"
+          "basis": "Model-year ranges from Honda Malaysia's official maintenance directory",
+          "note": "Generations are matched to official launch announcements. Year ranges are inclusive; Current does not extend to 2027. A shared powertrain group does not mean equipment remained unchanged."
         },
         {
           "range_id": "CRV-YM13",
@@ -172,17 +172,17 @@
           "end_year": null,
           "verified_through_year": 2026,
           "powertrain": "2.0 I-MMD",
-          "generation": "第六代",
+          "generation": "Sixth generation",
           "source_id": "S27",
-          "basis": "Honda Malaysia 官方保养目录 YM 区间",
-          "note": "代数结合官方换代发布对应。区间含首尾年；Current 不外推 2027。动力组别不等于所有 Spec 装备连续不变。"
+          "basis": "Model-year ranges from Honda Malaysia's official maintenance directory",
+          "note": "Generations are matched to official launch announcements. Year ranges are inclusive; Current does not extend to 2027. A shared powertrain group does not mean equipment remained unchanged."
         }
       ],
       "years": [
         {
           "year": 2010,
-          "generation": "第三代；3 月改款",
-          "note": "2010-03-11 改款；当年车辆仍需区分改款前／后。",
+          "generation": "Third generation; March facelift",
+          "note": "Facelift launched on 11 March 2010. Check whether the vehicle is a pre-facelift or facelift model.",
           "spec_options": [],
           "no_named_spec": true,
           "spec_note": "",
@@ -195,8 +195,8 @@
         },
         {
           "year": 2011,
-          "generation": "第三代改款",
-          "note": "YM 直接覆盖；该年逐项装备变化尚未完整比对。",
+          "generation": "Third generation facelift",
+          "note": "Covered by the official model-year range. Individual equipment changes for this year have not been fully compared.",
           "spec_options": [],
           "no_named_spec": true,
           "spec_note": "",
@@ -209,13 +209,13 @@
         },
         {
           "year": 2012,
-          "generation": "第三代改款",
-          "note": "10-18 推出 Limited；普通版与特别版分开。",
+          "generation": "Third generation facelift",
+          "note": "Limited edition launched on 18 October. Distinguish the regular model from the special edition.",
           "spec_options": [
             "Limited"
           ],
           "no_named_spec": true,
-          "spec_note": "特别版仅按已查到的发布年份列出，后续供应年份未外推。",
+          "spec_note": "Special editions are listed only for their verified launch year. Availability in later years has not been confirmed.",
           "engine_options": [
             2
           ],
@@ -227,8 +227,8 @@
         },
         {
           "year": 2013,
-          "generation": "第四代",
-          "note": "03-05 上市 2.0；07-02 增加 2.4。旧代注册年不等于 YM。",
+          "generation": "Fourth generation",
+          "note": "The 2.0 launched on 5 March; the 2.4 followed on 2 July. Registration year does not establish the model year of an earlier-generation vehicle.",
           "spec_options": [],
           "no_named_spec": true,
           "spec_note": "",
@@ -243,8 +243,8 @@
         },
         {
           "year": 2014,
-          "generation": "第四代",
-          "note": "由官方 YM 区间确认；版本名称参考 2013 发布，未宣称全年装备完全相同。",
+          "generation": "Fourth generation",
+          "note": "Confirmed by the official model-year range. Variant names refer to the 2013 launch; equipment is not assumed to be identical throughout the year.",
           "spec_options": [],
           "no_named_spec": true,
           "spec_note": "",
@@ -259,8 +259,8 @@
         },
         {
           "year": 2015,
-          "generation": "第四代改款",
-          "note": "01-21 改款并增加 2WD；改款前库存须另辨。",
+          "generation": "Fourth generation facelift",
+          "note": "Facelift and 2WD version launched on 21 January. Check pre-facelift stock separately.",
           "spec_options": [],
           "no_named_spec": true,
           "spec_note": "",
@@ -275,8 +275,8 @@
         },
         {
           "year": 2016,
-          "generation": "第四代改款",
-          "note": "官方 4WD 组覆盖至 2016YM；2WD 组另覆盖至 2017YM。",
+          "generation": "Fourth generation facelift",
+          "note": "The official 4WD group covers model years through 2016; the 2WD group extends through 2017.",
           "spec_options": [],
           "no_named_spec": true,
           "spec_note": "",
@@ -291,14 +291,14 @@
         },
         {
           "year": 2017,
-          "generation": "第四代 + 第五代",
-          "note": "07-12 换代。不要将第四代 2.4 的 2017 注册年当成已核实 2017YM。",
+          "generation": "Fourth and fifth generations",
+          "note": "New generation launched on 12 July. A fourth-generation 2.4 registered in 2017 is not automatically a verified 2017 model-year vehicle.",
           "spec_options": [
             "TC",
             "TC-P"
           ],
           "no_named_spec": false,
-          "spec_note": "同年有第四、第五代；TC／TC-P 属于第五代 1.5 Turbo。",
+          "spec_note": "Fourth and fifth generations overlap this year. TC and TC-P belong to the fifth-generation 1.5 Turbo.",
           "engine_options": [
             1.5,
             2
@@ -313,8 +313,8 @@
         },
         {
           "year": 2018,
-          "generation": "第五代",
-          "note": "车型／动力组 YM 已确认；当年设备差异仍须按版本比对。",
+          "generation": "Fifth generation",
+          "note": "Model and powertrain model years are confirmed. Equipment differences still need to be checked by variant.",
           "spec_options": [
             "TC",
             "TC-P"
@@ -335,15 +335,15 @@
         },
         {
           "year": 2019,
-          "generation": "第五代",
-          "note": "07-18 推出 1.5 Turbo 2WD Mugen 限量版。",
+          "generation": "Fifth generation",
+          "note": "The 1.5 Turbo 2WD Mugen limited edition launched on 18 July.",
           "spec_options": [
             "TC",
             "TC-P",
             "Mugen"
           ],
           "no_named_spec": false,
-          "spec_note": "特别版仅按已查到的发布年份列出，后续供应年份未外推。",
+          "spec_note": "Special editions are listed only for their verified launch year. Availability in later years has not been confirmed.",
           "engine_options": [
             1.5,
             2
@@ -359,14 +359,14 @@
         },
         {
           "year": 2020,
-          "generation": "第五代改款前 + 改款后",
-          "note": "11-05 改款；TC 与 TC-P、2WD 与 4WD 分开。",
+          "generation": "Fifth generation, pre-facelift and facelift",
+          "note": "Facelift launched on 5 November. Distinguish TC from TC-P and 2WD from 4WD.",
           "spec_options": [
             "TC",
             "TC-P"
           ],
           "no_named_spec": false,
-          "spec_note": "改款前有 TC；改款后为 TC-P，需确认实车。",
+          "spec_note": "TC was offered before the facelift; TC-P was offered after it. Confirm the actual vehicle.",
           "engine_options": [
             1.5,
             2
@@ -381,14 +381,14 @@
         },
         {
           "year": 2021,
-          "generation": "第五代改款",
-          "note": "10-28 新增 1.5 TC-P 2WD Black Edition。",
+          "generation": "Fifth generation facelift",
+          "note": "The 1.5 TC-P 2WD Black Edition was added on 28 October.",
           "spec_options": [
             "TC-P",
             "Black Edition"
           ],
           "no_named_spec": false,
-          "spec_note": "特别版仅按已查到的发布年份列出，后续供应年份未外推。",
+          "spec_note": "Special editions are listed only for their verified launch year. Availability in later years has not been confirmed.",
           "engine_options": [
             1.5,
             2
@@ -403,8 +403,8 @@
         },
         {
           "year": 2022,
-          "generation": "第五代改款",
-          "note": "动力组由 YM 确认；Black Edition 当年供应期未仅凭 2021 发布外推。",
+          "generation": "Fifth generation facelift",
+          "note": "Powertrain groups are confirmed by model year. Black Edition availability for this year is not inferred from its 2021 launch.",
           "spec_options": [
             "TC-P"
           ],
@@ -423,8 +423,8 @@
         },
         {
           "year": 2023,
-          "generation": "第五代 + 第六代",
-          "note": "12-14 六代上市；RS 亮相与 2024-01-11 公布售价分别记录。",
+          "generation": "Fifth and sixth generations",
+          "note": "Sixth generation launched on 14 December. The RS reveal and its price announcement on 11 January 2024 are recorded separately.",
           "spec_options": [
             "TC-P",
             "S",
@@ -433,7 +433,7 @@
             "RS"
           ],
           "no_named_spec": false,
-          "spec_note": "RS 于 2023-12 介绍、2024-01 公布售价；不要据此认定 2023 制造或交付。",
+          "spec_note": "RS was introduced in December 2023, with pricing announced in January 2024. This does not confirm manufacture or delivery in 2023.",
           "engine_options": [
             1.5,
             2
@@ -452,8 +452,8 @@
         },
         {
           "year": 2024,
-          "generation": "第六代",
-          "note": "01-11 公布 e:HEV RS 售价；不能把汽油 E 和未来 Hybrid E 混同。",
+          "generation": "Sixth generation",
+          "note": "e:HEV RS pricing was announced on 11 January. Do not confuse the petrol E with the later hybrid E.",
           "spec_options": [
             "S",
             "E",
@@ -479,8 +479,8 @@
         },
         {
           "year": 2025,
-          "generation": "第六代",
-          "note": "11-13 E、V 增加 300 辆 Dual-Tone 限量版。",
+          "generation": "Sixth generation",
+          "note": "A 300-unit Dual-Tone edition for E and V was added on 13 November.",
           "spec_options": [
             "S",
             "E",
@@ -490,7 +490,7 @@
             "V Dual-Tone"
           ],
           "no_named_spec": false,
-          "spec_note": "特别版仅按已查到的发布年份列出，后续供应年份未外推。",
+          "spec_note": "Special editions are listed only for their verified launch year. Availability in later years has not been confirmed.",
           "engine_options": [
             1.5,
             2
@@ -510,15 +510,15 @@
         },
         {
           "year": 2026,
-          "generation": "第六代；3 月调整",
-          "note": "年初承接旧系列；03-03 调整新车组合。旧库存不据此认定停售／报废。",
+          "generation": "Sixth generation; March lineup update",
+          "note": "The previous lineup continued at the start of the year; a revised lineup launched on 3 March. This does not imply that older stock was withdrawn from sale or scrapped.",
           "spec_options": [
             "E",
             "V",
             "RS"
           ],
           "no_named_spec": false,
-          "spec_note": "2026-03 起的新系列：1.5 Turbo V／2.0 e:HEV E、RS。旧系列库存请按实车手动填写。",
+          "spec_note": "Lineup from March 2026: 1.5 Turbo V and 2.0 e:HEV E / RS. For older stock, enter the spec manually after checking the vehicle.",
           "engine_options": [
             1.5,
             2
@@ -540,130 +540,130 @@
           "model_id": "M0159",
           "market": "MY",
           "date": "2010-03-11",
-          "generation": "第三代改款",
+          "generation": "Third generation facelift",
           "variants": "2.0 i-VTEC",
           "source_id": "S28",
-          "note": "2010 年初可能有改款前车辆；按实车和制造月份区分。"
+          "note": "Early 2010 stock may include pre-facelift vehicles. Check the vehicle and its manufacturing month."
         },
         {
           "event_id": "CRV-E02",
           "model_id": "M0159",
           "market": "MY",
           "date": "2012-10-18",
-          "generation": "第三代 Limited",
+          "generation": "Third generation Limited",
           "variants": "2.0 i-VTEC Limited",
           "source_id": "S29",
-          "note": "特别版终售日未由该来源给出。"
+          "note": "This source does not state when sales of the special edition ended."
         },
         {
           "event_id": "CRV-E03",
           "model_id": "M0159",
           "market": "MY",
           "date": "2013-03-05",
-          "generation": "第四代上市",
+          "generation": "Fourth generation launch",
           "variants": "2.0 i-VTEC 4WD",
           "source_id": "S30",
-          "note": "马来西亚上市时间；不要套用日本 2011 年换代时间。"
+          "note": "Malaysia launch timing; do not apply Japan's 2011 generation change."
         },
         {
           "event_id": "CRV-E04",
           "model_id": "M0159",
           "market": "MY",
           "date": "2013-07-02",
-          "generation": "第四代新增 2.4",
+          "generation": "Fourth generation 2.4 addition",
           "variants": "2.4 i-VTEC 4WD",
           "source_id": "S31",
-          "note": "采用实际上市日，不采用早期预计上市月份。"
+          "note": "Uses the actual launch date rather than an earlier projected launch month."
         },
         {
           "event_id": "CRV-E05",
           "model_id": "M0159",
           "market": "MY",
           "date": "2015-01-21",
-          "generation": "第四代改款",
+          "generation": "Fourth generation facelift",
           "variants": "2.0 2WD / 2.0 4WD / 2.4 4WD",
           "source_id": "S01",
-          "note": "4WD 官方 YM 组到 2016；2WD 到 2017。"
+          "note": "Official model-year groups extend through 2016 for 4WD and 2017 for 2WD."
         },
         {
           "event_id": "CRV-E06",
           "model_id": "M0159",
           "market": "MY",
           "date": "2017-07-12",
-          "generation": "第五代上市",
+          "generation": "Fifth generation launch",
           "variants": "2.0 2WD / 1.5 TC 2WD / 1.5 TC 4WD / 1.5 TC-P 2WD",
           "source_id": "S02",
-          "note": "2017 同时有第四代 2.0 2WD 与第五代；必须区分代数。"
+          "note": "The fourth-generation 2.0 2WD and fifth generation overlap in 2017. Confirm the generation."
         },
         {
           "event_id": "CRV-E07",
           "model_id": "M0159",
           "market": "MY",
           "date": "2019-07-18",
-          "generation": "第五代 Mugen",
+          "generation": "Fifth generation Mugen",
           "variants": "1.5 Turbo 2WD Mugen",
           "source_id": "S32",
-          "note": "300 辆特别版；不能推定往后每年均供应。"
+          "note": "A 300-unit special edition. Availability in subsequent years must not be assumed."
         },
         {
           "event_id": "CRV-E08",
           "model_id": "M0159",
           "market": "MY",
           "date": "2020-11-05",
-          "generation": "第五代改款",
+          "generation": "Fifth generation facelift",
           "variants": "2.0 2WD / 1.5 TC-P 2WD / 1.5 TC-P 4WD",
           "source_id": "S33",
-          "note": "2020 年改款前、后版本不能合并。"
+          "note": "Keep 2020 pre-facelift and facelift variants separate."
         },
         {
           "event_id": "CRV-E09",
           "model_id": "M0159",
           "market": "MY",
           "date": "2021-10-28",
-          "generation": "第五代 Black Edition",
+          "generation": "Fifth generation Black Edition",
           "variants": "1.5 TC-P 2WD Black Edition",
           "source_id": "S34",
-          "note": "新增特别版；终售日未确认。"
+          "note": "New special edition; the end of its sales period is unconfirmed."
         },
         {
           "event_id": "CRV-E10",
           "model_id": "M0159",
           "market": "MY",
           "date": "2023-12-14",
-          "generation": "第六代上市",
+          "generation": "Sixth generation launch",
           "variants": "1.5 S / 1.5 E / 1.5 V AWD / 2.0 e:HEV RS",
           "source_id": "S35",
-          "note": "RS 于发布会亮相，2024-01-11 才公布售价；不据此认定 2023 交付。"
+          "note": "RS was revealed at the launch, with pricing announced on 11 January 2024. This does not confirm deliveries in 2023."
         },
         {
           "event_id": "CRV-E11",
           "model_id": "M0159",
           "market": "MY",
           "date": "2024-01-11",
-          "generation": "第六代 RS 定价",
+          "generation": "Sixth generation RS pricing",
           "variants": "2.0 e:HEV RS",
           "source_id": "S36",
-          "note": "与 2023-12 首次介绍日期分别记录。"
+          "note": "Recorded separately from its first introduction in December 2023."
         },
         {
           "event_id": "CRV-E12",
           "model_id": "M0159",
           "market": "MY",
           "date": "2025-11-13",
-          "generation": "第六代 Dual-Tone",
+          "generation": "Sixth generation Dual-Tone",
           "variants": "1.5 E / 1.5 V Dual-Tone",
           "source_id": "S37",
-          "note": "300 辆限量外观版本；不延伸为所有 2026 车辆配置。"
+          "note": "A 300-unit appearance edition; its features do not apply to all 2026 vehicles."
         },
         {
           "event_id": "CRV-E13",
           "model_id": "M0159",
           "market": "MY",
           "date": "2026-03-03",
-          "generation": "第六代版本调整",
+          "generation": "Sixth generation lineup update",
           "variants": "2.0 e:HEV E / 1.5 V Turbo / 2.0 e:HEV RS",
           "source_id": "S38",
-          "note": "E 已由旧系列 1.5 Turbo 转为 Hybrid；不能只按字母 E 合并。"
+          "note": "E changed from the previous 1.5 Turbo to hybrid. Do not merge variants solely because they share the E name."
         }
       ]
     },
@@ -676,8 +676,8 @@
       "years": [
         {
           "year": 2024,
-          "generation": "2024 更新款",
-          "note": "2024-06-04 官方发布版本；不外推其它年份。",
+          "generation": "2024 update",
+          "note": "Variants from the official 4 June 2024 launch. Not extrapolated to other years.",
           "spec_options": [
             "Standard",
             "Executive",
@@ -685,7 +685,7 @@
             "Flagship"
           ],
           "no_named_spec": false,
-          "spec_note": "Spec 已与 1.5T／TGDi 排量和动力名称分开。",
+          "spec_note": "Spec names are separate from the 1.5T / TGDi engine and powertrain descriptions.",
           "engine_options": [
             1.5
           ],
@@ -704,7 +704,7 @@
   "sources": [
     {
       "source_id": "S01",
-      "title": "CR-V 2015 马来西亚发布",
+      "title": "CR-V 2015 Malaysia launch",
       "publisher": "Honda Malaysia",
       "url": "https://www.honda.com.my/press-release/view/557/HONDA-INTRODUCES-A-NEW-VARIANT-2.0L-2WD-TO-ITS-NEW-CR-V-LINE-UP",
       "document_date": "2015-01-21",
@@ -713,7 +713,7 @@
     },
     {
       "source_id": "S02",
-      "title": "CR-V 2017 马来西亚发布",
+      "title": "CR-V 2017 Malaysia launch",
       "publisher": "Honda Malaysia",
       "url": "https://www.honda.com.my/press-release/view/630/all-new-cr-v-returns-with-next-generation-advanced-technology-to-redefine-the-suv-segment",
       "document_date": "2017-07-12",
@@ -722,115 +722,115 @@
     },
     {
       "source_id": "S27",
-      "title": "CR-V 官方 YM 保养适用区间",
+      "title": "CR-V official maintenance model-year ranges",
       "publisher": "Honda Malaysia",
       "url": "https://www.honda.com.my/aftersales/maintenance",
       "document_date": null,
       "retrieved_on": "2026-09-17",
-      "note": "年款区间直接来自官方；不是具体装备版本的生产起止日。Current 截至 2026-09-17。"
+      "note": "Model-year ranges come directly from the official directory, not production dates for specific equipment variants. Current is verified through 17 September 2026."
     },
     {
       "source_id": "S28",
-      "title": "CR-V 马来西亚 2010 改款",
+      "title": "CR-V Malaysia 2010 facelift",
       "publisher": "Honda Malaysia",
       "url": "https://www.honda.com.my/press-release/view/337/The-new-CR-V-hits-Honda-showrooms-today",
       "document_date": "2010-03-11",
       "retrieved_on": "2026-09-17",
-      "note": "官方发布事件；不能仅由发布日期推断制造年或最后销售日。"
+      "note": "Official launch event. The launch date alone does not establish manufacturing year or the final sales date."
     },
     {
       "source_id": "S29",
-      "title": "CR-V 马来西亚 Limited 特别版",
+      "title": "CR-V Malaysia Limited edition",
       "publisher": "Honda Malaysia",
       "url": "https://honda.com.my/press-release/view/323/Honda-Malaysia-Unveils-The-CR-V-%E2%80%9CLimited%E2%80%9D",
       "document_date": "2012-10-18",
       "retrieved_on": "2026-09-17",
-      "note": "官方发布事件；不能仅由发布日期推断制造年或最后销售日。"
+      "note": "Official launch event. The launch date alone does not establish manufacturing year or the final sales date."
     },
     {
       "source_id": "S30",
-      "title": "CR-V 马来西亚第四代 2.0 发布",
+      "title": "CR-V Malaysia fourth-generation 2.0 launch",
       "publisher": "Honda Malaysia",
       "url": "https://www.honda.com.my/press-release/view/305/Honda-Malaysia-Launches-The-4th-Generation-All-New-CR-V",
       "document_date": "2013-03-05",
       "retrieved_on": "2026-09-17",
-      "note": "官方发布事件；不能仅由发布日期推断制造年或最后销售日。"
+      "note": "Official launch event. The launch date alone does not establish manufacturing year or the final sales date."
     },
     {
       "source_id": "S31",
-      "title": "CR-V 马来西亚第四代 2.4 发布",
+      "title": "CR-V Malaysia fourth-generation 2.4 launch",
       "publisher": "Honda Malaysia",
       "url": "https://www.honda.com.my/press-release/view/292/The-High-Performance-All-New-CR-V-2.4L-Now-On-Malaysian-Shores",
       "document_date": "2013-07-02",
       "retrieved_on": "2026-09-17",
-      "note": "官方发布事件；不能仅由发布日期推断制造年或最后销售日。"
+      "note": "Official launch event. The launch date alone does not establish manufacturing year or the final sales date."
     },
     {
       "source_id": "S32",
-      "title": "CR-V 马来西亚 Mugen 限量版",
+      "title": "CR-V Malaysia Mugen limited edition",
       "publisher": "Honda Malaysia",
       "url": "https://honda.com.my/press-release/view/703/No.1-Non-National-SUV%2C-Honda-CR-v-Now-With-Mugen-Limited-Edition",
       "document_date": "2019-07-18",
       "retrieved_on": "2026-09-17",
-      "note": "官方发布事件；不能仅由发布日期推断制造年或最后销售日。"
+      "note": "Official launch event. The launch date alone does not establish manufacturing year or the final sales date."
     },
     {
       "source_id": "S33",
-      "title": "CR-V 马来西亚第五代改款",
+      "title": "CR-V Malaysia fifth-generation facelift",
       "publisher": "Honda Malaysia",
       "url": "https://www.honda.com.my/press-release/view/746/new-cr-v-raises-the-suv-benchmark-with-distinct-style-and-features",
       "document_date": "2020-11-05",
       "retrieved_on": "2026-09-17",
-      "note": "官方发布事件；不能仅由发布日期推断制造年或最后销售日。"
+      "note": "Official launch event. The launch date alone does not establish manufacturing year or the final sales date."
     },
     {
       "source_id": "S34",
-      "title": "CR-V 马来西亚 Black Edition",
+      "title": "CR-V Malaysia Black Edition",
       "publisher": "Honda Malaysia",
       "url": "https://honda.com.my/press-release/view/778/honda-malaysia-introduces-new-variant-for-the-cr-v-in-all-black-theme",
       "document_date": "2021-10-28",
       "retrieved_on": "2026-09-17",
-      "note": "官方发布事件；不能仅由发布日期推断制造年或最后销售日。"
+      "note": "Official launch event. The launch date alone does not establish manufacturing year or the final sales date."
     },
     {
       "source_id": "S35",
-      "title": "CR-V 马来西亚第六代发布",
+      "title": "CR-V Malaysia sixth-generation launch",
       "publisher": "Honda Malaysia",
       "url": "https://www.honda.com.my/press-release/view/817/the-all-new-cr-v-redefines-sophistication-comfort-and-advanced-technology-in-suv",
       "document_date": "2023-12-14",
       "retrieved_on": "2026-09-17",
-      "note": "官方发布事件；不能仅由发布日期推断制造年或最后销售日。"
+      "note": "Official launch event. The launch date alone does not establish manufacturing year or the final sales date."
     },
     {
       "source_id": "S36",
-      "title": "CR-V e:HEV RS 马来西亚公布售价",
+      "title": "CR-V e:HEV RS Malaysia pricing announcement",
       "publisher": "Honda Malaysia",
       "url": "https://www.honda.com.my/press-release/view/818/www.honda.com.my",
       "document_date": "2024-01-11",
       "retrieved_on": "2026-09-17",
-      "note": "官方发布事件；不能仅由发布日期推断制造年或最后销售日。"
+      "note": "Official launch event. The launch date alone does not establish manufacturing year or the final sales date."
     },
     {
       "source_id": "S37",
-      "title": "CR-V 马来西亚 Dual-Tone 限量版",
+      "title": "CR-V Malaysia Dual-Tone limited edition",
       "publisher": "Honda Malaysia",
       "url": "https://www.honda.com.my/press-release/view/840/honda-malaysia-marks-25-years-of-trust-with-exclusive-dual-tone-cr-v",
       "document_date": "2025-11-13",
       "retrieved_on": "2026-09-17",
-      "note": "官方发布事件；不能仅由发布日期推断制造年或最后销售日。"
+      "note": "Official launch event. The launch date alone does not establish manufacturing year or the final sales date."
     },
     {
       "source_id": "S38",
-      "title": "CR-V 马来西亚 2026 版本调整",
+      "title": "CR-V Malaysia 2026 lineup update",
       "publisher": "Honda Malaysia",
       "url": "https://www.honda.com.my/press-release/view/846/twice-the-hybrid-twice-the-fun-honda-malaysia-launches-the-new-cr-v-e-and-rs-ehev-duo",
       "document_date": "2026-03-03",
       "retrieved_on": "2026-09-17",
-      "note": "官方发布事件；不能仅由发布日期推断制造年或最后销售日。"
+      "note": "Official launch event. The launch date alone does not establish manufacturing year or the final sales date."
     },
     {
       "source_id": "S22",
-      "title": "X50 2024 马来西亚发布",
+      "title": "X50 2024 Malaysia launch",
       "publisher": "PROTON",
       "url": "https://www.proton.com/happenings/2024/june/proton-launches-revamped-market-leading-2024-proton-x50",
       "document_date": "2024-06-04",

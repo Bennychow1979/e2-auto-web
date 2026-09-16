@@ -1,6 +1,6 @@
 import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
-import {setupYearSpecSelect} from './year-spec-select.mjs?v=optional-spec-1';
-import {setupYearReference} from './model-year-reference.mjs?v=crv-1';
+import {setupYearSpecSelect} from './year-spec-select.mjs?v=english-spec-1';
+import {setupYearReference} from './model-year-reference.mjs?v=english-spec-1';
 import {db,configured,check,esc,rm,mileageText,getVehicles,coverURL,photoURLs,compressPhoto,friendlyError} from './e2-data.js?v=customer-1';
 const MAX_PHOTOS=30;
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');
@@ -213,7 +213,7 @@ $('passwordForm').onsubmit=async e=>{
   try{check(await db.auth.updateUser({password:f.elements.password.value}));f.reset();recovery=false;f.hidden=true;$('loginForm').hidden=false;await db.auth.signOut();message('authMessage','Password saved. Sign in with your new password.')}
   catch(error){message('authMessage',friendlyError(error),true)}finally{f.querySelector('button').disabled=false}
 };
-if(!configured){message('connectionState','正式账号连接准备中 · Sign-in will be available after the E2 database project is connected.');}
+if(!configured){message('connectionState','Sign-in will be available after the E2 database project is connected.');}
 else{
   message('connectionState','E2 staff sign-in');$('loginForm').querySelector('button[type=submit]').disabled=false;updateResetButton();
   db.auth.onAuthStateChange((event,session)=>{
