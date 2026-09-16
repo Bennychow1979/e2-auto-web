@@ -13,7 +13,7 @@ export function setupCarSharing(car, getContact) {
     const run=++revision, current=getContact();
     picker.replaceChildren(new Option('E2 Auto · company WhatsApp',''));
     picker.disabled=true;copy.disabled=true;$('sharedCarURL').value='';
-    $('shareCarVehicle').textContent=[car.year,car.brand,car.model,car.variant,'Plate '+car.plate].join(' · ');
+    $('shareCarVehicle').textContent=[car.year,car.brand,car.model,car.variant,'Plate '+car.plate].filter(Boolean).join(' · ');
     $('shareCarStatus').textContent='Loading contacts…';dialog.showModal();
     try{
       const contacts=await publicContacts(window.E2_CONFIG);

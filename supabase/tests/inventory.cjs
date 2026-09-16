@@ -15,6 +15,7 @@ grant execute on function auth.uid() to anon,authenticated;
 `);
 await db.exec(fs.readFileSync('supabase/migrations/202609120001_inventory.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/202609130002_photo_order.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/202609170013_optional_vehicle_spec.sql','utf8'));
 const admin='00000000-0000-4000-8000-000000000001',sales='00000000-0000-4000-8000-000000000002',customer='00000000-0000-4000-8000-000000000003',account='00000000-0000-4000-8000-000000000004';
 const car='10000000-0000-4000-8000-000000000001',photo='20000000-0000-4000-8000-000000000001',path=car+'/'+photo+'.webp';
 await db.exec(`insert into auth.users(id) values('${admin}'),('${sales}'),('${customer}'),('${account}'); insert into public.staff_memberships(user_id,role) values('${admin}','admin'),('${sales}','sales'),('${account}','account');`);
@@ -27,6 +28,20 @@ await fails(`update public.vehicles set publication='published' where id='${car}
 await fails(`insert into public.vehicle_photos(vehicle_id,path,position) values('${car}','${path}',0)`,'Cannot attach missing storage object');
 await db.exec(`insert into storage.objects(bucket_id,name) values('vehicle-photos','${path}');insert into public.vehicle_photos(id,vehicle_id,path,position) values('${photo}','${car}','${path}',0)`);
 await count('select count(*) n from public.inventory_audit',2,'Admin sees inventory audit');
+// Check optional spec with real constraints and roles; roll back all fixture changes.
+await db.exec('begin');
+await count(`select count(*) n from public.vehicles where id='${car}' and variant='TC-P 2WD'`,1,'Optional spec migration preserves saved spec');
+await db.exec(`update public.vehicles set variant='' where id='${car}'`);
+await count(`select count(*) n from public.vehicles where id='${car}' and variant=''`,1,'Admin can save an empty spec');
+await db.exec(`update public.vehicles set publication='published' where id='${car}'`);
+await as(null);
+await count(`select count(*) n from public.vehicles where id='${car}' and variant='' and publication='published'`,1,'Blank spec vehicle can publish and be read publicly');
+await as(admin);
+await db.exec(`insert into public.vehicles(plate,brand,model,year,engine_litres,transmission,fuel_type,price) values('OPTIONALQA','Honda','CR-V',2024,1.5,'Auto','PETROL',100)`);
+await count("select count(*) n from public.vehicles where plate='OPTIONALQA' and variant=''",1,'Omitting spec defaults to empty');
+await db.exec('rollback');
+await fails(`update public.vehicles set variant=repeat('X',121) where id='${car}'`,'Spec retains 120-character limit');
+
 await db.exec('reset role');
 await db.exec(fs.readFileSync('supabase/migrations/202609130003_photo_limit_30.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/202609130004_super_admin.sql','utf8'));

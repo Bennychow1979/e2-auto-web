@@ -1,6 +1,6 @@
 import {viewVehicle} from './advertising.js?v=1';
 import {publicContact,enquiryURL,vehicleShareURL,vehiclePageURL,withVehicleLink} from './referral.js?v=car-share-1';
-import {setupCarSharing} from './car-share.js?v=car-share-1';
+import {setupCarSharing} from './car-share.js?v=optional-spec-1';
 import {db,check,esc,rm,mileageText,getVehicles,photoURLs,coverURL,friendlyError} from './e2-data.js';
 const $=id=>document.getElementById(id);
 (async()=>{
@@ -21,7 +21,7 @@ $('applyLoan').hidden=preview||car.stock_status!=='Available';$('applyLoan').hre
 if(!preview)import('./car-save.js?v=saved-1').then(m=>m.setupCarSave(car)).catch(()=>{$('saveCarStatus').textContent='Saved cars are temporarily unavailable. Please reload.'});
 const pageLink=()=>vehiclePageURL(location.href,car.id,contact?.user_id);
 const wa=(text,previousLink)=>enquiryURL(contact,withVehicleLink(text,pageLink(),previousLink));
-const vehicleIntro='I am enquiring about '+car.year+' '+car.name+' '+car.variant+' (Plate '+car.plate+'). ';
+const vehicleIntro='I am enquiring about '+[car.year,car.name,car.variant].filter(Boolean).join(' ')+' (Plate '+car.plate+'). ';
 let intro='Hi '+(contact?.display_name||'E2 Auto')+', '+vehicleIntro;
 async function paintContact(){
   const person=contact;
@@ -57,11 +57,11 @@ window.addEventListener('focus',refreshContact);
 setInterval(()=>{if(!document.hidden)refreshContact()},60000);
 document.title=car.name+' | E2 Auto';
 $('make').textContent=car.brand;$('model').textContent=car.model;$('heroEyebrow').textContent=[car.year,car.body_type,car.stock_status].filter(Boolean).join(' · ');
-$('heroLine').textContent=car.variant;$('heroPrice').textContent=rm(car.price);$('heroPlate').textContent='PLATE · '+car.plate;
+$('heroLine').textContent=car.variant;$('heroLine').hidden=!car.variant;$('heroPrice').textContent=rm(car.price);$('heroPlate').textContent='PLATE · '+car.plate;
 $('story').textContent=car.description||'See the actual vehicle. Ask the questions that matter to you.';
 $('publicationNote').textContent=car.publication==='draft'?'PRIVATE DRAFT PREVIEW · Not on the website':car.stock_status;
 const specs=[['Car plate',car.plate],['Year',car.year],['Brand',car.brand],['Model',car.model],['Variant / SPEC',car.variant],['Engine size',Number(car.engine_litres).toFixed(1)+' L'],['Transmission',car.transmission],['Fuel type',car.fuel_type],['Mileage',mileageText(car)]];
-$('specGrid').innerHTML=specs.map(([label,value])=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value)+'</dd></div>').join('');
+$('specGrid').innerHTML=specs.filter(([,value])=>value!==null&&value!==undefined&&String(value).trim()!=='').map(([label,value])=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value)+'</dd></div>').join('');
 $('dockModel').textContent=car.name;$('dockPrice').textContent=rm(car.price);
 $('enquire').href=wa(intro+'Please confirm availability, price and vehicle details.');
 $('tradeLink').href=wa(intro+'I would like to discuss a trade-in and the information you need for an inspection.');
