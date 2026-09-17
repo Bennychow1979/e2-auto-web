@@ -7,3 +7,6 @@
 .contactOptions a{color:inherit;text-underline-offset:5px;min-height:44px;display:inline-flex;align-items:center;overflow-wrap:anywhere}
 .emailContact{display:inline-block;margin-top:8px;overflow-wrap:anywhere;text-underline-offset:4px}
 @media(max-width:600px){.sortField{flex-basis:100%;justify-content:space-between}.sortField select{flex:1;max-width:240px}.contactOptions{flex-direction:column;gap:0}}
+
+.showroomAddress{font-style:normal;font-size:1rem;line-height:1.7;margin:0 0 28px;overflow-wrap:break-word}
+.showroomAddress strong{font-weight:600}
