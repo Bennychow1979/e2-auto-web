@@ -1,0 +1,9 @@
+.resultSummary{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.resultSummary>p{margin-right:auto}
+.sortField{display:flex;align-items:center;gap:10px;font-size:.8rem}
+.sortField select{min-height:44px;max-width:100%;padding:10px 32px 10px 12px;border:1px solid #d7d8d2;border-radius:8px;background:#fafaf7;color:#111214;font:inherit}
+.sortField select:focus-visible,.contactOptions a:focus-visible{outline:2px solid #b59244;outline-offset:4px}
+.contactOptions{display:flex;flex-wrap:wrap;gap:12px 24px;margin:24px 0}
+.contactOptions a{color:inherit;text-underline-offset:5px;min-height:44px;display:inline-flex;align-items:center;overflow-wrap:anywhere}
+.emailContact{display:inline-block;margin-top:8px;overflow-wrap:anywhere;text-underline-offset:4px}
+@media(max-width:600px){.sortField{flex-basis:100%;justify-content:space-between}.sortField select{flex:1;max-width:240px}.contactOptions{flex-direction:column;gap:0}}
