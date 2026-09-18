@@ -1,5 +1,5 @@
 import {createShowroomFlow} from './showroom-flow.js?v=flow-1';
-import {esc,rm,mileageText,getVehicles,photoURLs,friendlyError} from './e2-data.js';
+import {esc,rm,mileageText,getVehicles,photoURLs,friendlyError} from './e2-data.js?v=drive-1';
 import {emptyFilters,readPreferences,savePreferences,sortedCars} from './showroom-preferences.mjs';
 const $=id=>document.getElementById(id), blank=emptyFilters;
 let preferenceStorage;try{preferenceStorage=window.sessionStorage}catch{}

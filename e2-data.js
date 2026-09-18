@@ -1,4 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm';
+import {resolvePhotoURLs} from './photo-urls.mjs?v=drive-1';
 
 export const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const rm = (n, digits = 0) => 'RM' + Number(n).toLocaleString('en-MY', {minimumFractionDigits:digits,maximumFractionDigits:digits});
@@ -31,9 +32,19 @@ export async function getVehicles({staff = false, id = null} = {}) {
   return rows;
 }
 export async function photoURLs(photos) {
-  if (!photos.length) return [];
-  const data = check(await db.storage.from('vehicle-photos').createSignedUrls(photos.map(p=>p.path),300));
-  return data.map((item,i)=>({...photos[i],url:item.signedUrl || null}));
+  return resolvePhotoURLs(photos,{
+    uploaded:async items=>check(await db.storage.from('vehicle-photos').createSignedUrls(items.map(p=>p.path),300)),
+    drive:async ids=>(await drivePhotoRequest({action:'urls',ids})).photos
+  });
+}
+export async function drivePhotoRequest(body) {
+  const result=await db.functions.invoke('e2-drive-photos',{body});
+  if(result.error) {
+    let details;try{details=await result.error.context?.json()}catch{}
+    throw new Error(details?.error||'Google Drive is not connected or is temporarily unavailable. Uploaded photos still work.');
+  }
+  if(result.data?.error)throw new Error(result.data.error);
+  return result.data;
 }
 export async function coverURL(car) { return car.photos.length ? (await photoURLs(car.photos.slice(0,1)))[0].url : null; }
 export async function compressPhoto(file) {

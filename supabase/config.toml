@@ -3,3 +3,8 @@ verify_jwt = true
 
 [functions.e2-guest-intake]
 verify_jwt = false
+
+# Public image tickets and public listing URLs are checked in the handler.
+# Management actions independently verify Auth users and active admin membership.
+[functions.e2-drive-photos]
+verify_jwt = false

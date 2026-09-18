@@ -1,12 +1,19 @@
 import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
+import {setupDrivePhotoPicker} from './drive-photo-picker.mjs?v=drive-1';
 import {setupYearSpecSelect} from './year-spec-select.mjs?v=verified-spec-batch-2';
 import {setupYearReference} from './model-year-reference.mjs?v=verified-spec-batch-2';
-import {db,configured,check,esc,rm,mileageText,getVehicles,coverURL,photoURLs,compressPhoto,friendlyError} from './e2-data.js?v=customer-1';
+import {db,configured,check,esc,rm,mileageText,getVehicles,coverURL,photoURLs,compressPhoto,friendlyError} from './e2-data.js?v=drive-1';
 const MAX_PHOTOS=30;
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');
 const canManageStock=()=>['super_admin','admin'].includes(role);
 const roleLabels={super_admin:'Super Admin',admin:'Admin',office_admin:'Office Admin',sales:'Salesman · view only',account:'Account · public stock only',customer:'Customer · public stock only'};
 let cars=[], current=null, role=null, busy=false, dirty=false, recovery=false, authEpoch=0;
+const drivePicker=setupDrivePhotoPicker({
+  getCurrent:()=>current,
+  canEdit:()=>!busy&&!dirty&&canManageStock()&&current?.publication==='draft'&&current.photos.length<MAX_PHOTOS,
+  setBusy,
+  onSaved:syncCurrent
+});
 // BMW model labels supplied by E2, 2026-09-16. Models only; specifications remain separately entered.
 const bmwModels=["1 M","116i","118i","120i","125i","130i","135i","2002","218i","220i","235i","316i","318Ci","318i","320Ci","320d","320d GT","320i","323Ci","323i","325Ci","325d","325i","328Ci","328i","328i GT","330Ci","330e","330i","330Li","335Ci","335i","340i","420i","428i","428i Gran Coupe","430i","440i","435i","520d","520i","523d","523i","525d","525i","528i","530d","530e","530i","535i","540i","545i","550i","630Ci","630i","635CSi","640Ci","640i","640i Gran Coupe","645Ci","650Ci","650i","728i","730i","730Ld","730Li","735i","735iL","740i","740Le","740Li","745Li","750e","750i","750Li","760Li","840D","840i","850Ci","850i","ActiveHybrid 3","ActiveHybrid 5","ActiveHybrid 7 L","Alpina B3","E3","i3","i4","i5","i7","i8","iX","iX1","iX2","iX3","M2","M3","M4","M5","M6","M6 Gran Coupe","M8","M140i","X1","X2","X3","X4","X4 M","X5","X5 M","X6","X6 M","XM","X7","Z3","Z4","Z4 coupe","Z4 M"];
 const subaruModels=["1600","BRZ","Crosstrek","Dias Wagon","Domingo","Exiga","FORESTER","Impreza","Legacy","Levorg","Outback","WRX","XV"];
@@ -28,7 +35,7 @@ const yearReference=setupYearReference({form,identity});
 const yearSpecSelect=setupYearSpecSelect({form,identity,inventory:()=>cars,current:()=>current});
 function message(id,text,error=false){$(id).textContent=text;$(id).classList.toggle('error',error)}
 function editorError(error){message('editorMessage',friendlyError(error),true)}
-function setBusy(state){busy=state;fields.disabled=state||current?.publication==='published';$('saveVehicle').disabled=fields.disabled;$('closeEditor').disabled=state;$('publishVehicle').disabled=state||!current||dirty||!current.photos.length;$('photoInput').disabled=state||dirty||!current||current.publication==='published'||current.photos.length>=MAX_PHOTOS;document.querySelectorAll('#photos button').forEach(b=>b.disabled=state||dirty||current?.publication==='published'||b.dataset.boundary==='true');}
+function setBusy(state){busy=state;fields.disabled=state||current?.publication==='published';$('saveVehicle').disabled=fields.disabled;$('closeEditor').disabled=state;$('publishVehicle').disabled=state||!current||dirty||!current.photos.length;$('photoInput').disabled=state||dirty||!current||current.publication==='published'||current.photos.length>=MAX_PHOTOS;document.querySelectorAll('#photos button').forEach(b=>b.disabled=state||dirty||current?.publication==='published'||b.dataset.boundary==='true');drivePicker.update();}
 function selectOptions(name,choices,selected=''){
   const select=form.elements.namedItem(name), manual=form.elements.namedItem(name+'Manual');
   const items=[...new Set(choices.filter(Boolean))].sort();
@@ -61,7 +68,7 @@ function renderStock(){
 async function renderPhotos(){
   const id=current?.id;const photos=current?await photoURLs(current.photos):[];
   if(current?.id!==id)return;
-  $('photos').innerHTML=photos.map((p,i)=>'<div data-photo-id="'+p.id+'">'+(p.url?'<img src="'+esc(p.url)+'" alt="Vehicle photo '+(i+1)+'">':'<div class="noPhoto">Photo unavailable</div>')+'<small>'+(i===0?'COVER PHOTO':'PHOTO '+(i+1))+'</small>'+(current.publication==='draft'?'<button type="button" data-remove="'+p.id+'">Remove photo '+(i+1)+'</button>':'')+'</div>').join('');setBusy(busy);
+  $('photos').innerHTML=photos.map((p,i)=>'<div data-photo-id="'+p.id+'">'+(p.url?'<img src="'+esc(p.url)+'" alt="Vehicle photo '+(i+1)+'">':'<div class="noPhoto">Photo unavailable</div>')+'<small>'+(i===0?'COVER PHOTO':'PHOTO '+(i+1))+' · '+(p.source==='drive'?'GOOGLE DRIVE':'UPLOADED')+'</small>'+(current.publication==='draft'?'<button type="button" data-remove="'+p.id+'">Remove photo '+(i+1)+'</button>':'')+'</div>').join('');setBusy(busy);
   document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>removePhoto(b.dataset.remove));
   if(current?.publication==='draft')document.querySelectorAll('#photos>div').forEach((node,i)=>{if(!i)return;const button=document.createElement('button');button.type='button';button.textContent='Set as cover';button.disabled=busy||dirty;button.onclick=()=>setCover(photos[i].id);node.append(button)});
   if(current?.publication==='draft')document.querySelectorAll('#photos>div').forEach((node,i)=>{
@@ -79,6 +86,7 @@ async function renderPhotos(){
 }
 function populate(car){
   form.reset();current=car;dirty=false;
+  drivePicker.reset();
   selectOptions('brand',choices('brand'),car?.brand||'');selectOptions('model',choices('model'),car?.model||'');
   form.elements.namedItem('model').disabled=!car;form.elements.namedItem('variant').disabled=!car;
   for(const name of ['plate','year','engine_litres','transmission','fuel_type','mileage','price','body_type','stock_status','description'])if(car)form.elements.namedItem(name).value=car[name]??'';
@@ -133,8 +141,8 @@ async function removePhoto(id){
   try{
     const removed=check(await db.from('vehicle_photos').delete().eq('id',id).select());
     if(!removed.length)throw new Error('Photo could not be removed. Refresh and check your access.');
-    const cleanup=await db.storage.from('vehicle-photos').remove([photo.path]);await syncCurrent();
-    message('editorMessage',cleanup.error?'Photo removed from vehicle. Stored-file cleanup needs a retry from the storage dashboard.':'Photo removed.');
+    const cleanup=photo.source==='drive'?{}:await db.storage.from('vehicle-photos').remove([photo.path]);await syncCurrent();
+    message('editorMessage',photo.source==='drive'?'Photo link removed. The original remains in Google Drive.':cleanup.error?'Photo removed from vehicle. Stored-file cleanup needs a retry from the storage dashboard.':'Photo removed.');
   }catch(error){editorError(error)}finally{setBusy(false)}
 }
 async function setCover(id){

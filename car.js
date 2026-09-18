@@ -1,7 +1,7 @@
 import {viewVehicle} from './advertising.js?v=1';
 import {publicContact,enquiryURL,vehicleShareURL,vehiclePageURL,withVehicleLink} from './referral.js?v=car-share-1';
 import {setupCarSharing} from './car-share.js?v=optional-spec-1';
-import {db,check,esc,rm,mileageText,getVehicles,photoURLs,coverURL,friendlyError} from './e2-data.js';
+import {db,check,esc,rm,mileageText,getVehicles,photoURLs,coverURL,friendlyError} from './e2-data.js?v=drive-1';
 const $=id=>document.getElementById(id);
 (async()=>{
 try {
