@@ -2,7 +2,14 @@ import {normalizePlate,uniquePhotos} from '../e2-drive-photos/core.mjs';
 import {catalog} from './catalog.mjs';
 
 export const MASTERLIST='1J6chzBi0limhdzc0wGtS9HX1lzxjYdS8';
-export const VERSION=2;
+export const VERSION=4;
+// Only explicit slash-separated registrations are aliases; never fuzzy-match a plate.
+export function plateAliases(raw) {
+  const parts=String(raw).split('/').map(p=>p.trim());
+  if(!parts.length||parts.some(p=>!p||!/^[A-Za-z0-9\s-]+$/.test(p)))return [];
+  const aliases=[...new Set(parts.map(normalizePlate))];
+  return aliases.every(p=>/^[A-Z0-9]{2,20}$/.test(p)&&/[A-Z]/.test(p)&&/\d/.test(p))?aliases:[];
+}
 const months=[['JAN','JANUARY'],['FEB','FEBRUARY'],['MAR','MARCH'],['APR','APRIL'],['MAY'],['JUN','JUNE'],['JUL','JULY'],['AUG','AUGUST'],['SEP','SEPT','SEPTEMBER'],['OCT','OCTOBER'],['NOV','NOVEMBER'],['DEC','DECEMBER']];
 export function period(now=new Date()) {
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit'}).formatToParts(now);
@@ -56,16 +63,15 @@ export function sourceRows(workbook,when,wanted) {
       if(year>when.year)throw Error('Worksheet DATE IN has a future year. Confirm the source year.');
       if(year===when.year)evidence=true;
     }
-    let plate;try{
-      const raw=text(row.getCell(columns.plate).value);
-      if(!/^[A-Za-z0-9\s-]+$/.test(raw))continue;
-      plate=normalizePlate(raw);
+    let aliases;try{
+      aliases=plateAliases(text(row.getCell(columns.plate).value));
     }catch{continue}
-    if(!wanted.has(plate))continue;
-    const values={plate,row:n,sheet:sheet.name};
+    const matching=aliases.filter(p=>wanted.has(p));
+    if(!matching.length)continue;
+    const values={plate_aliases:aliases,row:n,sheet:sheet.name};
     try{for(const field of ['brand','model','year','engine','transmission','price'])values[field]=text(row.getCell(columns[field]).value)}
     catch(error){values.error=error.message}
-    rows.set(plate,[...(rows.get(plate)||[]),values]);
+    for(const plate of matching)rows.set(plate,[...(rows.get(plate)||[]),{...values,plate}]);
   }
   if(!evidence)throw Error('Cannot verify that the current-month worksheet belongs to this year.');
   return rows;
@@ -95,17 +101,15 @@ function numeric(value,label) {
 export function makePlan(folder,rows,files,when) {
   const plate=folderPlate(folder.name);
   if(!plate)throw Error('Folder must begin with one exact registration number.');
-  if(['W2133A','FC9555'].includes(plate))throw Error('Previously reported plate/model conflict requires manual resolution.');
+  if(plate==='W2133A')throw Error('Previously reported plate conflict requires manual resolution.');
   if(!rows||rows.length!==1)throw Error(rows?.length?'Duplicate plate rows in MASTERLIST.':'No exact plate match in the current month.');
   const row=rows[0];if(row.error)throw Error(row.error);
-  const identity=modelIdentity(row.brand,row.model);
-  const folderModel=folder.name.trim().replace(/^[^\s_()[\]]+[\s_()[\]]*/, '').trim();
-  if(folderModel) {
-    // A mismatching folder label cannot silently become the spreadsheet's model.
-    const clean=folderModel.replace(new RegExp('^'+identity.brand.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s+','i'),'');
-    let other;try{other=modelIdentity(identity.brand,clean)}catch{throw Error('Folder model label needs confirmation.')}
-    if(key(other.model)!==key(identity.model))throw Error('Folder and MASTERLIST models conflict.');
-  }
+  // Identity is matched by registration only. The sheet supplies draft sale fields.
+  // Unknown catalog names retain the source wording for later human review.
+  if(!row.brand||!row.model)throw Error('Source brand/model is empty.');
+  let identity;try{identity=modelIdentity(row.brand,row.model)}catch{identity={brand:row.brand,model:row.model}}
+  const aliases=row.plate_aliases||[plate];
+  if(!aliases.includes(plate))throw Error('No exact plate match in the current month.');
   const year=numeric(row.year,'Year'),engine=numeric(row.engine,'Engine capacity'),price=numeric(row.price,'MUDAH PRICE');
   if(!Number.isInteger(year)||year<1900||year>when.year+1)throw Error('Vehicle year is outside the accepted range.');
   // Masterlist CC is currently expressed in litres. Do not silently round exact CC or mixed units.
@@ -117,10 +121,13 @@ export function makePlan(folder,rows,files,when) {
   const {photos,skipped}=uniquePhotos(sorted,folder.id);
   if(!photos.length)throw Error('No supported accessible photo files.');
   if(photos.length>30)throw Error('More than 30 unique photos; select the album manually.');
-  const review=['Photos have not been visually inspected. First filename is the cover; review before publishing.',
+  const review=['Matched by registration only. Review model and all vehicle details before publishing.',
+    'Source registration(s): '+aliases.join(' / '),
+    'Drive folder: '+folder.name,
+    'Photos have not been visually inspected. First filename is the cover; review before publishing.',
     'Fuel type PETROL and stock status Available are provisional. Confirm before publishing.',
     'Mileage is unknown. Spec is blank; verify source model wording: '+row.model];
   return {vehicle:{plate,...identity,variant:'',year,engine_litres:engine,transmission,fuel_type:'PETROL',price},
-    sheet:row.sheet,row:row.row,review,skipped,
+    plate_aliases:aliases,sheet:row.sheet,row:row.row,review,skipped,
     items:photos.map(p=>({folder_id:folder.id,file_id:p.id,checksum:p.md5Checksum,mime_type:p.mimeType,size_bytes:Number(p.size)}))};
 }

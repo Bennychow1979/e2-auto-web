@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import ExcelJS from 'exceljs';
 import {PGlite} from '@electric-sql/pglite';
-import {MASTERLIST,period,selectSheet,sourceRows,makePlan,modelIdentity} from '../functions/e2-vehicle-import/plan.mjs';
+import {MASTERLIST,period,selectSheet,sourceRows,makePlan,modelIdentity,plateAliases} from '../functions/e2-vehicle-import/plan.mjs';
 import {runImport} from '../functions/e2-vehicle-import/run.mjs';
 const when={year:2026,month:9},now=new Date('2026-09-21T01:00:00Z'),actor='00000000-0000-4000-8000-000000000001',root='root_1234567890';
 const folder={id:'folder_1234567890',name:'TCK8286 BMW 218I',mimeType:'application/vnd.google-apps.folder',parents:[root]};
@@ -27,6 +27,20 @@ assert.throws(()=>modelIdentity('BMW','X30'),/confirmation/);
 assert.equal(modelIdentity('BMW','X3 2.0 2021').model,'X3');
 assert.equal(modelIdentity('MERCEDES-BENZ','GLC250 4MATIC AMG LINE').model,'GLC250');
 assert.equal(modelIdentity('MAZDA','Cx-5 2.5 tc high 2019').model,'CX-5');
+const bezzaRow={plate:'RAL5472',brand:'PERODUA',model:'BEZZA AV',year:'2022',engine:'1.3',transmission:'A',price:'33990',row:76,sheet:'SEPT'};
+const bezzaFolder={...folder,name:'RAL5472 PERODUA BEZZA 1.3AV 2022'};
+assert.equal(makePlan(bezzaFolder,[bezzaRow],[photo],when).vehicle.model,'Bezza AV');
+assert.equal(makePlan(bezzaFolder,[{...bezzaRow,model:'BEZZA X'}],[photo],when).vehicle.model,'Bezza X');
+assert.deepEqual(plateAliases('JMK882 / JC5501J'),['JMK882','JC5501J']);
+assert.deepEqual(plateAliases('JC5501J / '),[]);
+const aliasesBook=fixture();aliasesBook.getWorksheet('SEPT').getCell('B2').value='JMK882/JC5501J';
+const aliasRows=sourceRows(aliasesBook,when,new Set(['JC5501J','JMK882','JC5501']));
+assert.equal(aliasRows.size,2,'Only complete explicit registrations match');
+assert.deepEqual(aliasRows.get('JC5501J')[0].plate_aliases,['JMK882','JC5501J']);
+const aliasPlan=makePlan({...folder,name:'JC5501J folder wording differs'},aliasRows.get('JC5501J'),[photo],when);
+assert.equal(aliasPlan.vehicle.plate,'JC5501J');
+assert.equal(makePlan({...folder,name:'FC9555 KIA CERATO YD'},[{...bezzaRow,plate:'FC9555',brand:'KIA',model:'CERATO K3'}],[photo],when).vehicle.plate,'FC9555');
+assert.equal(makePlan(folder,[{...rows.get('TCK8286')[0],model:'Unlisted model'}],[photo],when).vehicle.model,'Unlisted model');
 assert.throws(()=>selectSheet(book,{year:2026,month:10}),/current-month/);
 book.addWorksheet('SEPTEMBER');assert.throws(()=>selectSheet(book,when),/Exactly one/);book.removeWorksheet('SEPTEMBER');
 for(const [column,value,error] of [[1,0,/PRICE/],[1,{formula:'1+1',result:81990},/Formula/],[5,'2021/2022',/Year/],[6,1498,/units/],[7,'?',/Transmission/]]) {
@@ -36,7 +50,7 @@ for(const [column,value,error] of [[1,0,/PRICE/],[1,{formula:'1+1',result:81990}
 const old=fixture();old.getWorksheet('SEPT').getCell('H2').value=new Date('2025-09-04');assert.throws(()=>sourceRows(old,when,new Set()),/this year/);
 assert.throws(()=>makePlan({...folder,name:'W2133A CIVIC'},[],[photo],when),/conflict/);
 assert.throws(()=>makePlan(folder,[...rows.get('TCK8286'),...rows.get('TCK8286')],[photo],when),/Duplicate/);
-assert.throws(()=>makePlan({...folder,name:'TCK8286 BMW X3'},rows.get('TCK8286'),[photo],when),/conflict/);
+assert.equal(makePlan({...folder,name:'TCK8286 BMW X3'},rows.get('TCK8286'),[photo],when).vehicle.model,'218i');
 assert.throws(()=>makePlan(folder,rows.get('TCK8286'),Array.from({length:31},(_,n)=>({...photo,id:photo.id+n,md5Checksum:n.toString(16).padStart(32,'0')})),when),/30/);
 
 // Exercise actual SQL constraints, private visibility, deduplication and atomic rollback.
@@ -50,7 +64,7 @@ alter table storage.objects enable row level security;
 grant usage on schema public,auth,storage to anon,authenticated,service_role;
 grant select,insert,update,delete on storage.objects to anon,authenticated;
 grant execute on function auth.uid() to anon,authenticated;`);
-for(const m of ['202609120001_inventory','202609130002_photo_order','202609130003_photo_limit_30','202609130004_super_admin','202609170013_optional_vehicle_spec','202609180001_drive_photos','202609210001_vehicle_import'])await db.exec(readFileSync('supabase/migrations/'+m+'.sql','utf8'));
+for(const m of ['202609120001_inventory','202609130002_photo_order','202609130003_photo_limit_30','202609130004_super_admin','202609170013_optional_vehicle_spec','202609180001_drive_photos','202609210001_vehicle_import','202609210003_plate_only_import'])await db.exec(readFileSync('supabase/migrations/'+m+'.sql','utf8'));
 await db.query('insert into auth.users(id) values($1)',[actor]);await db.query("insert into public.staff_memberships(user_id,role) values($1,'admin')",[actor]);
 async function as(role){await db.exec('reset role;set role '+role)}
 async function commit(p=plan,f=folder.id,a=actor){return (await db.query('select public.e2_import_drive_vehicle($1,$2,$3,$4,$5) result',[a,f,'stamp','source',JSON.stringify(p)])).rows[0].result}
@@ -58,18 +72,29 @@ await as('authenticated');await assert.rejects(()=>commit(),/permission denied/)
 await as('service_role');await assert.rejects(()=>commit(plan,folder.id,'00000000-0000-4000-8000-000000000002'),/Admin/);
 const saved=await commit();assert.equal(saved.status,'created');
 assert.equal((await commit()).status,'existing');
+const aliasDuplicate=structuredClone(plan);aliasDuplicate.vehicle.plate='OLD8286';aliasDuplicate.plate_aliases=['OLD8286','TCK8286'];
+aliasDuplicate.items.forEach(i=>i.folder_id=folder.id+'alias');
+assert.equal((await commit(aliasDuplicate,folder.id+'alias')).status,'existing','Either source plate prevents duplicate inventory');
 const state=(await db.query('select publication,price,mileage,mileage_confirmed,variant from public.vehicles')).rows[0];
 assert.equal(state.publication,'draft');assert.equal(Number(state.price),81990);assert.equal(state.mileage,null);assert.equal(state.mileage_confirmed,false);assert.equal(state.variant,'');
 assert.equal((await db.query('select count(*)::int n from public.vehicle_photos')).rows[0].n,2);
 await db.query("update public.vehicle_import_jobs set status='blocked' where folder_id=$1",[folder.id]);
 assert.equal((await db.query('select status from public.vehicle_import_jobs')).rows[0].status,'completed');
-const bad=structuredClone(plan);bad.vehicle.plate='ABC1234';bad.items[1].mime_type='text/html';
+const bad=structuredClone(plan);bad.vehicle.plate='ABC1234';bad.plate_aliases=['ABC1234'];bad.items[1].mime_type='text/html';
 await assert.rejects(()=>commit(bad,folder.id+'new'),/folder mismatch/);
 bad.items.forEach(i=>i.folder_id=folder.id+'new');await assert.rejects(()=>commit(bad,folder.id+'new'),/check constraint/);
 assert.equal((await db.query('select count(*)::int n from public.vehicles')).rows[0].n,1,'Invalid photo rolls back vehicle insertion');
 await as('postgres');await db.exec("update public.vehicles set plate='TC-K8286'");
 await as('service_role');const duplicate=structuredClone(plan);duplicate.items.forEach(i=>i.folder_id=folder.id+'again');
 assert.equal((await commit(duplicate,folder.id+'again')).status,'existing','Dedup normalizes punctuation across all inventory');
+await as('postgres');await db.exec("update public.vehicles set plate='CHANGED999'");
+await as('service_role');assert.equal((await commit(aliasDuplicate,folder.id+'alias')).status,'existing','Stored source aliases prevent duplicates even after a plate edit');
+const newAlias=structuredClone(aliasPlan);newAlias.items.forEach(i=>i.folder_id=folder.id+'newalias');
+assert.equal((await commit(newAlias,folder.id+'newalias')).status,'created');
+const oldAlias=structuredClone(newAlias);oldAlias.vehicle.plate='JMK882';oldAlias.items.forEach(i=>i.folder_id=folder.id+'oldalias');
+assert.equal((await commit(oldAlias,folder.id+'oldalias')).status,'existing','Both aliases in separate Drive folders create only one draft');
+const fc=structuredClone(plan);fc.vehicle.plate='FC9555';fc.plate_aliases=['FC9555'];fc.items.forEach(i=>i.folder_id=folder.id+'fc');
+assert.equal((await commit(fc,folder.id+'fc')).status,'created','Former model-only block no longer prevents a private draft');
 await as('anon');assert.equal((await db.query('select count(*)::int n from public.vehicles')).rows[0].n,0);
 await assert.rejects(()=>db.query('select * from public.vehicle_import_jobs'),/permission denied/);
 await as('postgres');await db.close();
