@@ -2,7 +2,7 @@ import {normalizePlate,uniquePhotos} from '../e2-drive-photos/core.mjs';
 import {catalog} from './catalog.mjs';
 
 export const MASTERLIST='1J6chzBi0limhdzc0wGtS9HX1lzxjYdS8';
-export const VERSION=1;
+export const VERSION=2;
 const months=[['JAN','JANUARY'],['FEB','FEBRUARY'],['MAR','MARCH'],['APR','APRIL'],['MAY'],['JUN','JUNE'],['JUL','JULY'],['AUG','AUGUST'],['SEP','SEPT','SEPTEMBER'],['OCT','OCTOBER'],['NOV','NOVEMBER'],['DEC','DECEMBER']];
 export function period(now=new Date()) {
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit'}).formatToParts(now);
@@ -78,15 +78,14 @@ export function folderPlate(name) {
 export function modelIdentity(brand,raw) {
   const group=Object.entries(catalog).find(([b])=>key(b)===key(brand));
   if(!group)throw Error('Brand needs manual confirmation.');
-  const name=key(raw);
   // Longest known model prefix. Suffix stays private for review; never inferred as a spec.
   const matches=group[1].filter(m=>{
     const pattern=key(m).split('').join('[^A-Z0-9]*');
     return new RegExp('^'+pattern+'(?=$|[^A-Z0-9])','i').test(raw);
   }).sort((a,b)=>key(b).length-key(a).length);
   if(!matches.length)throw Error('Model needs manual confirmation.');
-  const model=matches[0],suffix=name.slice(key(model).length);
-  if(suffix&&/^\d/.test(suffix))throw Error('Model number does not match the catalog.');
+  // The original-text boundary above rejects X30 for X3, while allowing X3 2.0 or GLC250 4MATIC.
+  const model=matches[0];
   return {brand:group[0],model};
 }
 function numeric(value,label) {

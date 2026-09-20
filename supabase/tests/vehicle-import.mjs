@@ -24,6 +24,9 @@ assert.equal(plan.items.length,2);assert.equal(plan.items[0].file_id,photo.id);a
 assert.equal(plan.vehicle.model,'218i');assert.equal(plan.vehicle.variant,'');
 assert.deepEqual(modelIdentity('MAZDA','CX-5 SKYACTIV-G High TC'),{brand:'MAZDA',model:'CX-5'});
 assert.throws(()=>modelIdentity('BMW','X30'),/confirmation/);
+assert.equal(modelIdentity('BMW','X3 2.0 2021').model,'X3');
+assert.equal(modelIdentity('MERCEDES-BENZ','GLC250 4MATIC AMG LINE').model,'GLC250');
+assert.equal(modelIdentity('MAZDA','Cx-5 2.5 tc high 2019').model,'CX-5');
 assert.throws(()=>selectSheet(book,{year:2026,month:10}),/current-month/);
 book.addWorksheet('SEPTEMBER');assert.throws(()=>selectSheet(book,when),/Exactly one/);book.removeWorksheet('SEPTEMBER');
 for(const [column,value,error] of [[1,0,/PRICE/],[1,{formula:'1+1',result:81990},/Formula/],[5,'2021/2022',/Year/],[6,1498,/units/],[7,'?',/Transmission/]]) {
