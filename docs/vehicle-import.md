@@ -1,6 +1,6 @@
 # Programmatic vehicle import
 
-Status: implemented locally, activation disabled. No live import or deployment has occurred.
+Status (2026-09-21): deployed and enabled after explicit single-file MASTERLIST Viewer approval. Live implementation is pinned to release `8e41c04d04bcaed8f4a921043e270156eaa24b97`. First import created 11 private drafts and 185 Drive links. Independent SQL verification confirmed 18 original published vehicles remained published. A repeated run created nothing and reported no changed issues.
 
 The admin portal's **Import new Drive vehicles** button calls `e2-vehicle-import` in batches of up to three cars. The function compares Drive metadata and all inventory plates, reads the current Malaysia-month MASTERLIST worksheet only when candidate fingerprints change, and creates private drafts with Drive photo links. The original Upload photos and Link Google Drive controls remain available.
 
@@ -24,7 +24,9 @@ The admin portal's **Import new Drive vehicles** button calls `e2-vehicle-import
 3. Apply migration `202609210001_vehicle_import.sql` after the optional-spec and Drive-photo migrations. Deploy `e2-vehicle-import` (gateway JWT off; handler verifies user and active admin). Update the existing Drive adapter deployment only if needed for shared-module consistency.
 4. Run an authenticated connection check and a controlled first batch against actual source records. The activation environment variable `E2_VEHICLE_IMPORT_ENABLED` must be `true` for imports; leave unset until ready. Reuse existing server-side Drive credentials; never copy secrets to the client or local files.
 5. Deploy the portal UI and call the program through the admin button. Verify new drafts and compact receipts. No publishing is part of this rollout.
-6. The daily heartbeat should invoke only this program, read its concise result and stay quiet if unchanged. It must not revert to AI photo inspection or browsing every spreadsheet row. A heartbeat still has its own model/context cost; this implementation does not create a separate zero-AI scheduler.
+6. Program-only scheduling uses Supabase pg_cron and pg_net. After migration `202609210002_vehicle_import_schedule.sql`, deploy the updated function and run `supabase/schedule-vehicle-import.sql`. Daily job runs at 01:00 UTC (09:00 Malaysia); a database-only watchdog marks timed-out runs. Disable the Codex heartbeat after an end-to-end scheduled test succeeds. No LLM, OpenAI API, browser session or local computer is involved in recurring checks. Results appear in the private portal, not AI messages.
+
+Each scheduled batch receives an expiring single-use capability generated inside the database. Only its hash is retained in the private dispatch table. The handler verifies and consumes it through a service-only RPC; a browser or staff user cannot mint scheduled requests. The existing administrator must remain active. Cars are still committed only as private drafts through the same audited importer. Continuations are bounded, daily starts are idempotent, and all outcomes are stored in private run receipts. Existing manual import remains available. No provider credentials are copied into cron commands or GitHub.
 
 ## Verification
 

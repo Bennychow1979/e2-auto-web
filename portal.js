@@ -1,4 +1,4 @@
-import {setupVehicleImport,showImportReview} from './vehicle-import.mjs?v=vehicle-import-1';
+import {setupVehicleImport,showImportReview} from './vehicle-import.mjs?v=vehicle-schedule-1';
 import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
 import {setupDrivePhotoPicker} from './drive-photo-picker.mjs?v=drive-1';
 import {setupYearSpecSelect} from './year-spec-select.mjs?v=verified-spec-batch-2';
