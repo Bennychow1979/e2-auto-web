@@ -1,3 +1,4 @@
+import {setupVehicleImport,showImportReview} from './vehicle-import.mjs?v=vehicle-import-1';
 import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
 import {setupDrivePhotoPicker} from './drive-photo-picker.mjs?v=drive-1';
 import {setupYearSpecSelect} from './year-spec-select.mjs?v=verified-spec-batch-2';
@@ -8,6 +9,7 @@ const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicl
 const canManageStock=()=>['super_admin','admin'].includes(role);
 const roleLabels={super_admin:'Super Admin',admin:'Admin',office_admin:'Office Admin',sales:'Salesman · view only',account:'Account · public stock only',customer:'Customer · public stock only'};
 let cars=[], current=null, role=null, busy=false, dirty=false, recovery=false, authEpoch=0;
+const vehicleImporter=setupVehicleImport({db,canManage:canManageStock,onFinished:refresh});
 const drivePicker=setupDrivePhotoPicker({
   getCurrent:()=>current,
   canEdit:()=>!busy&&!dirty&&canManageStock()&&current?.publication==='draft'&&current.photos.length<MAX_PHOTOS,
@@ -85,7 +87,7 @@ async function renderPhotos(){
   setBusy(busy);
 }
 function populate(car){
-  form.reset();current=car;dirty=false;
+  form.reset();current=car;dirty=false;$('importReview').hidden=true;$('importReview').textContent='';
   drivePicker.reset();
   selectOptions('brand',choices('brand'),car?.brand||'');selectOptions('model',choices('model'),car?.model||'');
   form.elements.namedItem('model').disabled=!car;form.elements.namedItem('variant').disabled=!car;
@@ -98,7 +100,7 @@ function populate(car){
   if(car)$('previewVehicle').href='car.html?id='+car.id+'&preview=1';else $('previewVehicle').removeAttribute('href');
   $('photos').replaceChildren();yearSpecSelect.refresh({selected:car?.variant||'',engine:car?.engine_litres??'',reset:true});setBusy(false);yearReference.refresh();
 }
-async function openEditor(car=null){populate(car);message('editorMessage','');$('vehicleEditor').showModal();try{await renderPhotos()}catch(error){editorError(error)}}
+async function openEditor(car=null){populate(car);message('editorMessage','');$('vehicleEditor').showModal();try{await showImportReview(db,car);await renderPhotos()}catch(error){editorError(error)}}
 function closeEditor(){if(busy)return;if(dirty&&!confirm('Discard unsaved vehicle details? Uploaded photos are already saved.'))return;$('vehicleEditor').close();current=null;dirty=false}
 $('closeEditor').onclick=closeEditor;$('vehicleEditor').addEventListener('cancel',e=>{e.preventDefault();closeEditor()});
 $('addVehicle').onclick=()=>openEditor();$('stockSearch').oninput=renderStock;$('refreshStock').onclick=refresh;
@@ -189,7 +191,7 @@ async function showSession(session){
   try{
     const membership=check(await db.from('staff_memberships').select('role,active').eq('user_id',session.user.id).maybeSingle());if(epoch!==authEpoch)return;
     if(!membership?.active||!Object.hasOwn(roleLabels,membership.role)){$('entry').hidden=false;$('workspace').hidden=true;await db.auth.signOut();throw new Error('This account has no inventory access. Ask the E2 administrator to activate your staff membership.')}
-    role=membership.role;if(role==='office_admin'){location.replace('intake-workspace.html');return}$('manageLoans').hidden=!['super_admin','admin','sales'].includes(role);$('manageCustomers').hidden=!['super_admin','admin'].includes(role);$('myProfileLink').hidden=role==='customer';$('profileName').textContent=session.user.email;$('profileRole').textContent=roleLabels[role];$('manageUsers').hidden=role!=='super_admin';$('addVehicle').hidden=!canManageStock();$('entry').hidden=true;$('workspace').hidden=false;await refresh();
+    role=membership.role;if(role==='office_admin'){location.replace('intake-workspace.html');return}$('manageLoans').hidden=!['super_admin','admin','sales'].includes(role);$('manageCustomers').hidden=!['super_admin','admin'].includes(role);$('myProfileLink').hidden=role==='customer';$('profileName').textContent=session.user.email;$('profileRole').textContent=roleLabels[role];$('manageUsers').hidden=role!=='super_admin';$('addVehicle').hidden=!canManageStock();vehicleImporter.update();$('entry').hidden=true;$('workspace').hidden=false;await refresh();
   }catch(error){message('authMessage',friendlyError(error),true)}
 }
 $('loginForm').onsubmit=async e=>{

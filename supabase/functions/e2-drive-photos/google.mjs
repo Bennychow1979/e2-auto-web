@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {b64,FILE_ID,MAX_BYTES,imageType} from './core.mjs';
-const fields='id,name,mimeType,parents,trashed,size,md5Checksum,capabilities(canDownload)';
+const fields='id,name,mimeType,parents,trashed,size,md5Checksum,modifiedTime,version,capabilities(canDownload)';
 export function googleDrive(credentials,fetcher=fetch) {
   let cached=null;
   async function accessToken() {
@@ -30,6 +30,16 @@ export function googleDrive(credentials,fetcher=fetch) {
     return response;
   }
   return {
+    async workbook(id,checksum) {
+      if(!FILE_ID.test(id)||!(/^[a-f0-9]{32}$/).test(checksum))throw new Error('MASTERLIST must be an XLSX file with a checksum.');
+      const response=await request('files/'+id,{alt:'media'}),limit=10*1024*1024;
+      if(Number(response.headers.get('content-length'))>limit){await response.body?.cancel();throw new Error('MASTERLIST exceeds 10 MB.')}
+      const reader=response.body.getReader(),chunks=[];let length=0;
+      try{for(;;){const {done,value}=await reader.read();if(done)break;length+=value.length;if(length>limit)throw new Error('MASTERLIST exceeds 10 MB.');chunks.push(value)}}finally{await reader.cancel()}
+      const bytes=new Uint8Array(length);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length}
+      if(createHash('md5').update(bytes).digest('hex')!==checksum)throw new Error('MASTERLIST changed while reading. Retry with the latest version.');
+      return bytes;
+    },
     async metadata(id) {
       if(!FILE_ID.test(id))throw new Error('Invalid Drive file.');
       return (await request('files/'+id,{fields})).json();

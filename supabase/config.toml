@@ -8,3 +8,7 @@ verify_jwt = false
 # Management actions independently verify Auth users and active admin membership.
 [functions.e2-drive-photos]
 verify_jwt = false
+
+# Staff Auth + active admin membership are verified in the handler.
+[functions.e2-vehicle-import]
+verify_jwt = false
