@@ -1,3 +1,4 @@
+import {setupPartnerReferral} from './partner-referral.js?v=partner-1';
 import {viewVehicle} from './advertising.js?v=1';
 import {publicContact,enquiryURL,vehicleShareURL,vehiclePageURL,withVehicleLink} from './referral.js?v=car-share-1';
 import {setupCarSharing} from './car-share.js?v=optional-spec-1';
@@ -88,6 +89,7 @@ await refreshPhotos();
 let refreshedAt=Date.now();
 window.addEventListener('focus',()=>{if(Date.now()-refreshedAt>240000){refreshedAt=Date.now();refreshPhotos().catch(error=>$('photoCount').textContent=friendlyError(error))}});
 setInterval(()=>{if(!document.hidden){refreshedAt=Date.now();refreshPhotos().catch(error=>$('photoCount').textContent=friendlyError(error))}},240000);
+if(!preview)await setupPartnerReferral(car,()=>contact);
 $('carState').hidden=true;$('carMain').hidden=false;$('carDock').hidden=false;
 if(!preview)viewVehicle(car);
 const related=(await getVehicles().catch(()=>[])).filter(c=>c.id!==car.id).slice(0,3);
