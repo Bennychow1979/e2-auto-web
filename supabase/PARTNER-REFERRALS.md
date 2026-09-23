@@ -51,7 +51,7 @@ The 30-day limit applies to the browser code, not to already locked leads. This 
 
 ## Migration and activation
 
-The migration is **prepared and tested locally, not applied to production by this change**. `partnerReferrals` remains `false`. The pull request does not publish an active referral program.
+Rollout update — 23 September 2026: the migration is installed in E2 WEB Project, all six new tables have verified RLS and restricted direct grants, and the dedicated pilot Partner account has completed password setup and real portal sign-in. The fixed-commission pilot is enabled with `partnerReferrals: true`. The 67 isolated referral checks pass. Existing customer/financial data was not used as a test fixture. The steps below remain the setup and rollback guide for subsequent environments; do not rerun the migration on E2 production.
 
 1. Confirm the target is **E2 WEB Project**, not another project. Back up using the established E2 process. Existing migrations through `202609210003` should already be installed.
 2. In the target database, first inspect `to_regclass('public.e2_partners')` and `to_regclass('public.e2_referral_leads')`: both must be null for this first-time migration. Do not re-run an applied migration.
