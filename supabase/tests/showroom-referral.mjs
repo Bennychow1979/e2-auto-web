@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {showroomLink,showroomVehicleLinks} from '../../showroom-referral.mjs';
+import {showroomLink,showroomVehicleLinks,showroomContactAction} from '../../showroom-referral.mjs';
 import {readReferral} from '../../partner-referral-core.mjs';
 const code='E29E5FFF60D9CB42CC',car='f0883187-eba5-485f-802e-ea227233c2bc';
 const values=new Map(),storage={getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v)};
@@ -17,4 +17,11 @@ const blocked={getItem(){throw Error('blocked')},setItem(){throw Error('blocked'
 assert.equal(showroomVehicleLinks({enabled:true,storage:blocked,search:'?ref='+code})(car),href(car));
 assert.equal(showroomVehicleLinks({enabled:true,search:'?ref='+code})(car),href(car));
 assert.equal(showroomVehicleLinks({enabled:true,storage:blocked,search:''})(car),'car.html?id='+car);
-console.log('Showroom referral: 11 checks passed (links, persistence, expiry, disabled flag, invalid code, blocked storage).');
+assert.equal(href.hasReferral,true);
+assert.equal(showroomVehicleLinks({enabled:false,search:'?ref='+code}).hasReferral,false);
+assert.deepEqual(showroomContactAction('viewing',true),{href:'#cars',label:'Choose a car to arrange a viewing'});
+assert.deepEqual(showroomContactAction('trade-in',true),{href:'#cars',label:'Choose a car to discuss a trade-in'});
+assert.equal(showroomContactAction('viewing',false),null);
+assert.equal(showroomContactAction('trade-in',false),null);
+assert.equal(showroomContactAction('directions',true),null);
+console.log('Showroom referral: 18 checks passed (links, persistence, expiry, blocked storage, referred contact routing, ordinary contact unchanged).');

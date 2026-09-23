@@ -1,4 +1,4 @@
-import {showroomVehicleLinks} from './showroom-referral.mjs';
+import {showroomVehicleLinks,showroomContactAction} from './showroom-referral.mjs?v=contact-1';
 import {createShowroomFlow} from './showroom-flow.js?v=flow-1';
 import {esc,rm,mileageText,getVehicles,photoURLs,friendlyError} from './e2-data.js?v=drive-1';
 import {emptyFilters,readPreferences,savePreferences,sortedCars} from './showroom-preferences.mjs';
@@ -7,6 +7,16 @@ let preferenceStorage;try{preferenceStorage=window.sessionStorage}catch{}
 const saved=readPreferences(preferenceStorage);
 let referralStorage;try{referralStorage=window.localStorage}catch{}
 const vehicleHref=showroomVehicleLinks({enabled:window.E2_CONFIG?.partnerReferrals,storage:referralStorage,search:location.search});
+for(const link of document.querySelectorAll('[data-referral-contact]')){
+  const action=showroomContactAction(link.dataset.referralContact,vehicleHref.hasReferral);
+  if(!action)continue;
+  link.href=action.href;link.removeAttribute('target');link.textContent=action.label+' ↗';
+}
+if(vehicleHref.hasReferral){
+  const note=document.createElement('p');note.className='fine';
+  note.textContent='To record your referral, choose a car and save your name and phone number on its enquiry form before contacting E2.';
+  document.querySelector('#visit .contactOptions').before(note);
+}
 let cars=[],state=saved.filters,draft={...state},sort=saved.sort;
 const advanced=['brand','model','variant','engine','yearFrom','yearTo','transmission'];
 const normalize=s=>String(s).toLowerCase().replace(/\s/g,'');
