@@ -79,5 +79,41 @@ await db.exec('reset role');await db.query("update public.intake_submissions set
 const cleanupID=(await db.query('select * from public.e2_intake_expired_files()')).rows[0].id;await db.query('select public.e2_intake_purge_expired($1)',[cleanupID]);check(await scalar('select count(*)::int from public.intake_files where id=$1',[cleanupID]),0,'Expired object-free reservation purged');await db.query('select public.e2_intake_purge_expired($1)',[fileID]);check(await scalar('select count(*)::int from public.intake_files where id=$1',[fileID]),1,'Received file cannot be purged by abandoned cleanup');
 await as(sales);await db.query('select public.e2_revoke_intake_link($1)',[link.id]);await service();await rejects('select public.e2_intake_context($1)',[link.id],'Revoked link stops new intake');await as(sales);check(await scalar('select count(*)::int from public.intake_submissions'),1,'Revoking invite preserves received application');
 await db.exec('reset role');check(await scalar("select public from storage.buckets where id='intake-documents'"),false,'Intake bucket private');check(await scalar('select count(*)::int from auth.users'),8,'Guest intake creates no Auth account');
+
+// Optional vehicle intake: exercise the production migration after the original workflow.
+await db.exec(fs.readFileSync('supabase/migrations/202609140012_office_admin.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/202609230001_optional_intake_vehicle.sql','utf8'));
+await db.query('update public.staff_memberships set active=true where user_id=$1',[admin]);
+await as(sales);const undecided=await call('select * from public.e2_create_intake_link(null)');
+check(undecided.vehicle_id,null,'Undecided invitation stores no placeholder vehicle');
+check((await call('select * from public.e2_create_intake_link(null)')).id,undecided.id,'Undecided invitation reuse is null-safe');
+await service();const optionalContext=await scalar('select public.e2_intake_context($1)',[undecided.id]);
+check(optionalContext.vehicle.id,null,'Guest context supports undecided vehicle');
+check(optionalContext.vehicle.price,null,'Unknown price is not presented as zero');
+const optionalNonce=crypto.randomUUID(),optionalApp=await scalar('select public.e2_intake_begin($1,$2,$3)',[undecided.id,optionalNonce,'worker']);
+await as(sales);check(await scalar('select count(*)::int from public.intake_submissions where id=$1',[optionalApp.id]),0,'Undecided draft is private');
+await service();await rejects('select public.e2_intake_submit($1,$2,$3,false,true,true)',[optionalApp.id,optionalNonce,JSON.stringify(details)],'Undecided enquiry still requires consent');
+check((await scalar('select public.e2_intake_submit($1,$2,$3,true,true,true)',[optionalApp.id,optionalNonce,JSON.stringify(details)])).received,true,'Customer submits complete details without a vehicle');
+const assign=(vehicle=cars[1],rev=2)=>db.query('select public.e2_intake_assign_vehicle($1,$2,$3)',[optionalApp.id,vehicle,rev]);
+for(const id of [null,customer,account,admin,other,inactive]){await as(id);await denied(()=>assign(),'Unauthorized user cannot assign vehicle')}
+await as(sales);await rejects('select public.e2_intake_handoff($1,$2,$3,2)',[optionalApp.id,admin,'Checked'],'Handover requires selected vehicle');
+await denied(()=>assign(cars[11]),'Unpublished vehicle cannot be assigned');
+await denied(()=>assign(null),'Null vehicle cannot be assigned');
+await denied(()=>assign(cars[1],1),'Stale assignment is rejected');
+await db.exec('reset role');await db.query("update public.vehicles set publication='draft' where id=$1",[cars[2]]);await db.query("update public.vehicles set stock_status='Sold' where id=$1",[cars[2]]);await as(sales);
+await denied(()=>assign(cars[2]),'Sold vehicle cannot be assigned');
+const before=await scalar('select details from public.intake_submissions where id=$1',[optionalApp.id]);
+await assign();
+check(await scalar('select vehicle_id from public.intake_submissions where id=$1',[optionalApp.id]),cars[1],'Assigned salesperson selects vehicle');
+check(await scalar('select details from public.intake_submissions where id=$1',[optionalApp.id]),before,'Vehicle selection preserves customer answers');
+check(await scalar('select revision::int from public.intake_submissions where id=$1',[optionalApp.id]),3,'Assignment increments revision');
+check(await scalar("select count(*)::int from public.intake_events where submission_id=$1 and actor=$2 and event='Vehicle selected'",[optionalApp.id,sales]),1,'Vehicle selection records actor and audit event');
+await denied(()=>assign(cars[3],3),'Assignment cannot silently replace a selected vehicle');
+await db.query('select public.e2_intake_handoff($1,$2,$3,3)',[optionalApp.id,admin,'Vehicle and preferences confirmed']);
+await as(admin);check(await scalar('select vehicle_id from public.intake_submissions where id=$1',[optionalApp.id]),cars[1],'Office receives the selected vehicle');
+await service();check((await scalar('select public.e2_intake_context($1)',[undecided.id])).vehicle.id,null,'Shared invite stays undecided for later customers');
+await as(sales);await db.query('select public.e2_revoke_intake_link($1)',[undecided.id]);await service();await rejects('select public.e2_intake_context($1)',[undecided.id],'Undecided invitation revocation enforced');
+await db.exec('reset role');check(await scalar("select has_function_privilege('anon','public.e2_intake_assign_vehicle(uuid,uuid,bigint)','execute')"),false,'Assignment is not anonymous');
+
 await db.close();console.log(passed+' guest intake privacy and workflow checks passed.');
 })().catch(e=>{console.error(e);process.exit(1)});
