@@ -6,11 +6,11 @@ const params=new URLSearchParams(location.search),uuid=/^[a-f0-9]{8}-[a-f0-9]{4}
 let storage;try{storage=localStorage}catch{storage={getItem:()=>null,setItem:()=>{}}}
 let referral=readReferral(storage,location.search),sales=uuid.test(params.get('sales')||'')?params.get('sales'):null;
 const context=[params.get('id')||'',referral||'',sales||''].join('|'),draftKey='e2-viewing-draft';
-let requestId=crypto.randomUUID(),lastPayload='',savedReceipt=null,busy=false,draft=null;
+let requestId=crypto.randomUUID(),lastPayload='',savedReceipt=null,busy=false,draft=null,vehicleLoading=true;
 try{const value=JSON.parse(sessionStorage.getItem(draftKey));if(value?.expires>Date.now()&&value.context===context)draft=value;else sessionStorage.removeItem(draftKey)}catch{}
 if(draft){requestId=uuid.test(draft.requestId)?draft.requestId:requestId;lastPayload=draft.lastPayload||'';referral=draft.referral;sales=draft.sales;savedReceipt=draft.receipt||null;for(const [key,value] of Object.entries(draft.fields||{})){const field=form.elements.namedItem(key);if(field&&field.type!=='checkbox'&&field.tagName!=='SELECT')field.value=value}form.elements.consent.checked=!!draft.fields?.consent}
 if(draft&&!referral){try{storage.removeItem('e2-partner-referral')}catch{}}
-function fields(){return Object.fromEntries(['customer_name','customer_phone','car_id','view_date','view_time'].map(k=>[k,form.elements.namedItem(k).value]).concat([['consent',form.elements.consent.checked]]))}
+function fields(){const result=Object.fromEntries(['customer_name','customer_phone','car_id','view_date','view_time'].map(k=>[k,form.elements.namedItem(k).value]).concat([['consent',form.elements.consent.checked]]));if(vehicleLoading)result.car_id=draft?.fields?.car_id??params.get('id')??'';return result}
 function saveDraft(){try{sessionStorage.setItem(draftKey,JSON.stringify({context,expires:Date.now()+30*60*1000,requestId,lastPayload,referral,sales,receipt:savedReceipt,fields:savedReceipt?{}:fields()}))}catch{}}
 document.querySelectorAll('[data-language]').forEach(link=>link.addEventListener('click',saveDraft));
 function times(selected=$('viewTime').value){$('viewDate').min=malaysiaDate();$('viewDate').max=dateLimit();const values=viewingTimes($('viewDate').value);$('viewTime').replaceChildren(new Option(t(!$('viewDate').value?'Choose a date first':values.length?'Select a time':'No remaining times. Choose another date.'),''),...values.map(v=>new Option(v,v)));if(values.includes(selected))$('viewTime').value=selected}
@@ -63,5 +63,5 @@ form.onsubmit=async event=>{
 if(savedReceipt)receipt(savedReceipt.data,savedReceipt.label);
 else{
   try{await loadVehicles()}catch{$('vehicleNotice').hidden=false;$('vehicleNotice').textContent=t('Vehicle list unavailable. You can still request a general showroom visit.')}
-  $('submitViewing').disabled=false;
+  vehicleLoading=false;$('submitViewing').disabled=false;
 }
