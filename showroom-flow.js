@@ -1,3 +1,4 @@
+import {t} from './i18n.mjs';
 // The approved demo's calm, continuous gallery, connected to live inventory.
 export function createShowroomFlow(){
   const view=document.getElementById('galleryViewport'),track=document.getElementById('galleryTrack');
@@ -6,7 +7,7 @@ export function createShowroomFlow(){
   let cards=[],active=0,playing=!reduced.matches,hover=false,focused=false,visible=false,pointer=null;
   let last=0,position=null,direction=1,suppressUntil=0,resizeTimer;
   const target=card=>{const r=card.getBoundingClientRect(),v=view.getBoundingClientRect();return view.scrollLeft+r.left+r.width/2-v.left-v.width/2};
-  function label(){toggle.textContent=playing?'Pause flow':'Play flow';toggle.setAttribute('aria-pressed',String(playing));}
+  function label(){toggle.textContent=t(playing?'Pause flow':'Play flow');toggle.setAttribute('aria-pressed',String(playing));}
   function manual(){playing=false;position=null;label()}
   function update(){
     if(!cards.length){count.textContent='—';return}

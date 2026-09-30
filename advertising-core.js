@@ -2,7 +2,7 @@ export const PIXEL='1050984971227179', CONSENT_KEY='e2-advertising-v1', MAX_AGE=
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Fail closed on private pages, preview links, auth fragments and unexpected parameters.
 export function publicURL(value){
-  try{const u=new URL(value);if(u.origin!=='https://e2auto.my'||!['/','/index.html','/showroom.html','/car.html'].includes(u.pathname))return false;
+  try{const u=new URL(value);u.pathname=u.pathname.replace(/^\/(ms|zh)(?=\/|$)/,'')||'/';if(u.origin!=='https://e2auto.my'||!['/','/index.html','/showroom.html','/car.html'].includes(u.pathname))return false;
     if(u.hash&&!/^#(?:top|cars|gallery|visit|specs|finance)$/.test(u.hash))return false;
     for(const [key,v] of u.searchParams){
       if(['id','sales'].includes(key)){if(!uuid.test(v))return false}

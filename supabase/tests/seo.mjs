@@ -33,7 +33,7 @@ function fakeDocument() {
 const doc=fakeDocument();
 applyVehicleMetadata(car,{},doc);
 applyVehicleMetadata(car,{},doc);
-assert.equal(doc.nodes.filter(n=>n.tag==='link').length,1);
+assert.equal(doc.nodes.filter(n=>n.tag==='link').length,5);
 assert.equal(doc.querySelector('link[rel="canonical"]').attributes.href,canonical);
 assert.equal(doc.querySelector('meta[name="robots"]').attributes.content,'index,follow');
 assert.equal(doc.title,vehicleMetadata(car).title);
@@ -75,9 +75,9 @@ for(const file of ['index.html','showroom.html']) {
 
 const sitemap=renderSitemap([car,{...car,id:id.toUpperCase()},{...car,id:'invalid'},
   {...car,id:'00000000-0000-0000-0000-000000000001',publication:'draft'}]);
-assert.equal((sitemap.match(/<loc>/g)||[]).length,2);
+assert.equal((sitemap.match(/<loc>/g)||[]).length,6);
 assert(!sitemap.includes('00000000-0000-0000-0000-000000000001'));
-assert(!sitemap.includes('preview=')&&!sitemap.includes('sales=')&&!sitemap.includes('ref='));
+assert(!/[?&](?:amp;)?(?:preview|sales|ref)=/.test(sitemap));
 assert(!sitemap.includes('<lastmod>'));
 assert(renderSitemap([{...car,updated_at:'2026-09-24T07:15:18Z'}]).includes('<lastmod>2026-09-24T07:15:18.000Z</lastmod>'));
 assert(!renderSitemap([{...car,updated_at:'invalid'}]).includes('<lastmod>'));

@@ -2,12 +2,15 @@ import {readFile, writeFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
 import {pathToFileURL} from 'node:url';
 import {SITE_URL, validVehicleId, canonicalVehicleURL} from '../vehicle-seo.mjs';
+import {LANGUAGES,languageTags} from '../i18n.mjs';
 
 const escapeXML = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 
 export function renderSitemap(rows) {
   const seen = new Set();
-  const entries = ['  <url><loc>' + SITE_URL + '</loc></url>'];
+  const alternatives = urls => [...LANGUAGES.map(lang=>'<xhtml:link rel="alternate" hreflang="'+languageTags[lang]+'" href="'+escapeXML(urls[lang])+'"/>'),'<xhtml:link rel="alternate" hreflang="x-default" href="'+escapeXML(urls.en)+'"/>'].join('');
+  const homes=Object.fromEntries(LANGUAGES.map(lang=>[lang,SITE_URL+(lang==='en'?'':lang+'/')]));
+  const entries=LANGUAGES.map(lang=>'  <url><loc>'+homes[lang]+'</loc>'+alternatives(homes)+'</url>');
   for (const row of rows) {
     if (row?.publication !== 'published' || !validVehicleId(row.id)) continue;
     const location = canonicalVehicleURL(row.id);
@@ -15,10 +18,11 @@ export function renderSitemap(rows) {
     seen.add(location);
     const date = row.updated_at ? new Date(row.updated_at) : null;
     const lastmod = date && Number.isFinite(date.getTime()) ? '<lastmod>' + date.toISOString() + '</lastmod>' : '';
-    entries.push('  <url><loc>' + escapeXML(location) + '</loc>' + lastmod + '</url>');
+    const urls=Object.fromEntries(LANGUAGES.map(lang=>[lang,canonicalVehicleURL(row.id,lang)]));
+    for(const lang of LANGUAGES)entries.push('  <url><loc>'+escapeXML(urls[lang])+'</loc>'+lastmod+alternatives(urls)+'</url>');
   }
   if (entries.length > 50000) throw new Error('Inventory needs a sitemap index before deployment.');
-  return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + entries.join('\n') + '\n</urlset>\n';
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' + entries.join('\n') + '\n</urlset>\n';
 }
 
 export async function loadPublishedVehicles(config, request = fetch) {
@@ -50,7 +54,7 @@ async function main() {
   const rows = await loadPublishedVehicles(context.window.E2_CONFIG);
   const sitemap = renderSitemap(rows);
   await writeFile(new URL('../sitemap.xml', import.meta.url), sitemap);
-  console.log('Sitemap generated for ' + (sitemap.match(/<loc>/g).length - 1) + ' published vehicles and the homepage.');
+  console.log('Sitemap generated with ' + sitemap.match(/<loc>/g).length + ' URLs across EN, BM and 华语.');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -1,4 +1,5 @@
-import {PIXEL,CONSENT_KEY,readChoice,publicURL,safeContext,createTracking} from './advertising-core.js?v=1';
+import {t,localizedURL,translateHTML} from './i18n.mjs';
+import {PIXEL,CONSENT_KEY,readChoice,publicURL,safeContext,createTracking} from './advertising-core.js?v=languages-1';
 const eligible=safeContext(location.href,document.referrer);
 let ownPixel=false,choice=null;
 function loadPixel(){
@@ -11,14 +12,14 @@ function loadPixel(){
 }
 function revokePixel(){if(ownPixel){window.fbq.queue.length=0;window.fbq('consent','revoke')}}
 function clearCookies(){for(const name of ['_fbp','_fbc'])for(const domain of ['', '; domain=e2auto.my','; domain=.e2auto.my'])document.cookie=name+'=; Max-Age=0; path=/'+domain+'; SameSite=Lax; Secure'}
-const tracker=createTracking({eligible,isCar:location.pathname==='/car.html',load:loadPixel,send:(name,data,custom)=>{if(ownPixel)window.fbq(custom?'trackSingleCustom':'trackSingle',PIXEL,name,data)},revoke:revokePixel});
+const tracker=createTracking({eligible,isCar:location.pathname.endsWith('/car.html'),load:loadPixel,send:(name,data,custom)=>{if(ownPixel)window.fbq(custom?'trackSingleCustom':'trackSingle',PIXEL,name,data)},revoke:revokePixel});
 // Only public vehicle data is accepted. No form values, customer identifiers, WhatsApp text or destination numbers.
 export const viewVehicle=car=>tracker.vehicle(car);
 if(publicURL(location.href)){
   const panel=document.createElement('section');panel.className='e2CookiePanel';panel.setAttribute('aria-labelledby','e2CookieTitle');panel.setAttribute('role','region');
-  panel.innerHTML='<h2 id="e2CookieTitle">Your privacy. Your choice.</h2><p>Allow advertising cookies? Meta Pixel helps us measure vehicle views and WhatsApp clicks, and show relevant ads on Facebook and Instagram. Meta receives browsing events, online identifiers and device / connection information.</p><p class="e2CookieSmall">Optional. You can browse, contact E2 and apply without accepting. <a href="advertising-privacy.html">Advertising privacy</a></p><div class="e2CookieActions"><button type="button" data-choice="no">Reject advertising</button><button type="button" data-choice="yes">Allow advertising</button></div>';
+  panel.innerHTML=translateHTML('<h2 id="e2CookieTitle">Your privacy. Your choice.</h2><p>Allow advertising cookies? Meta Pixel helps us measure vehicle views and WhatsApp clicks, and show relevant ads on Facebook and Instagram. Meta receives browsing events, online identifiers and device / connection information.</p><p class="e2CookieSmall">Optional. You can browse, contact E2 and apply without accepting. <a href="/advertising-privacy.html">Advertising privacy</a></p><div class="e2CookieActions"><button type="button" data-choice="no">Reject advertising</button><button type="button" data-choice="yes">Allow advertising</button></div>');
   document.body.append(panel);
-  const settings=document.createElement('button');settings.type='button';settings.className='e2CookieSettings';settings.textContent='Cookie settings';(document.querySelector('footer')||document.body).append(settings);
+  const settings=document.createElement('button');settings.type='button';settings.className='e2CookieSettings';settings.textContent=t('Cookie settings');(document.querySelector('footer')||document.body).append(settings);
   const stored=()=>{try{return readChoice(localStorage.getItem(CONSENT_KEY))}catch{return null}};
   function apply(value){choice=value;panel.hidden=value!==null;tracker.consent(value===true)}
   function choose(value){try{localStorage.setItem(CONSENT_KEY,JSON.stringify({version:1,allowed:value,at:Date.now()}))}catch{/* Current-page choice still works when browser storage is unavailable. */}

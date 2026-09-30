@@ -38,3 +38,24 @@ by this code. Vehicle content still depends on JavaScript; public prerendered
 vehicle content and stable public photo URLs are separate follow-up work.
 
 Run `npm run check`, `npm test` and `npm run build:sitemap` before release.
+
+## Public languages (2026-10-01)
+
+The original URLs remain English. Bahasa Melayu uses `/ms/` and Simplified
+Chinese uses `/zh/`. Each includes the homepage, showroom alias and vehicle
+detail page, including filters, estimates, viewing dialogs and enquiry text.
+Navigation links keep private account, Partner and staff workspaces on their
+existing URLs. Their authentication behavior and access rules are unchanged.
+
+Run `npm run build:languages` before serving locally. GitHub Pages builds these
+static translated pages before deployment. The shared `translations.mjs` supplies
+both the static HTML and dynamic controls. Each language has its own canonical;
+reciprocal `hreflang` links and sitemap alternatives connect the versions.
+The switcher preserves vehicle IDs, referral/sales parameters, campaigns and
+the current section. It does not force a language from browser settings.
+
+`vehicle-translations.mjs` contains translations of the current published
+descriptions, matched to their exact source text. When staff change a description,
+the new source is shown until its translation is reviewed; stale translated claims
+are never substituted for updated inventory copy. New structured vehicle records
+and interface labels use the selected language automatically.

@@ -35,9 +35,11 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate SEO and build public sitemap
+      - name: Validate and build multilingual public pages
         run: |
           node supabase/tests/seo.mjs
+          node supabase/tests/languages.mjs
+          node scripts/build-languages.mjs
           node scripts/build-sitemap.mjs
 
       - name: Upload site artifact

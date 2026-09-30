@@ -6,3 +6,7 @@ supabase/.temp/
 supabase/.branches/
 # Rebuilt from anonymous public inventory before each Pages deployment.
 sitemap.xml
+
+# Generated language pages (rebuilt by Pages workflow).
+/ms/
+/zh/
