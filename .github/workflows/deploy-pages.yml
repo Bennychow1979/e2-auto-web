@@ -30,6 +30,16 @@ jobs:
         with:
           enablement: true
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate SEO and build public sitemap
+        run: |
+          node supabase/tests/seo.mjs
+          node scripts/build-sitemap.mjs
+
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v4
         with:

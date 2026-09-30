@@ -3,19 +3,21 @@ import {viewVehicle} from './advertising.js?v=1';
 import {publicContact,enquiryURL,vehicleShareURL,vehiclePageURL,withVehicleLink} from './referral.js?v=car-share-1';
 import {setupCarSharing} from './car-share.js?v=optional-spec-1';
 import {db,check,esc,rm,mileageText,getVehicles,photoURLs,coverURL,friendlyError} from './e2-data.js?v=drive-1';
+import {validVehicleId,applyVehicleMetadata,excludeVehicleFromSearch} from './vehicle-seo.mjs?v=seo-1';
 const $=id=>document.getElementById(id);
 (async()=>{
 try {
 const params=new URLSearchParams(location.search), id=params.get('id'), preview=params.get('preview')==='1';
-if(!/^[0-9a-f-]{36}$/.test(id||'')) throw new Error('This vehicle link is invalid. Return to the showroom to choose a car.');
+if(!validVehicleId(id)) { excludeVehicleFromSearch(); throw new Error('This vehicle link is invalid. Return to the showroom to choose a car.'); }
 if(preview) {
   if(!db) throw new Error('The inventory connection is being prepared.');
   const session=check(await db.auth.getSession()).session;
   if(!session) throw new Error('Sign in to E2 Workspace to preview a draft.');
 }
 const rows=await getVehicles({id,staff:preview});
-if(!rows.length)throw new Error('This vehicle is not currently published or is no longer accessible. Please ask E2 about availability.');
+if(!rows.length) { excludeVehicleFromSearch(); throw new Error('This vehicle is not currently published or is no longer accessible. Please ask E2 about availability.'); }
 const car=rows[0]; car.name=car.brand+' '+car.model;car.priceValue=Number(car.price);
+applyVehicleMetadata(car,{preview});
 let contact=await publicContact(params.get('sales'),window.E2_CONFIG);
 setupCarSharing(car,()=>contact);
 $('applyLoan').hidden=preview||car.stock_status!=='Available';$('applyLoan').href='my-e2.html?car='+encodeURIComponent(car.id)+(contact?'&sales='+encodeURIComponent(contact.user_id):'');
@@ -56,7 +58,6 @@ async function refreshContact(){
 }
 window.addEventListener('focus',refreshContact);
 setInterval(()=>{if(!document.hidden)refreshContact()},60000);
-document.title=car.name+' | E2 Auto';
 $('make').textContent=car.brand;$('model').textContent=car.model;$('heroEyebrow').textContent=[car.year,car.body_type,car.stock_status].filter(Boolean).join(' · ');
 $('heroLine').textContent=car.variant;$('heroLine').hidden=!car.variant;$('heroPrice').textContent=rm(car.price);$('heroPlate').textContent='PLATE · '+car.plate;
 $('story').textContent=car.description||'See the actual vehicle. Ask the questions that matter to you.';

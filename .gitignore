@@ -4,3 +4,5 @@ node_modules/
 !.env.example
 supabase/.temp/
 supabase/.branches/
+# Rebuilt from anonymous public inventory before each Pages deployment.
+sitemap.xml
