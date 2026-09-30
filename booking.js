@@ -19,13 +19,14 @@ function referralNotice(){$('referralNotice').hidden=!referral;$('referralNotice
 referralNotice();
 $('removeReferral').onclick=()=>{referral=null;try{storage.removeItem('e2-partner-referral')}catch{}$('removeReferral').hidden=true;referralNotice();$('formMessage').textContent='';saveDraft()};
 $('removeSales').onclick=()=>{sales=null;$('removeSales').hidden=true;$('formMessage').textContent='';saveDraft()};
-function receipt(data,label){
+function receipt(data,label,restored=false){
   savedReceipt={data,label};form.hidden=true;$('receipt').hidden=false;$('receiptRef').textContent=data.id;
   $('receiptCar').textContent=label||t('General showroom visit');
   const labels={Requested:'Awaiting E2 confirmation',Confirmed:'Appointment confirmed',Completed:'Visit completed',Cancelled:'Request cancelled'};
   $('receiptStatus').textContent=t(labels[data.status]||labels.Requested);
   $('receiptDate').textContent=data.confirmed_date||data.preferred_date;$('receiptTime').textContent=(data.confirmed_time||data.preferred_time).slice(0,5);
   if(data.status!=='Requested'){$('receiptHelp').textContent=t('Your request is saved with E2. Call us with your reference if you need to change it.');$('receiptTitle').textContent=t(labels[data.status]);}
+  if(restored){$('receiptTitle').textContent=t('Viewing request receipt');$('receiptStatus').textContent=t('Saved submission receipt');$('receiptHelp').textContent=t('For the latest appointment status or changes, contact E2 with your reference.');$('receiptDate').textContent=data.preferred_date;$('receiptTime').textContent=data.preferred_time.slice(0,5)}
   form.reset();lastPayload='';saveDraft();$('receipt').focus();
 }
 async function loadVehicles(){
@@ -60,7 +61,7 @@ form.onsubmit=async event=>{
     if(error.message==='BOOKING_TIME')times();
   }finally{busy=false;$('submitViewing').disabled=false}
 };
-if(savedReceipt)receipt(savedReceipt.data,savedReceipt.label);
+if(savedReceipt)receipt(savedReceipt.data,savedReceipt.label,true);
 else{
   try{await loadVehicles()}catch{$('vehicleNotice').hidden=false;$('vehicleNotice').textContent=t('Vehicle list unavailable. You can still request a general showroom visit.')}
   vehicleLoading=false;$('submitViewing').disabled=false;

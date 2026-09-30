@@ -1,4 +1,7 @@
 export const bookingTranslations={
+  'Viewing request receipt':['Resit permintaan lawatan','看车申请回执'],
+  'Saved submission receipt':['Resit penghantaran tersimpan','已保存的提交回执'],
+  'For the latest appointment status or changes, contact E2 with your reference.':['Untuk status janji temu terkini atau perubahan, hubungi E2 dengan nombor rujukan anda.','如需查询最新预约状态或更改安排，请联系 E2 并提供预约编号。'],
   'E2 Auto showroom':['Bilik pameran E2 Auto','E2 Auto 展厅'],
   'Back to showroom':['Kembali ke bilik pameran','返回展厅'],
   'Enter a valid phone number.':['Masukkan nombor telefon yang sah.','请输入有效电话号码。'],
