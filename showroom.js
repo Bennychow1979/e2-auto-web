@@ -8,6 +8,12 @@ let preferenceStorage;try{preferenceStorage=window.sessionStorage}catch{}
 const saved=readPreferences(preferenceStorage);
 let referralStorage;try{referralStorage=window.localStorage}catch{}
 const vehicleHref=showroomVehicleLinks({enabled:window.E2_CONFIG?.partnerReferrals,storage:referralStorage,search:location.search});
+const bookingReferral=new URL(vehicleHref(''),location.href).searchParams.get('ref');
+for(const link of document.querySelectorAll('a[href="booking.html"]')){
+  const url=new URL(link.href);if(bookingReferral)url.searchParams.set('ref',bookingReferral);
+  const sales=new URLSearchParams(location.search).get('sales');if(/^[a-f0-9-]{36}$/i.test(sales||''))url.searchParams.set('sales',sales);
+  link.href=url.href;
+}
 for(const link of document.querySelectorAll('[data-referral-contact]')){
   const action=showroomContactAction(link.dataset.referralContact,vehicleHref.hasReferral);
   if(!action)continue;

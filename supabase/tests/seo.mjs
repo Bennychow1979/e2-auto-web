@@ -75,7 +75,7 @@ for(const file of ['index.html','showroom.html']) {
 
 const sitemap=renderSitemap([car,{...car,id:id.toUpperCase()},{...car,id:'invalid'},
   {...car,id:'00000000-0000-0000-0000-000000000001',publication:'draft'}]);
-assert.equal((sitemap.match(/<loc>/g)||[]).length,6);
+assert.equal((sitemap.match(/<loc>/g)||[]).length,9);
 assert(!sitemap.includes('00000000-0000-0000-0000-000000000001'));
 assert(!/[?&](?:amp;)?(?:preview|sales|ref)=/.test(sitemap));
 assert(!sitemap.includes('<lastmod>'));

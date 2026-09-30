@@ -1,4 +1,4 @@
-import {t,language,localizedMileage as mileageText} from './i18n.mjs';
+import {t,language,localizedURL,localizedMileage as mileageText} from './i18n.mjs';
 import {descriptionFor} from './vehicle-translations.mjs';
 import {loadVehicleDescription} from './vehicle-description.mjs?v=auto-translation-1';
 import {setupPartnerReferral} from './partner-referral.js?v=languages-1';
@@ -116,7 +116,7 @@ $('financeWhatsApp').removeAttribute('aria-disabled');$('financeWhatsApp').href=
 $('calculator').onsubmit=e=>e.preventDefault();['deposit','tenure','rate'].forEach(id=>$(id).addEventListener('input',calculate));calculate();
 $('openPhoto').onclick=()=>$('photoDialog').showModal();$('closePhoto').onclick=()=>$('photoDialog').close();
 function malaysiaDate(){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const part=k=>parts.find(p=>p.type===k).value;return part('year')+'-'+part('month')+'-'+part('day')}
-document.querySelectorAll('[data-book]').forEach(b=>b.onclick=()=>{$('viewDate').min=malaysiaDate();$('bookingDialog').showModal()});
+document.querySelectorAll('[data-book]').forEach(b=>b.onclick=()=>{const url=new URL(localizedURL('booking.html'));url.searchParams.set('id',car.id);for(const key of ['ref','sales'])if(params.get(key))url.searchParams.set(key,params.get(key));location.href=url.href});
 $('closeBooking').onclick=()=>$('bookingDialog').close();
 function clearBooking(){ $('bookingReady').hidden=true;$('bookingForm').querySelector('button[type=submit]').hidden=false;$('bookingError').hidden=true;$('bookingLink').removeAttribute('href')}
 ['viewDate','viewTime'].forEach(id=>$(id).addEventListener('input',clearBooking));

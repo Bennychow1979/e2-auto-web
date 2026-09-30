@@ -3,7 +3,7 @@ export const LANGUAGES = ['en','ms','zh'];
 export const languageTags = {en:'en-MY',ms:'ms-MY',zh:'zh-Hans-MY'};
 export const languageFromPath = path => /^\/(ms|zh)(?:\/|$)/.exec(path || '')?.[1] || 'en';
 export const language = languageFromPath(globalThis.location?.pathname);
-export const publicPageNames = new Set(['','index.html','showroom.html','car.html']);
+export const publicPageNames = new Set(['','index.html','showroom.html','car.html','booking.html']);
 export function t(source, values = {}, lang = language) {
   const raw = String(source ?? '');
   let result = lang === 'en' ? raw : translations[raw]?.[lang === 'ms' ? 0 : 1];

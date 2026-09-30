@@ -1,6 +1,8 @@
 // Shared by the static language-page build and the live inventory controls.
 // Each entry is [Bahasa Melayu, 简体中文]. Names, prices and stock records stay intact.
+import {bookingTranslations} from './booking-translations.mjs';
 export const translations = {
+  ...bookingTranslations,
   'PETROL':['Petrol','汽油'], 'DIESEL':['Diesel','柴油'], 'HYBRID':['Hibrid','混合动力'], 'ELECTRIC':['Elektrik','纯电动'],
   'AUTO':['Automatik','自动挡'], 'AUTOMATIC':['Automatik','自动挡'], 'MANUAL':['Manual','手动挡'],
   'Hi {name}, {vehicle}':['Hai {name}, {vehicle}','你好 {name}，{vehicle}'],

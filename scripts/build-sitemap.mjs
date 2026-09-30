@@ -11,6 +11,8 @@ export function renderSitemap(rows) {
   const alternatives = urls => [...LANGUAGES.map(lang=>'<xhtml:link rel="alternate" hreflang="'+languageTags[lang]+'" href="'+escapeXML(urls[lang])+'"/>'),'<xhtml:link rel="alternate" hreflang="x-default" href="'+escapeXML(urls.en)+'"/>'].join('');
   const homes=Object.fromEntries(LANGUAGES.map(lang=>[lang,SITE_URL+(lang==='en'?'':lang+'/')]));
   const entries=LANGUAGES.map(lang=>'  <url><loc>'+homes[lang]+'</loc>'+alternatives(homes)+'</url>');
+  const bookings=Object.fromEntries(LANGUAGES.map(lang=>[lang,SITE_URL+(lang==='en'?'':lang+'/')+'booking.html']));
+  entries.push(...LANGUAGES.map(lang=>'  <url><loc>'+bookings[lang]+'</loc>'+alternatives(bookings)+'</url>'));
   for (const row of rows) {
     if (row?.publication !== 'published' || !validVehicleId(row.id)) continue;
     const location = canonicalVehicleURL(row.id);

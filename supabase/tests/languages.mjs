@@ -55,7 +55,7 @@ for(const lang of ['ms','zh']){
  }
 }
 const xml=renderSitemap([{id,publication:'published'},{id,publication:'draft'}]);
-assert.equal((xml.match(/<loc>/g)||[]).length,6);
-assert.equal((xml.match(/hreflang="zh-Hans-MY"/g)||[]).length,6);
+assert.equal((xml.match(/<loc>/g)||[]).length,9);
+assert.equal((xml.match(/hreflang="zh-Hans-MY"/g)||[]).length,9);
 assert(!/[?&](?:amp;)?(?:preview|sales|ref)=/.test(xml));
 console.log('Language checks passed: translated HTML, stable option values, routing, referral preservation, canonicals, hreflang, sitemap and private-page exclusion.');

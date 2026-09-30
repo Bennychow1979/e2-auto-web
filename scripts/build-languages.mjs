@@ -28,11 +28,17 @@ export function localizedPage(source,file,lang){
  });
  // Always render usable language links even before JavaScript loads.
  html=html.replace(/<a ([^>]*data-language="(en|ms|zh)"[^>]*)>[^<]*<\/a>/g,(_,attrs,target)=>{
-  const href='/' +(target==='en'?'':target+'/')+(file==='car.html'?'car.html':'');
+  const href='/' +(target==='en'?'':target+'/')+(['index.html','showroom.html'].includes(file)?'':file);
   const fixed=attrs.replace(/href="[^"]*"/,'href="'+href+'"').replace(/aria-current="[^"]*"/,'aria-current="'+(target===lang?'page':'false')+'"');
   return '<a '+fixed+'>'+({en:'EN',ms:'BM',zh:'华语'}[target])+'</a>';
  });
- if(file!=='car.html'){
+ if(file==='booking.html'){
+  const descriptions={ms:'Mohon sesi melihat kereta di E2 Auto, Centre Point Batu Caves. Pilih tarikh dan masa, kemudian hantar permintaan dalam talian. Tersedia dalam BM, Inggeris dan Cina.',zh:'预约到访 E2 Auto Centre Point Batu Caves 展厅。选择希望到访的日期及时间，在线提交看车申请。支持马来文、英文及华语。'};
+  html=html.replace(/(<meta (?:name="description"|property="og:description") content=")[^"]*"/g,'$1'+descriptions[lang]+'"')
+    .replace(/(<link rel="canonical" href=")[^"]*"/,'$1'+origin+lang+'/booking.html"')
+    .replace(/(<meta property="og:url" content=")[^"]*"/,'$1'+origin+lang+'/booking.html"')
+    .replace(/(<meta property="og:title" content=")[^"]*"/,'$1'+escapeHTML(t('Book a viewing | E2 Auto Batu Caves',{},lang))+'"');
+ }else if(file!=='car.html'){
   const meta=homeMetadata[lang];
   html=html.replace(/<title>[^<]*<\/title>/,'<title>'+escapeHTML(meta.title)+'</title>')
    .replace(/(<meta (?:name="description"|property="og:description") content=")[^"]*"/g,'$1'+escapeHTML(meta.description)+'"')
@@ -49,10 +55,10 @@ export async function buildLanguages(){
  const root=new URL('../',import.meta.url);
  for(const lang of ['ms','zh']){
   await mkdir(new URL(lang+'/',root),{recursive:true});
-  for(const file of ['index.html','showroom.html','car.html']){
+  for(const file of ['index.html','showroom.html','car.html','booking.html']){
    await writeFile(new URL(lang+'/'+file,root),localizedPage(await readFile(new URL(file,root),'utf8'),file,lang));
   }
  }
- console.log('Built BM and 华语 homepages, showroom aliases and vehicle pages.');
+ console.log('Built BM and 华语 homepages, showroom aliases vehicle pages and booking pages.');
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)await buildLanguages();
