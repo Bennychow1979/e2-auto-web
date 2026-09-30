@@ -16,6 +16,21 @@ reviewed translations remain the fallback if the backend has not been deployed.
 The migration starts **disabled**. Publishing GitHub Pages alone does not activate
 OpenAI or create the Supabase tables. No production API credentials are included.
 
+Production checkpoint, 1 October 2026 (Malaysia):
+
+- Applied `202610010001_vehicle_translation.sql` to E2 WEB Project. All three
+  new tables have RLS enabled, and the description-save trigger is installed.
+- Deployed `e2-translate-vehicle` with `index.ts`, `core.mjs` and `handler.mjs`,
+  each checked against the repository source. Its legacy-JWT gateway setting is
+  off; the handler enforces the database-issued one-use token instead.
+- A direct request without authorization returned the handler's expected
+  `401 {"error":"Invalid request"}`. The vehicle-row fingerprint was unchanged.
+- Ten descriptions are pending and 28 blank descriptions are skipped. No queued
+  translation has been dispatched, and no live OpenAI translation was tested.
+- `OPENAI_API_KEY` is not configured. Translation remains **disabled** and the
+  translation watchdog has not been activated. Continue from step 3 below after
+  the owner securely saves the key. Do not reapply the already-applied migration.
+
 1. Apply `migrations/202610010001_vehicle_translation.sql` to the existing E2 WEB
    project `gkppiuuwsecojcnvkzjl` using its authorized migration/SQL channel.
 2. Deploy only `e2-translate-vehicle` with its bundled `core.mjs` and `handler.mjs`.
