@@ -1,5 +1,6 @@
 import {t,language,localizedMileage as mileageText} from './i18n.mjs';
 import {descriptionFor} from './vehicle-translations.mjs';
+import {loadVehicleDescription} from './vehicle-description.mjs?v=auto-translation-1';
 import {setupPartnerReferral} from './partner-referral.js?v=languages-1';
 import {viewVehicle} from './advertising.js?v=languages-1';
 import {publicContact,enquiryURL,vehicleShareURL,vehiclePageURL,withVehicleLink} from './referral.js?v=car-share-1';
@@ -63,6 +64,7 @@ setInterval(()=>{if(!document.hidden)refreshContact()},60000);
 $('make').textContent=car.brand;$('model').textContent=car.model;$('heroEyebrow').textContent=[car.year,t(car.body_type),t(car.stock_status)].filter(Boolean).join(' · ');
 $('heroLine').textContent=car.variant;$('heroLine').hidden=!car.variant;$('heroPrice').textContent=rm(car.price);$('heroPlate').textContent=t('PLATE · {plate}',{plate:car.plate});
 $('story').textContent=descriptionFor(car.description,language)||t('See the actual vehicle. Ask the questions that matter to you.');
+loadVehicleDescription(db,car,language).then(text=>{if(text)$('story').textContent=text;});
 $('publicationNote').textContent=t(car.publication==='draft'?'PRIVATE DRAFT PREVIEW · Not on the website':car.stock_status);
 const specs=[['Car plate',car.plate],['Year',car.year],['Brand',car.brand],['Model',car.model],['Variant / SPEC',car.variant],['Engine size',Number(car.engine_litres).toFixed(1)+' L'],['Transmission',t(car.transmission)],['Fuel type',t(car.fuel_type)],['Mileage',mileageText(car)]];
 $('specGrid').innerHTML=specs.filter(([,value])=>value!==null&&value!==undefined&&String(value).trim()!=='').map(([label,value])=>'<div><dt>'+esc(t(label))+'</dt><dd>'+esc(value)+'</dd></div>').join('');

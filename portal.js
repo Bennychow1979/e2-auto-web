@@ -1,4 +1,5 @@
 import {setupVehicleImport,showImportReview} from './vehicle-import.mjs?v=vehicle-schedule-1';
+import {setupVehicleTranslations} from './vehicle-translation-ui.mjs?v=auto-translation-1';
 import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
 import {setupDrivePhotoPicker} from './drive-photo-picker.mjs?v=drive-1';
 import {setupYearSpecSelect} from './year-spec-select.mjs?v=verified-spec-batch-2';
@@ -9,6 +10,7 @@ const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicl
 const canManageStock=()=>['super_admin','admin'].includes(role);
 const roleLabels={super_admin:'Super Admin',admin:'Admin',office_admin:'Office Admin',sales:'Salesman · view only',account:'Account · public stock only',customer:'Customer · public stock only'};
 let cars=[], current=null, role=null, busy=false, dirty=false, recovery=false, authEpoch=0;
+const vehicleTranslations=setupVehicleTranslations({db,getCurrent:()=>current,canRetry:()=>!busy&&canManageStock(),isDirty:()=>dirty});
 const vehicleImporter=setupVehicleImport({db,canManage:canManageStock,onFinished:refresh});
 const drivePicker=setupDrivePhotoPicker({
   getCurrent:()=>current,
@@ -52,8 +54,8 @@ function identityChanged(name){const select=form.elements.namedItem(name),manual
   form.elements.namedItem('model').disabled=!identity('brand');form.elements.namedItem('variant').disabled=!identity('model');
 }
 ['brand','model','variant'].forEach(name=>{form.elements.namedItem(name).addEventListener('change',()=>identityChanged(name));form.elements.namedItem(name+'Manual').addEventListener('input',()=>identityChanged(name))});
-form.addEventListener('input',()=>{dirty=true;setBusy(false);$('saveHint').textContent='Unsaved changes · Save draft before publishing or previewing.'});
-form.addEventListener('change',()=>{dirty=true;setBusy(false)});
+form.addEventListener('input',()=>{dirty=true;vehicleTranslations.markDirty();setBusy(false);$('saveHint').textContent='Unsaved changes · Save draft before publishing or previewing.'});
+form.addEventListener('change',()=>{dirty=true;vehicleTranslations.markDirty();setBusy(false)});
 async function refresh(){
   const epoch=authEpoch;message('stockMessage','Loading inventory…');
   try{const rows=await getVehicles({staff:true});if(epoch!==authEpoch)return;cars=rows;renderStock();message('stockMessage',cars.length+' vehicles · Changes are stored in your E2 database.');}
@@ -99,9 +101,10 @@ function populate(car){
   $('publishVehicle').textContent=car?.publication==='published'?'Move to draft':'Publish to website';
   if(car)$('previewVehicle').href='car.html?id='+car.id+'&preview=1';else $('previewVehicle').removeAttribute('href');
   $('photos').replaceChildren();yearSpecSelect.refresh({selected:car?.variant||'',engine:car?.engine_litres??'',reset:true});setBusy(false);yearReference.refresh();
+  vehicleTranslations.refresh();
 }
 async function openEditor(car=null){populate(car);message('editorMessage','');$('vehicleEditor').showModal();try{await showImportReview(db,car);await renderPhotos()}catch(error){editorError(error)}}
-function closeEditor(){if(busy)return;if(dirty&&!confirm('Discard unsaved vehicle details? Uploaded photos are already saved.'))return;$('vehicleEditor').close();current=null;dirty=false}
+function closeEditor(){if(busy)return;if(dirty&&!confirm('Discard unsaved vehicle details? Uploaded photos are already saved.'))return;vehicleTranslations.stop();$('vehicleEditor').close();current=null;dirty=false}
 $('closeEditor').onclick=closeEditor;$('vehicleEditor').addEventListener('cancel',e=>{e.preventDefault();closeEditor()});
 $('addVehicle').onclick=()=>openEditor();$('stockSearch').oninput=renderStock;$('refreshStock').onclick=refresh;
 form.onsubmit=async event=>{
@@ -186,7 +189,7 @@ $('publishVehicle').onclick=async()=>{
 };
 async function showSession(session){
   const epoch=++authEpoch;
-  if(!session){$('manageLoans').hidden=true;$('manageCustomers').hidden=true;$('myProfileLink').hidden=true;$('manageUsers').hidden=true;role=null;cars=[];$('stockList').replaceChildren();$('workspace').hidden=true;$('entry').hidden=false;$('vehicleEditor').close();return}
+  if(!session){vehicleTranslations.stop();$('manageLoans').hidden=true;$('manageCustomers').hidden=true;$('myProfileLink').hidden=true;$('manageUsers').hidden=true;role=null;cars=[];$('stockList').replaceChildren();$('workspace').hidden=true;$('entry').hidden=false;$('vehicleEditor').close();return}
   if(recovery)return;
   try{
     const membership=check(await db.from('staff_memberships').select('role,active').eq('user_id',session.user.id).maybeSingle());if(epoch!==authEpoch)return;
@@ -232,4 +235,3 @@ else{
   });
 }
 window.addEventListener('beforeunload',e=>{if(dirty||busy){e.preventDefault();e.returnValue=''}});
-

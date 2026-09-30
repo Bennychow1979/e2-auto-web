@@ -1,0 +1,6 @@
+.vehicleTranslation{margin:20px 0;padding:20px;border:1px solid #ddd8cc;border-radius:14px;background:#faf9f5}
+.vehicleTranslation h3{margin:0 0 8px;font-size:1rem}.vehicleTranslation p{line-height:1.6}
+.vehicleTranslation .translationActions{display:flex;gap:12px;flex-wrap:wrap}
+.vehicleTranslation button{padding:9px 14px;border:1px solid #c5c1b7;border-radius:8px;background:#fff;color:#171717;cursor:pointer}
+.vehicleTranslation details{margin-top:16px}.vehicleTranslation summary{cursor:pointer;font-weight:600}
+.vehicleTranslation pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.6;background:#fff;padding:16px;border-radius:8px}

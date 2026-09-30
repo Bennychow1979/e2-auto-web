@@ -56,6 +56,11 @@ the current section. It does not force a language from browser settings.
 
 `vehicle-translations.mjs` contains translations of the current published
 descriptions, matched to their exact source text. When staff change a description,
-the new source is shown until its translation is reviewed; stale translated claims
+the new source is shown until a matching translation is available; stale translated claims
 are never substituted for updated inventory copy. New structured vehicle records
 and interface labels use the selected language automatically.
+
+Automatic description translation is implemented by the Supabase queue and Edge
+function described in `supabase/VEHICLE-TRANSLATION.md`. Public pages prefer its
+exact-source results when available, falling back to the reviewed dictionary or
+original. Supabase deployment and secret configuration are separate from Pages.

@@ -12,3 +12,7 @@ verify_jwt = false
 # Staff Auth + active admin membership are verified in the handler.
 [functions.e2-vehicle-import]
 verify_jwt = false
+
+# Database-only one-use capabilities are verified atomically inside the handler.
+[functions.e2-translate-vehicle]
+verify_jwt = false
