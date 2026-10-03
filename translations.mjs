@@ -75,6 +75,7 @@ export const translations = {
   'Please confirm vehicle availability and a viewing time with E2 before visiting.':['Sila sahkan ketersediaan kereta dan masa lawatan dengan E2 sebelum datang.','到访前请向 E2 确认车辆是否仍在售及看车时间。'],
   'Real cars. Clear conversations.':['Kereta sebenar. Perbincangan jelas.','真实车辆，清楚沟通。'],
   'Staff sign in':['Log masuk kakitangan','员工登录'], 'Customer privacy':['Privasi pelanggan','客户隐私'],
+  'Privacy policy':['Dasar privasi','隐私政策'],
   'MAKE IT YOURS':['IKUT PILIHAN ANDA','按你的需求筛选'], 'Refine your search.':['Perincikan carian.','细化搜索。'], 'Close filters':['Tutup penapis','关闭筛选'],
   'Brand':['Jenama','品牌'], 'All brands':['Semua jenama','所有品牌'], 'Model':['Model','车型'], 'All models':['Semua model','所有车型'],
   'Variant / Spec':['Varian / Spesifikasi','版本／规格'], 'Variant / SPEC':['Varian / Spesifikasi','版本／规格'], 'All variants / specs':['Semua varian / spesifikasi','所有版本／规格'],
