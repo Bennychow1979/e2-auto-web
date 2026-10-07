@@ -5,6 +5,12 @@ import {
   applicationId, browserFixture, documentDataMock, intakeDataMock, pdfBytes, initializePreviewFixture,
 } from './fixtures/preview-fixtures.mjs';
 
+// Parse the emitted module source during test collection, even when Chromium
+// cannot launch. Checking the generator alone cannot catch template mistakes.
+for (const source of [documentDataMock(false), documentDataMock(true), intakeDataMock()]) {
+  await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(source)}`);
+}
+
 const test = base.extend({
   audit: async ({page, context, baseURL}, use) => {
     const audit = {externalRequests: [], pageErrors: []};

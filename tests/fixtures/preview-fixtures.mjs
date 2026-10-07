@@ -60,7 +60,7 @@ export function documentDataMock(staffView = false) {
     export const check = result => { if (result.error) throw result.error; return result.data; };
     export const db = {auth: {onAuthStateChange(callback) { window.__previewFixture.auth = callback; }}};
     export const sessionUser = async () => ({id: ${JSON.stringify(staffView ? staffId : customerId)}});
-    export const application = async () => ${JSON.stringify(application)};
+    export const application = async () => (${JSON.stringify(application)});
     export const documentRows = async () => ${JSON.stringify(files)};
     export const storage = () => ({download: async path => {
       try { return {data: await window.__previewFixture.download(path), error: null}; }
