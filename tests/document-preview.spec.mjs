@@ -48,15 +48,57 @@ const trigger = (page, screen, id) => page.locator(screen.trigger.replace('FILE'
 const dialog = (page, screen) => page.locator(screen.dialog);
 const downloadLink = (page, screen) => dialog(page, screen).getByRole('link', {name: 'Download file', exact: true});
 
+// The dialog stays attached while ResizeObserver replaces its canvas. Read all
+// readiness and layout signals in one browser turn, then retry the whole sample
+// when a render is between canvases or has not caught up with the viewport.
+function readPreviewState(modal, {viewport}) {
+  const content = modal.querySelector('.documentPreviewContent');
+  const status = modal.querySelector('.documentPreviewStatus');
+  const canvases = modal.querySelectorAll('.documentPreviewPages canvas');
+  const canvas = canvases.length === 1 ? canvases[0] : null;
+  const shown = element => Boolean(element && element.getClientRects().length && getComputedStyle(element).visibility === 'visible');
+  const bounds = modal.getBoundingClientRect();
+  const canvasBounds = canvas?.getBoundingClientRect();
+  let color = 'unavailable';
+  if (canvas && canvas.width > 1 && canvas.height > 1) {
+    const data = canvas.getContext('2d').getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1).data;
+    color = data[0] > 150 && data[2] < 100 ? 'red' : data[2] > 150 && data[0] < 100 ? 'blue' : 'blank';
+  }
+  return {
+    open: modal.open,
+    visible: shown(modal),
+    statusVisible: shown(status),
+    status: status?.textContent,
+    busy: content?.getAttribute('aria-busy') === 'true',
+    canvasCount: canvases.length,
+    canvasVisible: shown(canvas),
+    color,
+    viewportMatches: window.innerWidth === viewport.width && window.innerHeight === viewport.height,
+    modalFits: bounds.left >= 0 && bounds.right <= viewport.width + 1,
+    canvasReadableWidth: Boolean(canvasBounds && canvasBounds.width > 100),
+    canvasFits: Boolean(canvasBounds && canvasBounds.left >= bounds.left && canvasBounds.right <= bounds.right + 1),
+  };
+}
+
 async function waitForPage(page, screen, number) {
   const modal = dialog(page, screen);
-  await expect(modal).toBeVisible();
-  await expect(modal.getByText(`Page ${number} of 2`, {exact: true})).toBeVisible();
-  await expect(modal.locator('.documentPreviewPages canvas')).toHaveCount(1);
-  await expect.poll(() => modal.locator('canvas').evaluate(canvas => {
-    const data = canvas.getContext('2d').getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1).data;
-    return data[0] > 150 && data[2] < 100 ? 'red' : data[2] > 150 && data[0] < 100 ? 'blue' : 'blank';
-  })).toBe(number === 1 ? 'red' : 'blue');
+  const viewport = page.viewportSize();
+  await expect.poll(() => modal.evaluate(readPreviewState, {viewport}), {
+    message: `Page ${number} must be rendered and fit the current ${viewport.width}×${viewport.height} viewport`,
+  }).toEqual({
+    open: true,
+    visible: true,
+    statusVisible: true,
+    status: `Page ${number} of 2`,
+    busy: false,
+    canvasCount: 1,
+    canvasVisible: true,
+    color: number === 1 ? 'red' : 'blue',
+    viewportMatches: true,
+    modalFits: true,
+    canvasReadableWidth: true,
+    canvasFits: true,
+  });
 }
 
 async function expectNoResources(page, screen) {
@@ -94,13 +136,6 @@ for (const screen of screens) {
       await expect(modal.locator('.documentPreviewPrevious')).toBeDisabled();
       await expect(modal.locator('.documentPreviewNext')).toBeEnabled();
       await expect(modal.locator('iframe, object, embed')).toHaveCount(0);
-      const bounds = await modal.boundingBox();
-      expect(bounds.x).toBeGreaterThanOrEqual(0);
-      expect(bounds.x + bounds.width).toBeLessThanOrEqual(page.viewportSize().width + 1);
-      const canvasBounds = await modal.locator('canvas').boundingBox();
-      expect(canvasBounds.width).toBeGreaterThan(100);
-      expect(canvasBounds.x).toBeGreaterThanOrEqual(bounds.x);
-      expect(canvasBounds.x + canvasBounds.width).toBeLessThanOrEqual(bounds.x + bounds.width + 1);
       await modal.locator('.documentPreviewNext').click();
       await waitForPage(page, screen, 2);
       await expect(modal.locator('.documentPreviewNext')).toBeDisabled();
@@ -115,11 +150,6 @@ for (const screen of screens) {
       const originalViewport = page.viewportSize();
       await page.setViewportSize({width: 844, height: 390});
       await waitForPage(page, screen, 2);
-      const landscapeBounds = await modal.boundingBox();
-      expect(landscapeBounds.x).toBeGreaterThanOrEqual(0);
-      expect(landscapeBounds.x + landscapeBounds.width).toBeLessThanOrEqual(845);
-      const landscapeCanvas = await modal.locator('canvas').boundingBox();
-      expect(landscapeCanvas.x + landscapeCanvas.width).toBeLessThanOrEqual(landscapeBounds.x + landscapeBounds.width + 1);
       await expect(modal.getByRole('button', {name: 'Close preview'})).toBeVisible();
       await page.setViewportSize(originalViewport);
       await waitForPage(page, screen, 2);

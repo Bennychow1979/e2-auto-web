@@ -19,6 +19,8 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+        env:
+          PLAYWRIGHT_SCREENSHOT_DIR: test-results/previews
       - name: Keep synthetic preview screenshots and failure traces
         if: always()
         uses: actions/upload-artifact@v4
