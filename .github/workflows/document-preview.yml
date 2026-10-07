@@ -1,0 +1,21 @@
+name: Verify private document preview
+on:
+  push:
+    branches: [main]
+    paths: ['document*', 'intake-workspace*', 'tests/**', 'playwright.config.mjs', 'scripts/build-pdf-preview.mjs', 'package*.json', '.github/workflows/document-preview.yml', '.github/workflows/deploy-pages.yml']
+  pull_request:
+    paths: ['document*', 'intake-workspace*', 'tests/**', 'playwright.config.mjs', 'scripts/build-pdf-preview.mjs', 'package*.json', '.github/workflows/document-preview.yml', '.github/workflows/deploy-pages.yml']
+permissions:
+  contents: read
+jobs:
+  browser-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
