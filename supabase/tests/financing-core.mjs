@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {uuid, items, portalURL, emailAddress, isoDateTime, offerNumber, emailReviewText} from '../../financing-core.mjs';
+assert.equal(uuid('11111111-1111-4111-8111-111111111111'), true);
+assert.equal(uuid('<script>'), false);
+assert.deepEqual(items(' IC front\n\nIC front\r\nPayslip'), ['IC front', 'Payslip']);
+assert.throws(() => items('x'.repeat(201)));
+for (const url of ['javascript:alert(1)', 'http://bank.example.test', 'https://user:password@bank.example.test', 'https://localhost', 'https://127.0.0.1', 'https://bank.example.test/#token']) assert.equal(portalURL(url), null);
+assert.equal(portalURL('https://portal.example.test/apply'), 'https://portal.example.test/apply');
+assert.equal(emailAddress('loans@example.test'), 'loans@example.test');
+for (const v of ['a@example.test\r\nBcc:b@example.test','a@example.test,b@example.test','bad']) assert.equal(emailAddress(v), null);
+assert.throws(() => isoDateTime('garbage'));
+assert.throws(() => isoDateTime('2099-01-01'));
+assert.equal(offerNumber('', 'amount', 1e8), null);
+assert.throws(() => offerNumber(-1, 'amount', 1e8));
+const review = emailReviewText({email_to:'loan@example.test',email_subject:'Review only',email_body:'Please review.',attachment_ids:['one']}, {}, [{id:'one',filename:'synthetic.pdf'}, {id:'two',filename:'excluded.pdf'}]);
+assert.match(review, /synthetic.pdf/); assert.doesNotMatch(review, /excluded.pdf/); assert.match(review, /does not send email or attach files/);
+console.log('PASS financing presentation and safe submission helpers');

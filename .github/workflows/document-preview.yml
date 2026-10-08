@@ -2,9 +2,9 @@ name: Verify private document preview
 on:
   push:
     branches: [main]
-    paths: ['document*', 'intake-workspace*', 'tests/**', 'playwright.config.mjs', 'scripts/build-pdf-preview.mjs', 'package*.json', '.github/workflows/document-preview.yml', '.github/workflows/deploy-pages.yml']
+    paths: ['financing*', 'document*', 'intake-workspace*', 'tests/**', 'playwright.config.mjs', 'scripts/build-pdf-preview.mjs', 'package*.json', '.github/workflows/document-preview.yml', '.github/workflows/deploy-pages.yml']
   pull_request:
-    paths: ['document*', 'intake-workspace*', 'tests/**', 'playwright.config.mjs', 'scripts/build-pdf-preview.mjs', 'package*.json', '.github/workflows/document-preview.yml', '.github/workflows/deploy-pages.yml']
+    paths: ['financing*', 'document*', 'intake-workspace*', 'tests/**', 'playwright.config.mjs', 'scripts/build-pdf-preview.mjs', 'package*.json', '.github/workflows/document-preview.yml', '.github/workflows/deploy-pages.yml']
 permissions:
   contents: read
 jobs:
