@@ -305,3 +305,45 @@ Local validation for this update passed `npm run check` and the full `npm test`
 command: 1,065 reported PASS checks, including 379 financing security/workflow
 checks. All 168 browser cases parse and collect; the latest PR CI result is the
 authoritative executed browser result.
+
+## Staged static publication gate
+
+`e2-config.js` ships with `financingCases: false`. Missing configuration also
+means disabled. This permits publishing the reviewed static code before any
+production database security change. While disabled:
+
+- Existing intake/registered-loan pages do not call new finance permission RPCs.
+- New financing-workspace links are hidden. Existing authentication, application
+  follow-up and private-document behavior remain in place.
+- Opening `financing-case.html` directly shows a disabled-state notice and links
+  to the existing pages, without importing its finance/Auth data adapter.
+- The new staff page uses the existing staff Auth storage key only when enabled;
+  public pages keep their nonpersistent, non-staff Auth context.
+
+This flag is a rollout switch, not an authorization boundary or a database
+rollback. Real authorization remains in Auth/RLS/RPCs. Do not substitute the
+flag for approving or verifying backend access. Applying the migration changes
+live policies and RPC grants immediately, even with the frontend disabled.
+
+Production migration, capability setup and feature activation require a
+separate exact approval and authenticated administration route. Confirm the
+actual applied migrations/dependencies, take database and Storage backups, and
+run hosted synthetic Auth/Storage and concurrent-session checks first. The SQL
+creates five finance tables and their policies/functions/triggers, seeds no
+real accounts/cases/institutions, preserves customer draft isolation, and adds
+configurable global submitted-case access plus assigned-only submission.
+
+Dispatcher rows start empty. The receiving-coordinator handoff requires an
+explicitly approved active dispatcher entry for a verified eligible account,
+even when that account already has Super Admin. Do not change Ada’s existing
+role or guess an Auth UUID. Verify destinations before enabling institutions.
+
+After tracked cases exist, turning the UI off does not restore legacy mutation
+RPCs for those cases. A data-preserving rollback/recovery plan is required; do
+not drop audit/case data. Also check external service-role integrations: the
+legacy wrappers no longer inherit their old service-role execute grants.
+
+Only after separate backend approval/application and successful staging/hosted
+checks should the explicit rollout flag be enabled in another reviewed release.
+A static deployment with the flag off must be reported as code published,
+financing tracking not enabled. No production SQL is applied by Pages CI.

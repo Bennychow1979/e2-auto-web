@@ -15,6 +15,8 @@ const test = base.extend({
   audit: [async ({page, context, baseURL}, use) => {
     const result = {externalRequests: [], pageErrors: []};
     page.on('pageerror', error => result.pageErrors.push(error.message));
+    // Exercise the enabled branch without changing the deployed default-off flag.
+    await page.route('**/e2-config.js', route => route.fulfill({contentType:'text/javascript',body:'window.E2_CONFIG = Object.freeze({financingCases:true});'}));
     await context.route('**/*', async route => {
       const url = new URL(route.request().url());
       if (['http:', 'https:'].includes(url.protocol) && url.origin !== new URL(baseURL).origin) {

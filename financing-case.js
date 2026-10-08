@@ -1,4 +1,7 @@
-import * as api from './financing-data.js?v=case-1';
+import {financingEnabled} from './financing-feature.mjs';
+// Do not initialize staff Auth or query new schema before rollout activation.
+const enabled=financingEnabled();
+const api=enabled?await import('./financing-data.js?v=case-1'):null;
 import {esc, rm} from './loan-ui.js';
 import {checklist, categoryProgress} from './document-fields.js';
 import {createDocumentPreview} from './document-preview.js?v=pdf-preview-1';
@@ -214,14 +217,16 @@ main.addEventListener('submit', event => {
   } catch(e) {error(e.message);}
 });
 $('financeSignOut').onclick=async()=>{try{await api.signOut();gate('Signed out.')}catch(e){gate(e.message)}};
-api.db?.auth.onAuthStateChange((event, session)=>{
+api?.db?.auth.onAuthStateChange((event, session)=>{
   if (session?.user?.id) observedAuthUser=session.user.id;
   if(event==='SIGNED_OUT'){observedAuthUser=null;gate('Sign in with your staff account.');}
   else if(user && observedAuthUser !== undefined && observedAuthUser !== user.id) gate('Sign in with your staff account.');
 });
 window.addEventListener('pagehide',()=>{epoch++;preview.close();snapshot=null;main.replaceChildren();});
 window.addEventListener('pageshow',event=>{if(event.persisted)location.reload()});
-try {
+if(!enabled){
+  main.innerHTML=`<section class="financeIntro"><h1>Financing case tracking is not enabled yet.</h1><p>Continue using the existing staff application pages while setup is reviewed.</p><div class="financeActions"><a class="primary" href="intake-workspace.html">Customer intake ↗</a><a class="secondary" href="loans.html">Registered applications ↗</a></div></section>`;
+}else try {
   if(!['intake','loan'].includes(sourceKind)||!uuid(sourceId)) throw Error('Open a financing case from Customer intake or Registered applications.');
   const run=epoch, signedIn=await api.who();
   if(run===epoch){
