@@ -35,6 +35,12 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Build self-hosted document preview
+        run: |
+          npm ci --ignore-scripts
+          npm run build:pdf-preview
+          rm -rf node_modules
+
       - name: Validate and build multilingual public pages
         run: |
           node supabase/tests/seo.mjs

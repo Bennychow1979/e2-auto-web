@@ -10,3 +10,9 @@ sitemap.xml
 # Generated language pages (rebuilt by Pages workflow).
 /ms/
 /zh/
+
+
+# Generated self-hosted PDF renderer and local browser reports
+vendor/pdfjs/
+test-results/
+playwright-report/
