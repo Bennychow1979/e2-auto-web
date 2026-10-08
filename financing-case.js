@@ -97,7 +97,7 @@ function applicationForm(a, {c, files, institutions, staff}) {
   const assignees = staff.filter(p => p.active !== false && ['office_admin','admin','super_admin'].includes(p.role));
   return `<form data-action="save-application" data-id="${esc(a?.id || '')}"><div class="financeGrid">
     <label class="field"><span>Bank / credit company</span><select name="institution" required><option value="">Choose an institution</option>${options(choices,a?.institution_id)}</select></label>
-    <label class="field"><span>Submission channel</span><select name="channel"><option value="portal" ${a?.channel !== 'email' ? 'selected' : ''}>Lender portal</option><option value="email" ${a?.channel === 'email' ? 'selected' : ''}>Email</option></select></label>
+    <label class="field"><span>Submission channel</span><select name="channel" required><option value="">Choose a confirmed channel</option><option value="portal" ${a?.channel === 'portal' ? 'selected' : ''}>Lender portal</option><option value="email" ${a?.channel === 'email' ? 'selected' : ''}>Email</option></select></label>
     <label class="field"><span>Application assignee (tracking only)</span><select name="assignee" required>${options(assignees,a?.assignee || c.office_admin,'user_id','display_name')}</select></label>
     ${field('subject','Email subject (email only)','text',a?.email_subject || '', 'maxlength="200"')}
     <div class="full">${textArea('body','Email message (email only)',a?.email_body || '', 'maxlength="5000"')}</div></div>

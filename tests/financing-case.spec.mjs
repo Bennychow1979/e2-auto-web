@@ -61,15 +61,21 @@ async function expectPrivateUICleared(page) {
   await expect(page.locator('#financeFilePreview canvas, #financeFilePreview img, #financeFilePreview a[download]')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => window.__financeFixture.liveURLs.size)).toBe(0);
 }
+// Match the computed accessible name, not a wrapping label's raw descendant
+// text: nested select options and server-rendered textarea contents are text
+// descendants but are correctly excluded from the control's accessible name.
 async function fillDraft(page, channel) {
   await summary(page, 'Add an institution application').click();
   const draft = page.locator('form[data-action="save-application"][data-id=""]');
-  await draft.getByLabel('Bank / credit company', {exact: true}).selectOption(ids[channel]);
-  await draft.getByLabel('Submission channel', {exact: true}).selectOption(channel);
-  await draft.getByLabel('synthetic-identity.pdf', {exact: true}).check();
+  await draft.getByRole('combobox', {name: 'Bank / credit company', exact: true}).selectOption(ids[channel]);
+  const channelSelect = draft.getByRole('combobox', {name: 'Submission channel', exact: true});
+  await expect(channelSelect).toHaveValue('');
+  await expect(channelSelect).toHaveAttribute('required', '');
+  await channelSelect.selectOption(channel);
+  await draft.getByRole('checkbox', {name: 'synthetic-identity.pdf', exact: true}).check();
   if (channel === 'email') {
-    await draft.getByLabel('Email subject (email only)', {exact: true}).fill('Synthetic email subject');
-    await draft.getByLabel('Email message (email only)', {exact: true}).fill('Synthetic prepared email. Attach documents manually.');
+    await draft.getByRole('textbox', {name: 'Email subject (email only)', exact: true}).fill('Synthetic email subject');
+    await draft.getByRole('textbox', {name: 'Email message (email only)', exact: true}).fill('Synthetic prepared email. Attach documents manually.');
   }
   return draft;
 }
@@ -90,8 +96,8 @@ for (const source of ['intake', 'loan']) {
 test('Salesman records missing documents, checks completeness, and explicitly hands over to a coordinator', async ({page}) => {
   await install(page, {role: 'sales', handed: false});
   let review = form(page, 'review');
-  await review.getByLabel('Missing items, one per line', {exact: true}).fill('Latest statement month\nClear back of identity document');
-  await review.getByLabel('Review / customer follow-up note', {exact: true}).fill('Synthetic review: ask customer through approved channel.');
+  await review.getByRole('textbox', {name: 'Missing items, one per line', exact: true}).fill('Latest statement month\nClear back of identity document');
+  await review.getByRole('textbox', {name: 'Review / customer follow-up note', exact: true}).fill('Synthetic review: ask customer through approved channel.');
   await review.getByRole('button', {name: 'Save completeness review', exact: true}).click();
   await expect(page.getByRole('heading', {name: 'Items to follow up.', exact: true})).toBeVisible();
   await expect(form(page, 'handoff')).toHaveCount(0);
@@ -100,15 +106,15 @@ test('Salesman records missing documents, checks completeness, and explicitly ha
   await expect(page.getByText(/no message has been sent automatically/)).toBeVisible();
 
   review = form(page, 'review');
-  await review.getByLabel('Missing items, one per line', {exact: true}).fill('');
-  await review.getByLabel('Review / customer follow-up note', {exact: true}).fill('All required synthetic documents checked.');
+  await review.getByRole('textbox', {name: 'Missing items, one per line', exact: true}).fill('');
+  await review.getByRole('textbox', {name: 'Review / customer follow-up note', exact: true}).fill('All required synthetic documents checked.');
   await review.locator('[name="details"]').check();
   await review.locator('[name="documents"]').check();
   await review.getByRole('button', {name: 'Save completeness review', exact: true}).click();
   const handoff = form(page, 'handoff');
   await expect(handoff).toBeVisible();
-  await handoff.getByLabel('Receiving coordinator', {exact: true}).selectOption(ids.coordinator);
-  await handoff.getByLabel('Handover note', {exact: true}).fill('Synthetic complete package ready for independent lender applications.');
+  await handoff.getByRole('combobox', {name: 'Receiving coordinator', exact: true}).selectOption(ids.coordinator);
+  await handoff.getByRole('textbox', {name: 'Handover note', exact: true}).fill('Synthetic complete package ready for independent lender applications.');
   await handoff.getByRole('button', {name: 'Hand over complete case →', exact: true}).click();
   expect(await calls(page, 'handoff')).toEqual([]);
   await handoff.locator('[name="access"]').check();
@@ -126,7 +132,7 @@ test('Admin creates independent portal/email drafts and email remains a manual a
   await portalDraft.getByRole('button', {name: 'Create application draft', exact: true}).click();
   await expect(page.locator('.financeApplication')).toHaveCount(1);
   const emailDraft = await fillDraft(page, 'email');
-  await emailDraft.getByLabel('Institution-specific missing documents, one per line', {exact: true}).fill('Synthetic additional employment letter');
+  await emailDraft.getByRole('textbox', {name: 'Institution-specific missing documents, one per line', exact: true}).fill('Synthetic additional employment letter');
   await emailDraft.getByRole('button', {name: 'Create application draft', exact: true}).click();
   await expect(page.locator('.financeApplication')).toHaveCount(2);
   const applications = (await state(page)).applications;
@@ -164,7 +170,7 @@ test('review is explicitly confirmed and never marks a draft as submitted', asyn
   await expect(form(view, 'submission')).toHaveCount(0);
   await summary(view, 'Review before submission').click();
   const review = form(view, 'review-application');
-  await review.getByLabel('Document and destination review note', {exact: true}).fill('Synthetic destination and file checklist checked.');
+  await review.getByRole('textbox', {name: 'Document and destination review note', exact: true}).fill('Synthetic destination and file checklist checked.');
   await review.getByRole('button', {name: 'Mark reviewed, not submitted', exact: true}).click();
   expect(await calls(page, 'reviewApplication')).toEqual([]);
   await review.locator('[name="review"]').check();
@@ -219,7 +225,7 @@ test('only an approved offer can be recorded as the customer choice with explici
   const view = card(page, portal.id);
   await summary(view, 'Record lender follow-up / offer').click();
   const outcome = form(view, 'outcome');
-  await outcome.getByLabel('Lender-reported status', {exact: true}).selectOption('approved');
+  await outcome.getByRole('combobox', {name: 'Lender-reported status', exact: true}).selectOption('approved');
   await outcome.locator('[name="amount"]').fill('55000');
   await outcome.locator('[name="rate"]').fill('3.25');
   await outcome.locator('[name="tenure"]').fill('60');
@@ -260,7 +266,7 @@ test('only Super Admin sees institution configuration controls', async ({page}) 
   await summary(page, 'Institution settings · Super Admin').click();
   await expect(form(page, 'institution')).toHaveCount(3);
   await summary(page, 'Add a verified institution').click();
-  await expect(page.getByLabel('Verified HTTPS portal URL', {exact: true}).last()).toBeVisible();
+  await expect(page.getByRole('textbox', {name: 'Verified HTTPS portal URL', exact: true}).last()).toBeVisible();
 });
 
 test('repeated draft submission is locked until completion and creates only one application', async ({page}) => {
@@ -280,15 +286,15 @@ test('save failure preserves every entered field and allows a deliberate retry',
   await install(page);
   await page.evaluate(() => {window.__financeFixture.failures.saveApplication = 'Synthetic revision conflict. Review and retry.';});
   const draft = await fillDraft(page, 'email');
-  await draft.getByLabel('Internal application note', {exact: true}).fill('Keep this synthetic draft note.');
+  await draft.getByRole('textbox', {name: 'Internal application note', exact: true}).fill('Keep this synthetic draft note.');
   await draft.getByRole('button', {name: 'Create application draft', exact: true}).click();
   await expect(page.getByRole('alert')).toHaveText('Synthetic revision conflict. Review and retry.');
-  await expect(draft.getByLabel('Bank / credit company', {exact: true})).toHaveValue(ids.email);
-  await expect(draft.getByLabel('Submission channel', {exact: true})).toHaveValue('email');
-  await expect(draft.getByLabel('Email subject (email only)', {exact: true})).toHaveValue('Synthetic email subject');
-  await expect(draft.getByLabel('Email message (email only)', {exact: true})).toHaveValue('Synthetic prepared email. Attach documents manually.');
-  await expect(draft.getByLabel('Internal application note', {exact: true})).toHaveValue('Keep this synthetic draft note.');
-  await expect(draft.getByLabel('synthetic-identity.pdf', {exact: true})).toBeChecked();
+  await expect(draft.getByRole('combobox', {name: 'Bank / credit company', exact: true})).toHaveValue(ids.email);
+  await expect(draft.getByRole('combobox', {name: 'Submission channel', exact: true})).toHaveValue('email');
+  await expect(draft.getByRole('textbox', {name: 'Email subject (email only)', exact: true})).toHaveValue('Synthetic email subject');
+  await expect(draft.getByRole('textbox', {name: 'Email message (email only)', exact: true})).toHaveValue('Synthetic prepared email. Attach documents manually.');
+  await expect(draft.getByRole('textbox', {name: 'Internal application note', exact: true})).toHaveValue('Keep this synthetic draft note.');
+  await expect(draft.getByRole('checkbox', {name: 'synthetic-identity.pdf', exact: true})).toBeChecked();
   await expect(draft.getByRole('button', {name: 'Create application draft', exact: true})).toBeEnabled();
   await expectNoOverflow(page);
   await page.evaluate(() => {delete window.__financeFixture.failures.saveApplication;});
@@ -354,8 +360,8 @@ test('coordinator assigns and reassigns the Admin but cannot process lender appl
   await expect(form(page, 'select')).toHaveCount(0);
   await expect(page.getByRole('button', {name: /Open configured lender portal/})).toHaveCount(0);
   let assign = form(page, 'assign-admin');
-  await assign.getByLabel('Responsible Submission Admin', {exact: true}).selectOption(ids.office);
-  await assign.getByLabel('Assignment / reassignment reason', {exact: true}).fill('Synthetic initial assignment to available submission staff.');
+  await assign.getByRole('combobox', {name: 'Responsible Submission Admin', exact: true}).selectOption(ids.office);
+  await assign.getByRole('textbox', {name: 'Assignment / reassignment reason', exact: true}).fill('Synthetic initial assignment to available submission staff.');
   await assign.getByRole('button', {name: 'Save Admin assignment', exact: true}).click();
   expect(await calls(page, 'assignAdmin')).toEqual([]);
   await assign.locator('[name="access"]').check();
@@ -363,8 +369,8 @@ test('coordinator assigns and reassigns the Admin but cannot process lender appl
   await expect.poll(async () => (await state(page)).financeCase.office_admin).toBe(ids.office);
   await expect(page.locator('#financeMain form')).toHaveCount(1);
   assign = form(page, 'assign-admin');
-  await assign.getByLabel('Responsible Submission Admin', {exact: true}).selectOption(ids.other);
-  await assign.getByLabel('Assignment / reassignment reason', {exact: true}).fill('Synthetic reassignment for workload coverage.');
+  await assign.getByRole('combobox', {name: 'Responsible Submission Admin', exact: true}).selectOption(ids.other);
+  await assign.getByRole('textbox', {name: 'Assignment / reassignment reason', exact: true}).fill('Synthetic reassignment for workload coverage.');
   await assign.locator('[name="access"]').check();
   await assign.getByRole('button', {name: 'Save Admin assignment', exact: true}).click();
   await expect.poll(async () => (await state(page)).financeCase.office_admin).toBe(ids.other);
@@ -409,7 +415,7 @@ test('changing reviewed draft fields invalidates readiness without recording a s
   const view = card(page, a.id);
   await summary(view, 'Edit prepared application').click();
   const edit = form(view, 'save-application');
-  await edit.getByLabel('Email subject (email only)', {exact: true}).fill('Changed synthetic subject requires a new review');
+  await edit.getByRole('textbox', {name: 'Email subject (email only)', exact: true}).fill('Changed synthetic subject requires a new review');
   await edit.getByRole('button', {name: 'Save draft changes', exact: true}).click();
   await expect(view.locator('.financeDraftBadge')).toHaveText('Draft');
   await expect(form(view, 'submission')).toHaveCount(0);
