@@ -1,0 +1,133 @@
+{
+  "draft_only": true,
+  "apply_automatically": false,
+  "updated_on": "2026-10-08",
+  "source": "Owner-provided display names. AEON Credit was explicitly clarified.",
+  "notes": [
+    "Review checklist only. Not imported by the application or database migration.",
+    "No institution is enabled. Portal/email channels, institution type, destination and required documents still need review.",
+    "The owner explicitly left all submission channels pending confirmation. Do not choose a default route.",
+    "Display names are not verified corporate identities. Preserve FS Credit and Elk Credit without expanding their abbreviations.",
+    "A null required_documents value means unknown, not that no documents are required.",
+    "Before using a record with e2_save_finance_institution, separately verify the institution, supported channel(s), destination and document list, supply its required kind, and obtain production configuration approval."
+  ],
+  "institutions": [
+    {
+      "name": "AEON Credit",
+      "active": false,
+      "kind": null,
+      "submission_channels": null,
+      "portal_url": null,
+      "email_to": null,
+      "required_documents": null
+    },
+    {
+      "name": "Chailease Credit",
+      "active": false,
+      "kind": null,
+      "submission_channels": null,
+      "portal_url": null,
+      "email_to": null,
+      "required_documents": null
+    },
+    {
+      "name": "GFS Credit",
+      "active": false,
+      "kind": null,
+      "submission_channels": null,
+      "portal_url": null,
+      "email_to": null,
+      "required_documents": null
+    },
+    {
+      "name": "X Star Credit",
+      "active": false,
+      "kind": null,
+      "submission_channels": null,
+      "portal_url": null,
+      "email_to": null,
+      "required_documents": null
+    },
+    {
+      "name": "Carsome Credit",
+      "active": false,
+      "kind": null,
+      "submission_channels": null,
+      "portal_url": null,
+      "email_to": null,
+      "required_documents": null
+    },
+    {
+      "name": "FS Credit",
+      "active": false,
+      "kind": null,
+      "submission_channels": null,
+      "portal_url": null,
+      "email_to": null,
+      "required_documents": null
+    },
+    {
+      "name": "Elk Credit",
+      "active": false,
+      "kind": null,
+      "submission_channels": null,
+      "portal_url": null,
+      "email_to": null,
+      "required_documents": null
+    },
+    {
+      "name": "Maybank",
+      "active": false,
+      "kind": null,
+      "submission_channels": null,
+      "portal_url": null,
+      "email_to": null,
+      "required_documents": null
+    },
+    {
+      "name": "Public Bank",
+      "active": false,
+      "kind": null,
+      "submission_channels": null,
+      "portal_url": null,
+      "email_to": null,
+      "required_documents": null
+    },
+    {
+      "name": "AmBank",
+      "active": false,
+      "kind": null,
+      "submission_channels": null,
+      "portal_url": null,
+      "email_to": null,
+      "required_documents": null
+    },
+    {
+      "name": "CIMB Bank",
+      "active": false,
+      "kind": null,
+      "submission_channels": null,
+      "portal_url": null,
+      "email_to": null,
+      "required_documents": null
+    },
+    {
+      "name": "HLB Bank",
+      "active": false,
+      "kind": null,
+      "submission_channels": null,
+      "portal_url": null,
+      "email_to": null,
+      "required_documents": null
+    },
+    {
+      "name": "Bank Muamalat",
+      "active": false,
+      "kind": null,
+      "submission_channels": null,
+      "portal_url": null,
+      "email_to": null,
+      "required_documents": null
+    }
+  ]
+}

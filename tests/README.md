@@ -54,3 +54,23 @@ Open one of these local pages:
 
 This opt-in mode rewrites test-server responses only. It never changes the
 production HTML or data modules. Do not enable it on a production server.
+
+
+# Financing-case browser tests
+
+`financing-case.spec.mjs` exercises the staff financing page with a fully mocked
+`financing-data.js` adapter and synthetic source/documents/institutions. It
+covers both source types, Salesman reviews, coordinator handover/reassignment,
+Submission Admin isolation, independent portal/email tracking, missing items,
+explicit human submission evidence, lender outcomes, selected offers, draft
+retry/error preservation, stale configuration, auth races and PDF cleanup.
+
+Portal popups are synthetic stub objects; no lender page opens in the tests.
+All third-party requests are blocked and asserted absent. The checked source,
+files and case revision arrive as one database snapshot in production; the
+adapter unit suite independently verifies that boundary.
+
+The finance suite has 96 desktop/mobile cases, including global coordinator
+visibility and cross-coordinator assignment without submission powers. Its screenshot test can capture
+synthetic multi-institution views when run on a browser-capable host. Test
+collection alone is not an executed browser pass.
