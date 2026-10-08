@@ -9,6 +9,8 @@ create table public.finance_institutions (
  required_documents text[] not null default '{}', active boolean not null default true,
  revision bigint not null default 1, created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
+-- Explicit, revocable global access to submitted financing sources and case dispatch only.
+-- No memberships or capabilities are seeded; display names are never authorization keys.
 create table public.finance_dispatchers (
  user_id uuid primary key references public.staff_memberships(user_id), active boolean not null default true,
  revision bigint not null default 1, updated_at timestamptz not null default now()
@@ -84,7 +86,7 @@ declare d public.finance_dispatchers;prior boolean;begin
 end;$$;
 create function public.e2_finance_case_access(target uuid) returns boolean language sql stable security definer set search_path='' as $$
  select exists(select 1 from public.finance_cases c join public.staff_memberships m on m.user_id=auth.uid() and m.active
- where c.id=target and (m.role='super_admin' or (m.user_id=c.salesperson and m.role in ('sales','admin')) or (c.handed_at is not null and m.user_id=c.coordinator and m.role in ('office_admin','admin') and exists(select 1 from public.finance_dispatchers d where d.user_id=m.user_id and d.active)) or (c.handed_at is not null and m.user_id=c.office_admin and m.role in ('office_admin','admin')))
+ where c.id=target and (m.role='super_admin' or public.e2_finance_is_dispatcher() or (m.user_id=c.salesperson and m.role in ('sales','admin')) or (c.handed_at is not null and m.user_id=c.office_admin and m.role in ('office_admin','admin')))
  and (exists(select 1 from public.intake_submissions s where s.id=c.intake_id and s.submitted_at is not null) or exists(select 1 from public.loan_applications s where s.id=c.loan_id and s.submitted_at is not null)));
 $$;
 create policy finance_case_read on public.finance_cases for select to authenticated using(public.e2_finance_case_access(id));
@@ -103,7 +105,8 @@ declare c public.finance_cases;begin
  if expected is not null and expected is distinct from c.revision then raise exception 'Case changed. Reload before saving.';end if;
  if access_mode='sales' and not coalesce((public.e2_is_super_admin() or (c.salesperson=auth.uid() and exists(select 1 from public.staff_memberships where user_id=auth.uid() and active and role in ('sales','admin')))) ,false) then raise exception 'Only the assigned Salesman or Super Admin can review and hand over.';end if;
  if access_mode='office' and not coalesce((public.e2_is_super_admin() or (c.office_admin=auth.uid() and c.handed_at is not null and exists(select 1 from public.staff_memberships where user_id=auth.uid() and active and role in ('office_admin','admin')))) ,false) then raise exception 'Assigned Office Admin access required.';end if;
- if access_mode='dispatch' and not coalesce((public.e2_is_super_admin() or (c.coordinator=auth.uid() and c.handed_at is not null and public.e2_finance_is_dispatcher())) ,false) then raise exception 'Assigned case coordinator access required.';end if;
+ if access_mode='dispatch' and not coalesce((public.e2_is_super_admin() or public.e2_finance_is_dispatcher()) ,false) then raise exception 'Configured case coordinator access required.';end if;
+ if access_mode='either' and not (public.e2_is_super_admin() or exists(select 1 from public.staff_memberships m where m.user_id=auth.uid() and m.active and ((m.user_id=c.salesperson and m.role in ('sales','admin')) or (c.handed_at is not null and m.user_id=c.office_admin and m.role in ('office_admin','admin'))))) then raise exception 'Assigned Salesman or Submission Admin access required to edit the case.';end if;
  return c;
 end;$$;
 create function public.e2_finance_lock_application(target uuid,expected bigint) returns public.finance_applications language plpgsql security definer set search_path='' as $$
@@ -167,7 +170,7 @@ declare c public.finance_cases;sales uuid;office uuid;handed timestamptz;title t
   if not found or not public.e2_intake_access(source_id) then raise exception 'Submitted source access required.';end if;
  elsif source_kind='loan' then
   select assigned_sales,coalesce(nullif(details->>'name',''),'Registered application') into sales,title from public.loan_applications where id=source_id and submitted_at is not null for update;
-  if not found or not public.e2_loan_staff(sales) then raise exception 'Submitted source access required.';end if;
+  if not found or not public.e2_finance_source_loan_access(source_id) then raise exception 'Submitted source access required.';end if;
  else raise exception 'Choose intake or loan source.';end if;
  if not public.e2_finance_active_staff() then raise exception 'Staff access required.';end if;
  -- An old loan assigned directly to Office Admin must first be reassigned to a Salesman by Super Admin.
@@ -178,6 +181,26 @@ declare c public.finance_cases;sales uuid;office uuid;handed timestamptz;title t
  insert into public.finance_cases(intake_id,loan_id,case_name,salesperson,office_admin,handed_at)
  values(case when source_kind='intake' then source_id end,case when source_kind='loan' then source_id end,left(title,140)||' financing',sales,office,handed) returning * into c;
  insert into public.finance_events(case_id,actor,event,note) values(c.id,auth.uid(),'case_opened','Internal financing tracking started. Existing source remains private.');return c;
+end;$$;
+-- Explicit, one-source adoption only. Never infer this from a read or normal Start action.
+-- Preserve the old handover and assigned Admin; the new checked workflow starts unreviewed.
+create function public.e2_adopt_legacy_finance_case(source_kind text,source_id uuid,expected_source_revision bigint,reason text) returns public.finance_cases language plpgsql security definer set search_path='' as $$
+declare s public.intake_submissions;c public.finance_cases;begin
+ if not (public.e2_is_super_admin() or public.e2_finance_is_dispatcher()) then raise exception 'Configured case coordinator or Super Admin access required.';end if;
+ if source_kind is distinct from 'intake' then raise exception 'Explicit legacy adoption supports handed-over guest intake only.';end if;
+ if expected_source_revision is null then raise exception 'Source revision required.';end if;
+ if length(btrim(coalesce(reason,''))) not between 10 and 2000 then raise exception 'Add a legacy adoption reason between 10 and 2000 characters.';end if;
+ select * into s from public.intake_submissions where id=source_id and submitted_at is not null for update;
+ if not found or s.handed_at is null then raise exception 'Choose a submitted legacy guest source with an existing handover.';end if;
+ if s.revision is distinct from expected_source_revision then raise exception 'Source changed. Reload before adopting the legacy handover.';end if;
+ if exists(select 1 from public.finance_cases where intake_id=source_id) then raise exception 'This source is already tracked. Open its existing financing workspace.';end if;
+ if not exists(select 1 from public.staff_memberships where user_id=s.salesperson and active and role in ('sales','admin','super_admin')) then raise exception 'Assign an active Salesman before adopting the legacy handover.';end if;
+ if not exists(select 1 from public.staff_memberships where user_id=s.office_admin and active and role in ('office_admin','admin','super_admin')) then raise exception 'An existing active Submission Admin assignment is required before legacy adoption.';end if;
+ insert into public.finance_cases(intake_id,case_name,salesperson,coordinator,office_admin,handed_at,handoff_note)
+ values(s.id,left(coalesce(nullif(s.details->>'name',''),'Guest enquiry'),140)||' financing',s.salesperson,auth.uid(),s.office_admin,s.handed_at,btrim(reason)) returning * into c;
+ insert into public.finance_events(case_id,actor,event,note,evidence)
+ values(c.id,auth.uid(),'legacy_case_adopted',btrim(reason),jsonb_build_object('source_kind','intake','source_id',s.id,'source_revision',s.revision,'previous_source_status',s.status,'salesperson',s.salesperson,'office_admin',s.office_admin,'handed_at',s.handed_at,'coordinator',auth.uid(),'fresh_sales_review_required',true));
+ return c;
 end;$$;
 create function public.e2_rename_finance_case(target uuid,case_name text,expected_revision bigint) returns public.finance_cases language plpgsql security definer set search_path='' as $$
 declare c public.finance_cases;begin
@@ -219,7 +242,7 @@ create function public.e2_handoff_finance_case(target uuid,office uuid,message t
 declare c public.finance_cases;begin
  if expected_revision is null then raise exception 'Case revision required.';end if;
  c:=public.e2_finance_lock_case(target,expected_revision,'sales');
- if c.handed_at is not null then raise exception 'This case is already handed over. Only its coordinator may reassign the Submission Admin.';end if;
+ if c.handed_at is not null then raise exception 'This case is already handed over. Only a configured case coordinator may reassign the Submission Admin.';end if;
  if c.review_state<>'complete' or c.reviewed_content_revision is distinct from c.content_revision or cardinality(public.e2_finance_required_missing(target))>0 then raise exception 'Complete the current Salesman review and missing documents before handover.';end if;
  if not exists(select 1 from public.finance_dispatchers d join public.staff_memberships m on m.user_id=d.user_id where d.user_id=office and d.active and m.active and m.role in ('admin','office_admin','super_admin')) then raise exception 'Choose an active configured case coordinator.';end if;
  if length(btrim(coalesce(message,''))) not between 1 and 2000 then raise exception 'Add a handover note.';end if;
@@ -364,7 +387,7 @@ declare c public.finance_cases;result jsonb;begin
   'applications',coalesce((select jsonb_agg(to_jsonb(a) order by a.created_at,a.id) from public.finance_applications a where a.case_id=target),'[]'::jsonb),
   'institutions',coalesce((select jsonb_agg(to_jsonb(i) order by i.name) from public.finance_institutions i where i.active or public.e2_is_super_admin() or exists(select 1 from public.finance_applications a where a.case_id=target and a.institution_id=i.id)),'[]'::jsonb),
   'history',coalesce((select jsonb_agg(to_jsonb(e) order by e.id desc) from public.finance_events e where e.case_id=target),'[]'::jsonb),
-  'staff',coalesce((select jsonb_agg(jsonb_build_object('user_id',m.user_id,'display_name',coalesce(nullif(p.display_name,''),u.email,'E2 staff'),'role',m.role,'active',m.active,'is_dispatcher',exists(select 1 from public.finance_dispatchers d where d.user_id=m.user_id and d.active)) order by coalesce(p.display_name,u.email)) from public.staff_memberships m join auth.users u on u.id=m.user_id left join public.staff_profiles p on p.user_id=m.user_id where (m.active and m.role in ('office_admin','admin','super_admin')) or m.user_id=c.salesperson or m.user_id=c.office_admin or m.user_id=c.coordinator or exists(select 1 from public.finance_applications a where a.case_id=target and a.assignee=m.user_id)),'[]'::jsonb),
+  'staff',coalesce((select jsonb_agg(jsonb_build_object('user_id',m.user_id,'display_name',coalesce(nullif(p.display_name,''),'E2 staff'),'role',m.role,'active',m.active,'is_dispatcher',m.active and m.role in ('office_admin','admin','super_admin') and exists(select 1 from public.finance_dispatchers d where d.user_id=m.user_id and d.active)) order by coalesce(p.display_name,'E2 staff'),m.user_id) from public.staff_memberships m left join public.staff_profiles p on p.user_id=m.user_id where (m.active and m.role in ('office_admin','admin','super_admin')) or m.user_id=c.salesperson or m.user_id=c.office_admin or m.user_id=c.coordinator or exists(select 1 from public.finance_applications a where a.case_id=target and a.assignee=m.user_id)),'[]'::jsonb),
   'required_missing',to_jsonb(public.e2_finance_required_missing(target))) into result;
  return result;
 end;$$;
@@ -433,20 +456,23 @@ declare c record;old_bucket text;new_bucket text;old_path text;new_path text;beg
 end;$$;
 create trigger finance_storage_changed after insert or update or delete on storage.objects for each row execute function public.e2_finance_storage_changed();
 
--- The coordinator and assigned Submission Admin read the guest source through the same
--- bounded case policy. A coordinator capability alone never grants access to all sources.
+-- Configured coordinators read every submitted guest source, including untracked ones.
+-- All other staff retain their original assigned-only scope; unsubmitted drafts stay private.
+-- The receiving coordinator on a case is routing/audit history, not a global access boundary.
 create or replace function public.e2_intake_access(target uuid) returns boolean language sql stable security definer set search_path='' as $$
- select exists(select 1 from public.intake_submissions a join public.staff_memberships m on m.user_id=auth.uid() and m.active where a.id=target and a.submitted_at is not null and (m.role='super_admin' or (a.salesperson=m.user_id and m.role in ('sales','admin')) or (a.handed_at is not null and a.office_admin=m.user_id and m.role in ('admin','office_admin')) or exists(select 1 from public.finance_cases c where c.intake_id=a.id and public.e2_finance_case_access(c.id))));
+ select exists(select 1 from public.intake_submissions a join public.staff_memberships m on m.user_id=auth.uid() and m.active where a.id=target and a.submitted_at is not null and (m.role='super_admin' or public.e2_finance_is_dispatcher() or (a.salesperson=m.user_id and m.role in ('sales','admin')) or (a.handed_at is not null and a.office_admin=m.user_id and m.role in ('admin','office_admin')) or exists(select 1 from public.finance_cases c where c.intake_id=a.id and public.e2_finance_case_access(c.id))));
 $$;
 
--- Private registered-loan documents become visible to exactly the handed-over Office Admin,
--- without replacing assigned_sales. Customers and untracked legacy assignments are preserved.
+-- Submitted registered sources, ready documents and their existing event policies share
+-- the same global-coordinator or assigned-only read boundary. Customer ownership and
+-- untracked legacy assignments are preserved; e2_loan_staff is deliberately not broadened,
+-- because legacy mutation RPCs also use it.
 create function public.e2_finance_loan_access(target uuid) returns boolean language sql stable security definer set search_path='' as $$
  select exists(select 1 from public.finance_cases c where c.loan_id=target and public.e2_finance_case_access(c.id));
 $$;
 create function public.e2_finance_source_loan_access(target uuid) returns boolean language sql stable security definer set search_path='' as $$
  select exists(select 1 from public.loan_applications a where a.id=target and a.submitted_at is not null and
-  case when exists(select 1 from public.finance_cases c where c.loan_id=a.id) then public.e2_finance_loan_access(a.id) else public.e2_loan_staff(a.assigned_sales) end);
+  (public.e2_finance_is_dispatcher() or case when exists(select 1 from public.finance_cases c where c.loan_id=a.id) then public.e2_finance_loan_access(a.id) else public.e2_loan_staff(a.assigned_sales) end));
 $$;
 drop policy loan_followup on public.loan_applications;
 create policy loan_followup on public.loan_applications for select to authenticated using(public.e2_finance_source_loan_access(id));
@@ -472,9 +498,15 @@ create function public.e2_intake_handoff(target uuid,office uuid,message text,ex
  if exists(select 1 from public.finance_cases where intake_id=target) then raise exception 'Use the financing workspace to complete the Salesman review and handover.';end if;
  perform public.e2_legacy_intake_handoff(target,office,message,expected_revision);
 end;$$;
-create function public.e2_intake_progress(target uuid,next_status text,message text,expected_revision bigint) returns void language plpgsql security definer set search_path='' as $$begin
- perform 1 from public.intake_submissions where id=target for update;
+create function public.e2_intake_progress(target uuid,next_status text,message text,expected_revision bigint) returns void language plpgsql security definer set search_path='' as $$
+declare s public.intake_submissions;sales_actor boolean;office_actor boolean;begin
+ select * into s from public.intake_submissions where id=target for update;
  if exists(select 1 from public.finance_cases where intake_id=target) then raise exception 'Use the financing workspace to record checked progress and actual submission evidence.';end if;
+ -- Check the actor for this operation, even when both historical assignment IDs match.
+ -- Global reads must never revive a former Salesman or Office role after demotion.
+ sales_actor:=public.e2_is_super_admin() or exists(select 1 from public.staff_memberships m where m.user_id=auth.uid() and m.active and m.user_id=s.salesperson and m.role in ('sales','admin'));
+ office_actor:=public.e2_is_super_admin() or exists(select 1 from public.staff_memberships m where m.user_id=auth.uid() and m.active and s.handed_at is not null and m.user_id=s.office_admin and m.role in ('office_admin','admin'));
+ if not (case next_status when 'Needs information' then sales_actor or office_actor when 'Received by Salesman' then sales_actor when 'Submitted to financier' then office_actor when 'Outcome recorded' then office_actor else false end) then raise exception 'Assigned Salesman or Submission Admin access required for this progress change.';end if;
  perform public.e2_legacy_intake_progress(target,next_status,message,expected_revision);
 end;$$;
 create function public.e2_update_loan_status(target uuid,next_status text,message text,expected_revision bigint) returns public.loan_applications language plpgsql security definer set search_path='' as $$begin
@@ -490,12 +522,12 @@ end;$$;
 
 -- Explicit deny-list first, including Supabase projects with permissive default function grants.
 do $$declare f record;begin
- for f in select oid::regprocedure sig from pg_proc where pronamespace='public'::regnamespace and (proname like 'e2_finance_%' or proname in ('e2_configure_finance_dispatcher','e2_assign_finance_admin','e2_open_finance_case','e2_rename_finance_case','e2_review_finance_case','e2_handoff_finance_case','e2_save_finance_institution','e2_save_finance_application','e2_review_finance_application','e2_record_finance_submission','e2_record_finance_outcome','e2_select_finance_offer','e2_intake_handoff','e2_intake_progress','e2_update_loan_status','e2_assign_loan')) loop
+ for f in select oid::regprocedure sig from pg_proc where pronamespace='public'::regnamespace and (proname like 'e2_finance_%' or proname in ('e2_configure_finance_dispatcher','e2_assign_finance_admin','e2_open_finance_case','e2_adopt_legacy_finance_case','e2_rename_finance_case','e2_review_finance_case','e2_handoff_finance_case','e2_save_finance_institution','e2_save_finance_application','e2_review_finance_application','e2_record_finance_submission','e2_record_finance_outcome','e2_select_finance_offer','e2_intake_handoff','e2_intake_progress','e2_update_loan_status','e2_assign_loan')) loop
  execute format('revoke all on function %s from public,anon,authenticated,service_role',f.sig);
  end loop;
 end$$;
 grant execute on function public.e2_finance_active_staff(),public.e2_finance_is_dispatcher(),public.e2_configure_finance_dispatcher(uuid,boolean,bigint),public.e2_assign_finance_admin(uuid,uuid,text,bigint),public.e2_finance_case_access(uuid),public.e2_finance_loan_access(uuid),public.e2_finance_source_loan_access(uuid),public.e2_finance_workspace(uuid),
- public.e2_open_finance_case(text,uuid),public.e2_rename_finance_case(uuid,text,bigint),public.e2_review_finance_case(uuid,bigint,boolean,boolean,text[],text),public.e2_handoff_finance_case(uuid,uuid,text,bigint),
+ public.e2_open_finance_case(text,uuid),public.e2_adopt_legacy_finance_case(text,uuid,bigint,text),public.e2_rename_finance_case(uuid,text,bigint),public.e2_review_finance_case(uuid,bigint,boolean,boolean,text[],text),public.e2_handoff_finance_case(uuid,uuid,text,bigint),
  public.e2_save_finance_institution(uuid,jsonb,bigint),public.e2_save_finance_application(uuid,uuid,jsonb,bigint),public.e2_review_finance_application(uuid,bigint,text),
  public.e2_record_finance_submission(uuid,bigint,timestamptz,text,text),public.e2_record_finance_outcome(uuid,bigint,text,text[],numeric,numeric,integer,text),public.e2_select_finance_offer(uuid,uuid,bigint,bigint,text),
  public.e2_intake_handoff(uuid,uuid,text,bigint),public.e2_intake_progress(uuid,text,text,bigint),public.e2_update_loan_status(uuid,text,text,bigint),public.e2_assign_loan(uuid,uuid,bigint) to authenticated;

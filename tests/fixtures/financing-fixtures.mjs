@@ -16,7 +16,7 @@ export const ids = {
   statement: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
 };
 export const source = {
-  id: ids.source, applicant_type: 'worker', submitted_at: '2026-01-01T00:00:00.000Z',
+  id: ids.source, revision: 1, salesperson: ids.sales, applicant_type: 'worker', submitted_at: '2026-01-01T00:00:00.000Z',
   details: {name: 'Synthetic test applicant'},
   vehicle_summary: {name: 'Synthetic test vehicle', plate: 'TEST ONLY'},
 };
@@ -25,7 +25,7 @@ export const files = [
   {id: ids.statement, filename: 'synthetic-statement.pdf', category: 'bank_statement'},
 ].map(file => ({...file, mime_type: 'application/pdf', path: `fixture/${file.filename}`, state: 'ready', removed_at: null, covered_months: file.category === 'bank_statement' ? ['2025-10', '2025-11', '2025-12'] : [], byte_size: pdfBytes.length}));
 export const staff = [
-  {user_id: ids.coordinator, display_name: 'Synthetic Coordinator', role: 'admin', is_dispatcher: true, active: true},
+  {user_id: ids.coordinator, display_name: 'Synthetic Coordinator', role: 'office_admin', is_dispatcher: true, active: true},
   {user_id: ids.sales, display_name: 'Synthetic Salesman', role: 'sales'},
   {user_id: ids.office, display_name: 'Synthetic Submission Admin', role: 'office_admin'},
   {user_id: ids.other, display_name: 'Other Synthetic Admin', role: 'admin'},
@@ -35,10 +35,11 @@ export const institutions = [
   {id: ids.portal, name: 'Synthetic Portal Bank', kind: 'bank', active: true, revision: 1, portal_url: 'https://portal.example.test/financing', email_to: null, required_documents: ['Identity document', 'Three months of statements']},
   {id: ids.email, name: 'Synthetic Email Credit', kind: 'credit_company', active: true, revision: 1, portal_url: null, email_to: 'financing@example.test', required_documents: ['Identity document']},
 ];
-export function fixture({role = 'office_admin', userId, tracking = true, handed = true, assigned = true, dispatcher = true, caseOverrides = {}, applications = [], defer = []} = {}) {
+export function fixture({role = 'office_admin', userId, tracking = true, handed = true, assigned = true, dispatcher = true, caseOverrides = {}, sourceOverrides = {}, applications = [], defer = []} = {}) {
   const user = {id: userId || ({sales: ids.sales, office_admin: ids.office, admin: ids.other, super_admin: ids.super}[role]), role};
+  user.is_dispatcher = user.id === ids.coordinator && dispatcher;
   return {
-    ids, user, source, files, staff: staff.map(member => ({...member, ...(member.user_id === ids.coordinator ? {is_dispatcher: dispatcher} : {})})), institutions, applications, tracking, defer,
+    ids, user, source: {...source,...sourceOverrides}, files, staff: staff.map(member => ({...member, ...(member.user_id === ids.coordinator ? {is_dispatcher: dispatcher} : {})})), institutions, applications, tracking, defer,
     bytes: [...pdfBytes],
     financeCase: {
       id: ids.case, case_name: 'Synthetic test applicant', revision: 1, content_revision: 1,
@@ -78,6 +79,7 @@ export function financingDataMock() {
     export const who = () => state().who();
     export const load = (...args) => state().load(...args);
     export const start = (...args) => state().mutate('start', args);
+    export const adoptLegacy = (...args) => state().mutate('adoptLegacy', args);
     export const review = (...args) => state().mutate('review', args);
     export const handoff = (...args) => state().mutate('handoff', args);
     export const assignAdmin = (...args) => state().mutate('assignAdmin', args);
@@ -157,6 +159,7 @@ export function initializeFinancingFixture(data) {
       const c = state.financeCase;
       const a = state.applications.find(item => item.id === args[0]?.id);
       if (method === 'start') state.tracking = true;
+      if (method === 'adoptLegacy') {state.tracking=true;Object.assign(c,{coordinator:state.user.id,office_admin:state.source.office_admin,handed_at:state.source.handed_at,review_state:'pending',reviewed_content_revision:null,revision:c.revision+1});}
       if (method === 'review') {
         const p = args[1]; Object.assign(c, p, {review_state: p.details_checked && p.documents_checked && !p.missing_items.length ? 'complete' : 'needs_information', reviewed_content_revision: c.content_revision, revision: c.revision + 1});
       }

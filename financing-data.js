@@ -6,7 +6,7 @@ export async function who() {
   if (!user) throw Error('Sign in with your staff account.');
   const member = check(await db.from('staff_memberships').select('role,active').eq('user_id', user.id).single());
   if (!member.active || !['super_admin','admin','office_admin','sales'].includes(member.role)) throw Error('Staff financing access required.');
-  return {...user, role: member.role};
+  return {...user, role: member.role, is_dispatcher: await rpc('e2_finance_is_dispatcher', {})};
 }
 export async function load(source, id) {
   const intake = source === 'intake';
@@ -23,6 +23,7 @@ export async function load(source, id) {
   return {source: app, files, workspace: null};
 }
 export const start = (source_kind, source_id) => rpc('e2_open_finance_case', {source_kind, source_id});
+export const adoptLegacy = (source_kind, source, reason) => rpc('e2_adopt_legacy_finance_case', {source_kind,source_id:source.id,expected_source_revision:source.revision,reason});
 export const review = (a, params) => rpc('e2_review_finance_case', {target:a.id,expected_revision:a.revision,...params});
 export const handoff = (a, office, message) => rpc('e2_handoff_finance_case', {target:a.id,office,message,expected_revision:a.revision});
 export const assignAdmin = (a, office, message) => rpc('e2_assign_finance_admin', {target:a.id,office,message,expected_revision:a.revision});

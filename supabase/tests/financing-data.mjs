@@ -28,6 +28,7 @@ tracked=false;calls.length=0;
 const start=await api.load('loan','source');assert.equal(start.workspace,null);assert.deepEqual(start.files,[{id:'ready',state:'ready'}]);
 assert.deepEqual(calls.map(c=>c.table),['finance_cases','loan_applications','loan_documents']);
 const checked=async(name,action,args)=>{calls.length=0;await action();assert.deepEqual(calls,[{rpc:name,args}]);};
+await checked('e2_adopt_legacy_finance_case',()=>api.adoptLegacy('intake',{id:'source',revision:7},'Reviewed existing handover'),{source_kind:'intake',source_id:'source',expected_source_revision:7,reason:'Reviewed existing handover'});
 await checked('e2_handoff_finance_case',()=>api.handoff(caseRow,'coordinator','Checked'),{target:'case',office:'coordinator',message:'Checked',expected_revision:4});
 await checked('e2_assign_finance_admin',()=>api.assignAdmin(caseRow,'admin','Assigned'),{target:'case',office:'admin',message:'Assigned',expected_revision:4});
 await checked('e2_select_finance_offer',()=>api.selectOffer(caseRow,application,'Explicit customer instruction'),{target:'case',application_id:'application',expected_application_revision:8,expected_revision:4,customer_instruction:'Explicit customer instruction'});

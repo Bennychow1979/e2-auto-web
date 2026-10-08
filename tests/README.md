@@ -70,6 +70,7 @@ All third-party requests are blocked and asserted absent. The checked source,
 files and case revision arrive as one database snapshot in production; the
 adapter unit suite independently verifies that boundary.
 
-The finance suite has 80 desktop/mobile cases. Its screenshot test can capture
+The finance suite has 96 desktop/mobile cases, including global coordinator
+visibility and cross-coordinator assignment without submission powers. Its screenshot test can capture
 synthetic multi-institution views when run on a browser-capable host. Test
 collection alone is not an executed browser pass.

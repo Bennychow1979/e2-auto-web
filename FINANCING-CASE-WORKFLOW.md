@@ -49,8 +49,11 @@ permissions for real people, real lender applications, or emails were created.
 
 ## Access and consistency
 
-The new tables use RLS and RPC-only writes. Active assigned Salesman, assigned coordinator with dispatcher capability,
-handed-over case Admin and Super Admin can read the case. Other Salesmen/Admins, Account,
+The new tables use RLS and RPC-only writes. Active assigned Salesman, a configured global loan coordinator, handed-over
+case Admin and Super Admin can read the case. The coordinator capability reads
+all submitted guest and registered sources/cases, their ready private files and
+history, across Salesmen and receiving coordinators. Unsubmitted customer drafts
+and preparing guest entries remain private. Other Salesmen/Admins, Account,
 customers and anonymous callers cannot read internal lender applications. An
 application assignee is a tracking label and does not itself grant case access.
 Deactivation is checked on subsequent database requests.
@@ -65,7 +68,10 @@ migration does not guess or silently change a person's role.
 
 The owner confirmed on 2026-10-08:
 
-- EDDA receives complete handed-over cases and can reassign the Submission Admin.
+- Ada (formal name EDDA) can view all submitted loan cases and assign/reassign
+  their Submission Admin after the Salesman completeness check and handover.
+  EDDA and Ada identify the same person; use Ada in prose and the reviewed UI
+  display-name setup, while preserving EDDA as the formal identity mapping.
 - TONG EN and Jean are the Admin staff responsible for loan submission/follow-up.
 
 These are setup requirements, not authorization identities. No account IDs or
@@ -75,10 +81,15 @@ Use the existing limited `office_admin` membership for submission staff. Enable
 the separate dispatcher capability only for the verified coordinator account;
 it does not confer inventory or user-administration power. The dispatcher
 configuration table is empty in this migration. Do not hardcode display names
-in authorization. A coordinator reads/reassigns only cases handed to them and
-keeps that access after assigning a Submission Admin. Reassignment removes the
+in authorization. This capability is deliberately global within submitted loan
+cases, including guest and registered sources before handover. It is independent
+of a case’s recorded receiving coordinator. Assignment/reassignment still waits
+for Salesman handover, and submission requires the separate case Admin assignment.
+A configured coordinator keeps global read/routing access after assigning an
+Admin; a revoked or deactivated coordinator loses that capability on subsequent
+requests. It grants no inventory editing, staff management or customer-draft access. Reassignment removes the
 previous Admin's assigned-case access, unless that person separately qualifies
-as the coordinator or Super Admin. Their historical assignee label alone grants
+as a global loan coordinator or Super Admin. Their historical assignee label alone grants
 no access.
 
 ## Owner-provided institution list · configuration pending
@@ -143,10 +154,15 @@ file content is stored in localStorage or sessionStorage by this feature.
   missing-document case remains blocked for handover until a separately approved
   secure process is available. Record Salesman follow-up; do not suggest that an
   automatic correction link exists. There is no staff upload route to assume.
-- Already-handed-over legacy guest cases cannot opt into new tracking until a
-  reviewed coordinator-migration path is approved. Starting tracking refuses
-  that conversion and leaves their existing access/status intact; it does not
-  silently bypass EDDA or revoke an existing Admin.
+- Already-handed-over legacy guest cases require a separate, explicit adoption
+  action by a global coordinator or Super Admin. Normal Start tracking still
+  refuses automatic conversion. Adoption validates the exact source revision
+  and active, eligible existing Salesman/Admin, preserves every source field and
+  the current Admin, and creates a pending-review case with an audit event. The
+  adopter sees current account IDs and handover time and must confirm the
+  mapping. Invalid or ambiguous mappings are rejected. New lender applications
+  remain blocked until a fresh Salesman review; reassignment is a separate
+  explicit action. There is no automatic or bulk backfill.
 - Registered customers keep their existing signed-in correction/document path
   when information is requested. No notifications are sent automatically.
 - Required month coverage checks distinct months within the existing supported
@@ -212,9 +228,10 @@ production customer financial documents as test inputs.
    requested product changes. Confirm the first-version guest-upload limitation,
    application-assignee semantics, date/rate conventions and correction needs.
 2. Review SQL/RLS and test evidence. Confirm the existing `office_admin` role and separate dispatcher capability
-   match EDDA / TONG EN / Jean responsibilities after account identity verification. Applying this migration changes access rules for
-   future explicitly handed-over registered cases; production activation and any
-   real staff role changes require separate approval.
+   match Ada (EDDA) / TONG EN / Jean responsibilities after account identity verification. Applying this migration adds a configurable global submitted-case read/routing
+   capability plus case-specific Submission Admin access. No coordinator is
+   enabled automatically; production activation and every real capability or
+   staff-role change require separate approval.
 3. Before publishing, get approval for remote branch/draft PR. Before merging or
    deployment, get separate release approval. A merge/push to main automatically
    deploys GitHub Pages; this local commit does not authorize that action.
@@ -223,9 +240,10 @@ production customer financial documents as test inputs.
    migration in a reviewed staging environment, then run real Auth/Storage smoke
    tests using synthetic accounts/files under separately approved access.
 5. Verify Super Admin, assigned/unassigned Salesman, assigned/unassigned Office
-   Admin, assigned/unassigned/revoked coordinator, Account, customer, anonymous and deactivated staff. Test direct RPC,
+   Admin, global/revoked/deactivated coordinator, Account, customer, anonymous and deactivated staff. Test direct RPC,
    table and Storage attempts, cross-case IDs and attachments, concurrent edits,
-   changed document reviews, coordinator assignment/reassignment and old-Admin access
+   changed document reviews, global coordinator cross-Salesman/source visibility,
+   coordinator assignment/reassignment and old-Admin access
    revocation, recipient corrections, stale offer selection and
    failure/retry. Check real Storage metadata/schema and read/download behavior.
 6. Only after explicit production migration approval, apply
@@ -236,7 +254,7 @@ production customer financial documents as test inputs.
    Confirm each institution type, portal/email channel, exact verified URL or
    recipient and required documents; do not assume an unset field is optional.
    Configure verified institutions through Super Admin under the approved process.
-   Only after separate account/permission approval, map verified EDDA to the
+   Only after separate account/permission approval, map the verified Ada / EDDA account to the
    dispatcher capability and verified TONG EN/Jean to limited Office Admin
    membership. Do not use names as identifiers. Verify live entry links and
    authorized case visibility with synthetic data.
@@ -246,7 +264,10 @@ production customer financial documents as test inputs.
    Do not drop the new tables or rewrite submitted histories to roll back. Review
    a data-preserving migration or restore plan before changing production state.
 
-## Validation record · 2026-10-08
+## Initial local validation record · 2026-10-08
+
+This checkpoint predates the owner-confirmed global coordinator change. The
+latest draft PR checks are authoritative for the final branch head.
 
 - `npm run check`: passed against the final local code.
 - `npm test`: passed, including all existing suites, the helper/adapter checks,
@@ -267,3 +288,20 @@ The institution-list-only follow-up adds a disabled JSON review draft and this
 setup guidance. The 13 unique names and unset routing/contact/requirements fields
 were validated locally; it does not alter the tested workflow mechanics or
 activate any institution.
+
+## Global coordinator update · 2026-10-08
+
+The owner explicitly confirmed Ada’s global submitted-case visibility and
+assignment responsibility. The configurable dispatcher capability now covers
+both submitted source types across Salesmen and receiving coordinators. It does
+not reveal drafts, grant site administration, or allow unassigned submission.
+The browser suite includes 96 financing cases (168 with existing PDF tests);
+server isolation/regression checks verify the expanded scope and revocation.
+The optional one-case legacy adoption path is covered by explicit action,
+identity/revision validation, unchanged source data and fresh-review gates.
+No actual account was enabled, and no profile was renamed.
+
+Local validation for this update passed `npm run check` and the full `npm test`
+command: 1,065 reported PASS checks, including 379 financing security/workflow
+checks. All 168 browser cases parse and collect; the latest PR CI result is the
+authoritative executed browser result.

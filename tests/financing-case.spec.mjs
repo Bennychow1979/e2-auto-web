@@ -351,7 +351,7 @@ test('Sign out button clears the case while a save is pending', async ({page}) =
 
 
 test('coordinator assigns and reassigns the Admin but cannot process lender applications', async ({page}) => {
-  await install(page, {role: 'admin', userId: ids.coordinator, assigned: false, applications: [application('portal', 'ready'), application('email', 'approved')]});
+  await install(page, {role: 'office_admin', userId: ids.coordinator, assigned: false, applications: [application('portal', 'ready'), application('email', 'approved')]});
   await expect(page.locator('#financeMain form')).toHaveCount(1);
   await expect(form(page, 'assign-admin')).toBeVisible();
   await expect(page.locator('summary').filter({hasText: 'Add an institution application'})).toHaveCount(0);
@@ -379,8 +379,77 @@ test('coordinator assigns and reassigns the Admin but cannot process lender appl
   await expect(page.locator('#financeMain form')).toHaveCount(1);
 });
 
+test('global coordinator can route another receiving coordinator’s handed-over case without submission powers', async ({page}) => {
+  await install(page, {role: 'office_admin', userId: ids.coordinator, caseOverrides: {coordinator: ids.other}, applications: [application('portal', 'ready')]});
+  const assign = form(page, 'assign-admin');
+  await expect(assign).toBeVisible();
+  await expect(page.getByText('Your coordinator capability covers all submitted loan cases.', {exact: false})).toBeVisible();
+  await expect(form(page, 'submission')).toHaveCount(0);
+  await expect(form(page, 'outcome')).toHaveCount(0);
+  await expect(page.getByRole('button', {name: /Open configured lender portal/})).toHaveCount(0);
+  await assign.getByRole('combobox', {name: 'Responsible Submission Admin', exact: true}).selectOption(ids.other);
+  await assign.getByRole('textbox', {name: 'Assignment / reassignment reason', exact: true}).fill('Synthetic global coordinator workload reassignment.');
+  await assign.locator('[name="access"]').check();
+  await assign.getByRole('button', {name: 'Save Admin assignment', exact: true}).click();
+  await expect.poll(async () => (await state(page)).financeCase.office_admin).toBe(ids.other);
+  expect((await state(page)).financeCase.coordinator).toBe(ids.other);
+  expect(await calls(page, 'assignAdmin')).toHaveLength(1);
+  await expect(form(page, 'assign-admin')).toBeVisible();
+});
+
+for (const source of ['intake', 'loan']) {
+  test(`${source}: global coordinator can review a submitted case before handover but cannot bypass the Salesman check`, async ({page}) => {
+    await install(page, {role: 'office_admin', userId: ids.coordinator, handed: false}, source);
+    await expect(page.getByRole('heading', {name: 'Synthetic test applicant', exact: true})).toBeVisible();
+    await expect(page.locator('[data-file]')).toHaveCount(2);
+    await expect(form(page, 'assign-admin')).toHaveCount(0);
+    await expect(form(page, 'review')).toHaveCount(0);
+    await expect(form(page, 'handoff')).toHaveCount(0);
+    await expect(form(page, 'submission')).toHaveCount(0);
+    expect(await calls(page, 'assignAdmin')).toHaveLength(0);
+  });
+}
+
+test('global coordinator explicitly adopts a legacy handover without changing source or bypassing review', async ({page}) => {
+  const legacy = {office_admin: ids.office, handed_at: '2026-01-02T00:00:00.000Z', status: 'Sent to Office', revision: 7};
+  await install(page, {role: 'office_admin', userId: ids.coordinator, tracking: false, sourceOverrides: legacy});
+  expect(await calls(page, 'adoptLegacy')).toHaveLength(0);
+  expect(await calls(page, 'start')).toHaveLength(0);
+  await expect(page.getByRole('button', {name: 'Start case tracking', exact: true})).toHaveCount(0);
+  await expect(page.getByText('Existing Salesman account', {exact:true})).toBeVisible();
+  await expect(page.getByText(ids.sales, {exact:true})).toBeVisible();
+  await expect(page.getByText('Current Submission Admin account', {exact:true})).toBeVisible();
+  await expect(page.getByText(ids.office, {exact:true})).toBeVisible();
+  const original = await page.evaluate(() => structuredClone(window.__financeFixture.source));
+  const adopt = form(page, 'adopt-legacy');
+  await adopt.getByRole('textbox', {name: 'Reason for adopting this existing handover', exact: true}).fill('Synthetic coordinator reviewed the existing Salesman and Admin mapping.');
+  await adopt.getByRole('button', {name: 'Adopt legacy handover into case tracking', exact: true}).click();
+  expect(await calls(page, 'adoptLegacy')).toHaveLength(0);
+  await adopt.locator('[name="adopt"]').check();
+  await adopt.getByRole('button', {name: 'Adopt legacy handover into case tracking', exact: true}).click();
+  await expect(form(page, 'assign-admin')).toBeVisible();
+  expect((await state(page)).financeCase.office_admin).toBe(ids.office);
+  expect((await state(page)).financeCase.review_state).toBe('pending');
+  expect((await state(page)).financeCase.coordinator).toBe(ids.coordinator);
+  expect(await page.evaluate(() => window.__financeFixture.source)).toEqual(original);
+  expect((await calls(page, 'adoptLegacy'))[0].args[1].revision).toBe(7);
+  await expect(page.locator('summary').filter({hasText: 'Add an institution application'})).toHaveCount(0);
+  await expect(form(page, 'submission')).toHaveCount(0);
+});
+
+for (const role of ['sales','office_admin']) {
+  test(`${role}: legacy adoption is unavailable without global coordinator capability`, async ({page}) => {
+    await install(page, {role, tracking: false, sourceOverrides: {office_admin: ids.office, handed_at: '2026-01-02T00:00:00.000Z', revision: 7}});
+    await expect(form(page, 'adopt-legacy')).toHaveCount(0);
+    await expect(page.getByRole('button', {name: 'Start case tracking', exact: true})).toHaveCount(0);
+    await expect(page.getByText('A configured global loan coordinator or Super Admin must review and explicitly adopt this existing handover.', {exact: true})).toBeVisible();
+    expect(await calls(page, 'adoptLegacy')).toHaveLength(0);
+    expect(await calls(page, 'start')).toHaveLength(0);
+  });
+}
+
 test('coordinator id without active dispatcher capability grants no assignment controls', async ({page}) => {
-  await install(page, {role: 'admin', userId: ids.coordinator, dispatcher: false, assigned: false});
+  await install(page, {role: 'office_admin', userId: ids.coordinator, dispatcher: false, assigned: false});
   await expect(page.locator('#financeMain form')).toHaveCount(0);
 });
 
@@ -550,4 +619,47 @@ test('blocked portal popup shows a recoverable message without verifying or navi
   expect(await page.evaluate(() => window.__financeFixture.popups)).toEqual([]);
   expect(await page.evaluate(() => window.__financeFixture.lenderNavigations)).toEqual([]);
   expect(await calls(page, 'recordSubmission')).toEqual([]);
+});
+
+function registeredListMock(dispatcher = true) {
+  const userId = dispatcher ? ids.coordinator : ids.office;
+  const rows = [{id:ids.source,vehicle_summary:{name:'Synthetic registered vehicle',plate:'TEST ONLY',price:60000},details:{name:'Synthetic registered applicant'},status:'Submitted to E2',assigned_sales:dispatcher?ids.sales:ids.office,submitted_at:'2026-01-01T00:00:00Z',updated_at:'2026-01-01T00:00:00Z',revision:1}];
+  return `
+    export const check = r => { if(r.error) throw r.error; return r.data; };
+    const rows = ${JSON.stringify(rows)};
+    export const db = {
+      auth: { getSession: async () => ({data:{session:{user:{id:${JSON.stringify(userId)}}}}}),
+        onAuthStateChange(callback) {window.__registeredAuth=callback;},
+        signOut: async () => {window.__registeredAuth('SIGNED_OUT',null);return {data:null};}},
+      rpc: async name => {if(name==='e2_is_super_admin')return {data:false};if(name==='e2_finance_is_dispatcher')return {data:${dispatcher}};throw Error('Unexpected mutation in read-only registered-list fixture: '+name);},
+      from(table) {const q={select(){return q},eq(){return q},not(){return q},order(){return q},range(){return q},
+        single:async()=>({data:table==='staff_memberships'?{role:'office_admin',active:true}:rows[0]}),
+        then(resolve,reject){return Promise.resolve({data:table==='loan_events'?[]:rows}).then(resolve,reject)}};return q;}
+    };`;
+}
+for (const dispatcher of [true,false]) {
+  // Parse the mock even if CI cannot launch its browser.
+  await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(registeredListMock(dispatcher))}`);
+}
+
+test('global coordinator registered-loan list exposes read access without unrelated legacy progress controls', async ({page}) => {
+  await page.route('**/e2-data.js*', route=>route.fulfill({contentType:'text/javascript',body:registeredListMock(true)}));
+  await page.goto('/loans.html');
+  await expect(page.getByText('All submitted registered loan cases are visible to your coordinator capability.',{exact:false})).toBeVisible();
+  await page.locator(`[data-loan="${ids.source}"]`).click();
+  await expect(page.getByRole('heading',{name:'Synthetic registered applicant',exact:true})).toBeVisible();
+  await expect(page.locator('#statusLoan,#assignLoan')).toHaveCount(0);
+  await expect(page.getByRole('link',{name:'Review & submit financing case ↗',exact:true})).toHaveAttribute('href',`financing-case.html?source=loan&id=${ids.source}`);
+  await page.evaluate(()=>window.__registeredAuth('USER_UPDATED',{user:{id:'different-synthetic-account'}}));
+  await expect(page.getByRole('link',{name:'Staff sign in ↗',exact:true})).toBeVisible();
+  await expect(page.locator('#staffLoans')).not.toContainText('Synthetic registered applicant');
+});
+
+test('assigned legacy registered-loan Admin keeps their own permitted follow-up controls', async ({page}) => {
+  await page.route('**/e2-data.js*', route=>route.fulfill({contentType:'text/javascript',body:registeredListMock(false)}));
+  await page.goto('/loans.html');
+  await expect(page.getByText('Submitted applications within your assigned access.',{exact:false})).toBeVisible();
+  await page.locator(`[data-loan="${ids.source}"]`).click();
+  await expect(page.locator('#statusLoan')).toBeVisible();
+  await expect(page.locator('#assignLoan')).toHaveCount(0);
 });
