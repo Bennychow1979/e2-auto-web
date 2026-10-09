@@ -44,3 +44,8 @@ export function emailReviewText(application, institution, files) {
   const chosen = new Set(application.attachment_ids || []);
   return `To: ${application.email_to || institution?.email_recipient || ''}\nSubject: ${application.email_subject || ''}\n\n${application.email_body || ''}\n\nAttachment checklist (attach these files manually):\n${files.filter(file => chosen.has(file.id)).map(file => '- ' + file.filename).join('\n') || '- No attachments selected'}\n\nPrepared only. This does not send email or attach files.`;
 }
+
+export function staffLabel(staff) {
+  const name = staff?.display_name?.trim();
+  return name && name !== 'E2 staff' ? name : staff?.email?.trim() || staff?.user_id || 'Not assigned';
+}

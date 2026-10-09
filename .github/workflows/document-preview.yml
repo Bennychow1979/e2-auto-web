@@ -2,9 +2,9 @@ name: Verify private document preview
 on:
   push:
     branches: [main]
-    paths: ['e2-config.js', 'e2-data.js', 'loans*', 'intake-staff-data.js', 'financing*', 'document*', 'intake-workspace*', 'tests/**', 'playwright.config.mjs', 'scripts/build-pdf-preview.mjs', 'package*.json', '.github/workflows/document-preview.yml', '.github/workflows/deploy-pages.yml']
+    paths: ['config/finance-institutions.draft.json', 'e2-config.js', 'e2-data.js', 'loans*', 'intake-staff-data.js', 'financing*', 'document*', 'intake-workspace*', 'tests/**', 'playwright.config.mjs', 'scripts/build-pdf-preview.mjs', 'package*.json', '.github/workflows/document-preview.yml', '.github/workflows/deploy-pages.yml']
   pull_request:
-    paths: ['e2-config.js', 'e2-data.js', 'loans*', 'intake-staff-data.js', 'financing*', 'document*', 'intake-workspace*', 'tests/**', 'playwright.config.mjs', 'scripts/build-pdf-preview.mjs', 'package*.json', '.github/workflows/document-preview.yml', '.github/workflows/deploy-pages.yml']
+    paths: ['config/finance-institutions.draft.json', 'e2-config.js', 'e2-data.js', 'loans*', 'intake-staff-data.js', 'financing*', 'document*', 'intake-workspace*', 'tests/**', 'playwright.config.mjs', 'scripts/build-pdf-preview.mjs', 'package*.json', '.github/workflows/document-preview.yml', '.github/workflows/deploy-pages.yml']
 permissions:
   contents: read
 jobs:

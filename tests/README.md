@@ -70,7 +70,9 @@ All third-party requests are blocked and asserted absent. The checked source,
 files and case revision arrive as one database snapshot in production; the
 adapter unit suite independently verifies that boundary.
 
-The finance suite has 96 desktop/mobile cases, including global coordinator
+The finance suite has 106 desktop/mobile cases, including global coordinator
 visibility and cross-coordinator assignment without submission powers. Its screenshot test can capture
 synthetic multi-institution views when run on a browser-capable host. Test
-collection alone is not an executed browser pass.
+collection alone is not an executed browser pass. It also covers the 13-name
+pending checklist, inactive configuration prefilling, failed checklist fetches,
+distinct profile-less staff labels and the same-assignee submission guard.

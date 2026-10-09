@@ -271,6 +271,79 @@ test('only Super Admin sees institution configuration controls', async ({page}) 
   await expect(page.getByRole('textbox', {name: 'Verified HTTPS portal URL', exact: true}).last()).toBeVisible();
 });
 
+test('all 13 pending institutions are visible without creating or enabling configuration', async ({page}, testInfo) => {
+  await install(page);
+  const checklist = page.locator('#institutionChecklist');
+  await expect(checklist.locator('li')).toHaveCount(13);
+  await expect(checklist.locator('li strong')).toHaveText(['AEON Credit','Chailease','GFS','X Star','Carsome','FS','Elk','Maybank','Public Bank','AmBank','CIMB','HLB','Bank Muamalat']);
+  await expect(checklist.getByText('Pending verification',{exact:true})).toHaveCount(13);
+  await expect(form(page,'institution')).toHaveCount(0);
+  expect(await calls(page,'saveInstitution')).toEqual([]);
+  await summary(page,'Add an institution application').click();
+  await expect(form(page,'save-application').locator('[name="institution"] option')).toHaveCount(3);
+  await checklist.screenshot({path:testInfo.outputPath('pending-institutions.png')});
+  await testInfo.attach('Pending institution checklist',{path:testInfo.outputPath('pending-institutions.png'),contentType:'image/png'});
+});
+
+test('selecting an owner-listed name prefills an inactive form with no guessed type or destination', async ({page}) => {
+  await install(page,{role:'super_admin'});
+  await summary(page,'Institution settings · Super Admin').click();
+  await summary(page,'Add a verified institution').click();
+  const draft=page.locator('form[data-action="institution"][data-id=""]');
+  await draft.getByRole('combobox',{name:'Pending institution',exact:true}).selectOption('AEON Credit');
+  await expect(draft.getByRole('textbox',{name:'Institution display name',exact:true})).toHaveValue('AEON Credit');
+  await expect(draft.getByRole('combobox',{name:'Institution type',exact:true})).toHaveValue('');
+  await expect(draft.locator('[name="portal"]')).toHaveValue('');
+  await expect(draft.locator('[name="email"]')).toHaveValue('');
+  await expect(draft.locator('[name="required"]')).toHaveValue('');
+  await expect(draft.getByRole('checkbox',{name:'Available for new applications',exact:true})).not.toBeChecked();
+  await draft.getByRole('button',{name:'Save institution configuration',exact:true}).click();
+  expect(await calls(page,'saveInstitution')).toEqual([]);
+  await draft.getByRole('combobox',{name:'Institution type',exact:true}).selectOption('credit_company');
+  await draft.getByRole('button',{name:'Save institution configuration',exact:true}).click();
+  expect((await calls(page,'saveInstitution'))[0].args[1]).toEqual({name:'AEON Credit',kind:'credit_company',portal_url:null,email_to:null,required_documents:[],active:false});
+  await expect(page.getByRole('alert')).toContainText('Institution mutation not part of this browser fixture.');
+});
+
+test('unavailable public institution checklist does not hide saved lender applications', async ({page}) => {
+  await page.route('**/config/finance-institutions.draft.json',route=>route.fulfill({status:503,body:'Unavailable'}));
+  await install(page,{applications:[application('portal','ready')]});
+  await expect(page.locator('#institutionChecklist')).toContainText('Institution checklist unavailable.');
+  await expect(page.locator('.financeApplication')).toHaveCount(1);
+  expect(await calls(page,'saveInstitution')).toEqual([]);
+  await page.unroute('**/config/finance-institutions.draft.json');
+  await page.getByRole('button',{name:'Refresh case',exact:true}).click();
+  await expect(page.locator('#institutionChecklist li')).toHaveCount(13);
+});
+
+test('same-assignee UI guard preserves reviews and does not submit an assignment request', async ({page}) => {
+  await install(page,{role:'office_admin',userId:ids.coordinator,applications:[application('portal','ready')]});
+  const assign=form(page,'assign-admin'), button=assign.getByRole('button',{name:'Save Admin assignment',exact:true});
+  const before=await state(page);
+  await expect(button).toBeDisabled();
+  await assign.getByRole('combobox',{name:'Responsible Submission Admin',exact:true}).selectOption(ids.other);
+  await expect(button).toBeEnabled();
+  await assign.getByRole('combobox',{name:'Responsible Submission Admin',exact:true}).selectOption(ids.office);
+  await expect(button).toBeDisabled();
+  await assign.evaluate(node=>node.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+  expect(await calls(page,'assignAdmin')).toEqual([]);
+  expect(await state(page)).toEqual(before);
+});
+
+test('profile-less Admin labels stay distinguishable and assignment values remain UUIDs', async ({page}) => {
+  await install(page,{role:'super_admin'});
+  await page.evaluate(({office,other})=>{
+    const staff=window.__financeFixture.staff;
+    Object.assign(staff.find(member=>member.user_id===office),{display_name:'E2 staff',email:'synthetic-office-one@example.test'});
+    Object.assign(staff.find(member=>member.user_id===other),{display_name:'E2 staff',email:'synthetic-office-two@example.test'});
+  },{office:ids.office,other:ids.other});
+  await page.getByRole('button',{name:'Refresh case',exact:true}).click();
+  const choices=form(page,'assign-admin').getByRole('combobox',{name:'Responsible Submission Admin',exact:true});
+  await expect(choices.locator(`option[value="${ids.office}"]`)).toHaveText('synthetic-office-one@example.test · Submission Admin');
+  await expect(choices.locator(`option[value="${ids.other}"]`)).toHaveText('synthetic-office-two@example.test · Inventory Admin');
+  await expect(page.locator('.financeOwners')).toContainText('synthetic-office-one@example.test');
+});
+
 test('repeated draft submission is locked until completion and creates only one application', async ({page}) => {
   await install(page, {defer: ['saveApplication']});
   const draft = await fillDraft(page, 'portal');

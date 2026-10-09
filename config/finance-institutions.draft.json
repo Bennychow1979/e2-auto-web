@@ -1,13 +1,13 @@
 {
   "draft_only": true,
   "apply_automatically": false,
-  "updated_on": "2026-10-08",
+  "updated_on": "2026-10-09",
   "source": "Owner-provided display names. AEON Credit was explicitly clarified.",
   "notes": [
-    "Review checklist only. Not imported by the application or database migration.",
+    "Loaded as a read-only workspace checklist. Selecting a name only prefills an inactive review form; it does not create or enable database configuration.",
     "No institution is enabled. Portal/email channels, institution type, destination and required documents still need review.",
     "The owner explicitly left all submission channels pending confirmation. Do not choose a default route.",
-    "Display names are not verified corporate identities. Preserve FS Credit and Elk Credit without expanding their abbreviations.",
+    "Display names are not verified corporate identities. Preserve FS and Elk without expanding their abbreviations.",
     "A null required_documents value means unknown, not that no documents are required.",
     "Before using a record with e2_save_finance_institution, separately verify the institution, supported channel(s), destination and document list, supply its required kind, and obtain production configuration approval."
   ],
@@ -22,7 +22,7 @@
       "required_documents": null
     },
     {
-      "name": "Chailease Credit",
+      "name": "Chailease",
       "active": false,
       "kind": null,
       "submission_channels": null,
@@ -31,7 +31,7 @@
       "required_documents": null
     },
     {
-      "name": "GFS Credit",
+      "name": "GFS",
       "active": false,
       "kind": null,
       "submission_channels": null,
@@ -40,7 +40,7 @@
       "required_documents": null
     },
     {
-      "name": "X Star Credit",
+      "name": "X Star",
       "active": false,
       "kind": null,
       "submission_channels": null,
@@ -49,7 +49,7 @@
       "required_documents": null
     },
     {
-      "name": "Carsome Credit",
+      "name": "Carsome",
       "active": false,
       "kind": null,
       "submission_channels": null,
@@ -58,7 +58,7 @@
       "required_documents": null
     },
     {
-      "name": "FS Credit",
+      "name": "FS",
       "active": false,
       "kind": null,
       "submission_channels": null,
@@ -67,7 +67,7 @@
       "required_documents": null
     },
     {
-      "name": "Elk Credit",
+      "name": "Elk",
       "active": false,
       "kind": null,
       "submission_channels": null,
@@ -103,7 +103,7 @@
       "required_documents": null
     },
     {
-      "name": "CIMB Bank",
+      "name": "CIMB",
       "active": false,
       "kind": null,
       "submission_channels": null,
@@ -112,7 +112,7 @@
       "required_documents": null
     },
     {
-      "name": "HLB Bank",
+      "name": "HLB",
       "active": false,
       "kind": null,
       "submission_channels": null,
