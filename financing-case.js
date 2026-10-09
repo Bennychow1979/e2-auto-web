@@ -15,6 +15,7 @@ const back = sourceKind === 'loan' ? 'loans.html' : 'intake-workspace.html';
 let user = null, snapshot = null, epoch = 0, busy = false, observedAuthUser;
 let institutionDraft = {institutions:[], error:false};
 const locked = new Map();
+const emailChecks = new WeakMap();
 const preview = createDocumentPreview({dialog:$('financeFilePreview'),title:$('financeFileTitle'),content:$('financeFileBody'),closeButton:$('financeFileClose'),download:path => api.download(sourceKind, path)});
 const date = value => value ? new Date(value).toLocaleString('en-MY', {dateStyle:'medium',timeStyle:'short'}) : 'Not recorded';
 const field = (name, title, type = 'text', value = '', extra = '') => `<label class="field"><span>${esc(title)}</span><input name="${name}" type="${type}" value="${esc(value)}" ${extra}></label>`;
@@ -160,13 +161,16 @@ main.addEventListener('toggle', async event=>{
   const details=event.target.closest('details[data-email]');
   if(!details || event.target!==details) return;
   const body=details.querySelector('[data-email-body]'); body.hidden=true;
+  // A close/reopen starts a new check even while an older request is pending.
+  const checkToken={}; emailChecks.set(details,checkToken);
+  const current=()=>emailChecks.get(details)===checkToken && details.isConnected && details.open && !document.hidden;
   if(!details.open || !snapshot || !user) return;
   const app=snapshot.workspace.applications.find(a=>a.id===details.dataset.email);
-  try {if(app && await verifyPreparation(app) && details.isConnected && details.open) body.hidden=false;}
-  catch(e){if(details.isConnected){details.open=false;error(e.message);}}
+  try {if(app && await verifyPreparation(app) && current()) body.hidden=false;}
+  catch(e){if(current()){details.open=false;error(e.message);}}
 },true);
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden) main.querySelectorAll('details[data-email]').forEach(details=>{details.open=false;details.querySelector('[data-email-body]').hidden=true;});
+  if(document.hidden) main.querySelectorAll('details[data-email]').forEach(details=>{emailChecks.delete(details);details.open=false;details.querySelector('[data-email-body]').hidden=true;});
 });
 main.addEventListener('click', async event => {
   const portalButton=event.target.closest('[data-portal]');

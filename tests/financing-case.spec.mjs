@@ -738,3 +738,131 @@ test('assigned legacy registered-loan Admin keeps their own permitted follow-up 
   await expect(page.locator('#statusLoan')).toBeVisible();
   await expect(page.locator('#assignLoan')).toHaveCount(0);
 });
+
+
+for (const cancellation of ['close', 'leave page']) {
+  test('email preview: '+cancellation+' invalidates the earlier pending validation', async ({page}) => {
+    const a = application('email', 'ready');
+    await install(page, {applications:[a]});
+    await page.evaluate(() => window.__financeFixture.defer.push('load'));
+    const view = card(page,a.id), toggle = summary(view,'Review prepared email & attachment checklist');
+    const email = view.getByRole('textbox',{name:'Prepared email review',exact:true});
+    await toggle.click();
+    await expect.poll(async () => (await calls(page,'load')).length).toBe(2);
+    if (cancellation === 'close') await toggle.click();
+    else await page.evaluate(() => {
+      Object.defineProperty(document,'hidden',{configurable:true,value:true});
+      document.dispatchEvent(new Event('visibilitychange'));
+      delete document.hidden;
+    });
+    await expect(view.locator('details[data-email]')).not.toHaveAttribute('open','');
+    await page.evaluate(() => window.__financeFixture.financeCase.revision++);
+    await toggle.click();
+    await expect.poll(async () => (await calls(page,'load')).length).toBe(3);
+    await release(page,'load',2);
+    await expect(email).not.toBeVisible();
+    await release(page,'load',3);
+    await expect(page.getByRole('alert')).toContainText('Case or institution configuration changed.');
+    await expect(email).not.toBeVisible();
+    expect(await calls(page,'recordSubmission')).toEqual([]);
+  });
+}
+
+test('email preview: a cancelled request failure cannot close a newer validated preview', async ({page}) => {
+  const a = application('email','ready');
+  await install(page,{applications:[a]});
+  await page.evaluate(() => window.__financeFixture.defer.push('load'));
+  const view=card(page,a.id), toggle=summary(view,'Review prepared email & attachment checklist');
+  const email=view.getByRole('textbox',{name:'Prepared email review',exact:true});
+  await toggle.click();
+  await expect.poll(async () => (await calls(page,'load')).length).toBe(2);
+  await toggle.click();
+  await expect(view.locator('details[data-email]')).not.toHaveAttribute('open','');
+  await toggle.click();
+  await expect.poll(async () => (await calls(page,'load')).length).toBe(3);
+  await page.evaluate(() => {
+    const pending=window.__financeFixture.pending.filter(p=>p.method==='load'&&!p.released)[1];
+    pending.released=true;pending.resolve();
+  });
+  await expect(email).toBeVisible();
+  await page.evaluate(() => {window.__financeFixture.failures.load='Synthetic cancelled request failure.';});
+  await release(page,'load',3);
+  await expect(email).toBeVisible();
+  await expect(page.getByRole('alert')).toBeEmpty();
+});
+
+test('repeated Admin assignment stays locked and refresh disables the new current Admin', async ({page}) => {
+  await install(page,{role:'office_admin',userId:ids.coordinator,defer:['assignAdmin']});
+  const assign=form(page,'assign-admin');
+  await assign.locator('[name="office"]').selectOption(ids.other);
+  await assign.locator('[name="note"]').fill('Synthetic workload reassignment.');
+  await assign.locator('[name="access"]').check();
+  await assign.getByRole('button',{name:'Save Admin assignment',exact:true}).click();
+  await expect(assign.getByRole('button')).toBeDisabled();
+  await assign.evaluate(node=>{
+    node.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+    node.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+  });
+  expect(await calls(page,'assignAdmin')).toHaveLength(1);
+  await release(page,'assignAdmin');
+  await expect(form(page,'assign-admin').locator('[name="office"]')).toHaveValue(ids.other);
+  await expect(form(page,'assign-admin').getByRole('button')).toBeDisabled();
+  expect(await calls(page,'assignAdmin')).toHaveLength(1);
+});
+
+test('stale Admin reassignment preserves the newer owner and recovers through explicit refresh', async ({page}) => {
+  await install(page,{role:'office_admin',userId:ids.coordinator,applications:[application('portal','ready')]});
+  const assign=form(page,'assign-admin');
+  await assign.locator('[name="office"]').selectOption(ids.other);
+  await assign.locator('[name="note"]').fill('Synthetic attempted reassignment from an old view.');
+  await assign.locator('[name="access"]').check();
+  await page.evaluate(other=>{
+    const s=window.__financeFixture;
+    s.financeCase.office_admin=other;s.financeCase.revision++;
+    s.failures.assignAdmin='Case changed. Reload before saving.';
+  },ids.other);
+  const current=await state(page);
+  await assign.getByRole('button').click();
+  await expect(page.getByRole('alert')).toHaveText('Case changed. Reload before saving.');
+  expect(await state(page)).toEqual(current);
+  expect((await calls(page,'assignAdmin'))[0].args[0].revision).toBe(1);
+  await expect(assign.locator('[name="note"]')).toHaveValue('Synthetic attempted reassignment from an old view.');
+  await page.getByRole('button',{name:'Refresh case',exact:true}).click();
+  await expect(form(page,'assign-admin').locator('[name="office"]')).toHaveValue(ids.other);
+  await expect(form(page,'assign-admin').getByRole('button')).toBeDisabled();
+  expect(await calls(page,'assignAdmin')).toHaveLength(1);
+});
+
+for (const source of ['intake','loan']) {
+  test(source+': revoked access after closing a pending file clears the case and discards late bytes', async ({page}) => {
+    await install(page,{defer:['download']},source);
+    await page.locator('[data-file="'+ids.file+'"]').click();
+    await expect(page.locator('#financeFilePreview')).toBeVisible();
+    await page.locator('#financeFileClose').click();
+    await page.evaluate(() => {window.__financeFixture.failures.load='Assigned case access required.';});
+    await page.getByRole('button',{name:'Refresh case',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Case unavailable.',exact:true})).toBeVisible();
+    await release(page,'download');
+    await expect(page.locator('#financeMain')).not.toContainText('Synthetic');
+    await expect(page.locator('#financeMain form, .financeApplication, [data-file]')).toHaveCount(0);
+    await expect(page.locator('#financeFilePreview')).not.toBeVisible();
+    await expect(page.locator('#financeFilePreview canvas, #financeFilePreview a[download]')).toHaveCount(0);
+    expect(await page.evaluate(() => window.__financeFixture.createdURLs)).toEqual([]);
+  });
+}
+
+test('page navigation during Admin reassignment cannot repopulate the departed workspace', async ({page}) => {
+  await install(page,{role:'office_admin',userId:ids.coordinator,defer:['assignAdmin']});
+  const assign=form(page,'assign-admin');
+  await assign.locator('[name="office"]').selectOption(ids.other);
+  await assign.locator('[name="note"]').fill('Synthetic assignment already in flight before navigation.');
+  await assign.locator('[name="access"]').check();
+  await assign.getByRole('button').click();
+  await expect(page.locator('#financeMain')).toHaveAttribute('aria-busy','true');
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));
+  await release(page,'assignAdmin');
+  await expect(page.locator('#financeMain')).toBeEmpty();
+  await expect(page.locator('#financeFilePreview')).not.toBeVisible();
+  expect(await calls(page,'load')).toHaveLength(1);
+  expect(await calls(page,'assignAdmin')).toHaveLength(1);
+});

@@ -369,3 +369,27 @@ Production activation remains gated on approved database and Storage backup dest
 The base financing migration revokes service-role execution from `e2_intake_handoff`, `e2_intake_progress`, `e2_update_loan_status` and `e2_assign_loan`. Repository consumer review found the staff browser calls in `intake-staff-data.js` and `loans.js`; no matching service-role consumer was found in repository functions or scripts. External integrations remain unverified. This follow-up does not change those grants.
 
 Keep `financingCases: false` until the backend gates and activation approval are complete. Neither loading the checklist nor selecting a pending institution creates a bank configuration, enables a destination, sends email or submits an application.
+
+## Focused lifecycle review - 2026-10-09
+
+Closing and reopening a prepared-email preview could let an earlier validation
+response reveal the new preview before its own check completed, or let an earlier
+failure close a newly validated preview. Each opening now owns a separate check
+token, invalidated on close and page hiding. Cancelled responses cannot reveal
+content or overwrite the current preview with an old error. This does not send
+email or change submission records.
+
+Three desktop regressions reproduced the issue before the fix. The final syntax
+check and full unit suite passed, including 398 synthetic financing security
+checks and 52 release-gate assertions. All 230 desktop/mobile browser tests passed
+(122 financing, 108 document-preview/release-gate). Added cases cover repeated
+Admin assignment, stale competing reassignment for both source types, explicit
+refresh after conflict, leaving during assignment, and late private-file responses
+after access is revoked. Existing tests continue to cover distinct staff labels,
+assigned-only access and all 13 inactive, unconfirmed institution names.
+
+This follow-up changes no migration or production configuration. Hosted Auth and
+Storage verification and real backup/restore evidence are still outstanding.
+No merge or deployment before 2026-10-13 00:00 Asia/Kuala_Lumpur; reaching that
+date does not bypass the separate production migration, capability or activation
+approvals described above.

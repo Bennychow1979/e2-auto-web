@@ -142,6 +142,8 @@ const fs=require('node:fs');const assert=require('node:assert/strict');const {ra
   check(await scalar('select count(*)::int from public.finance_events where case_id=$1',[unchangedCase.id]),beforeEvents,'Same-assignee request adds no misleading assignment audit');
   check((await scalar('select public.e2_finance_workspace($1)',[unchangedCase.id])).source,beforeSource.source,'Same-assignee request leaves original source revision unchanged');
   await fail('select * from public.e2_assign_finance_admin($1,$2,$3,$4)',[unchangedCase.id,office,'Stale same-assignee request',beforeCase.revision-1],'No-op still rejects stale case revision');
+  await fail('select * from public.e2_assign_finance_admin($1,$2,$3,$4)',[unchangedCase.id,office2,'Stale competing reassignment',beforeCase.revision-1],'Stale competing Admin reassignment is rejected',/Case changed/);
+  check(await getCase(unchangedCase.id),beforeCase,'Rejected competing reassignment preserves the current owner and revision');
  }
  await as(office);await fail('select * from public.e2_assign_finance_admin($1,$2,$3,$4)',[c.id,office,'Unauthorized same-assignee request',c.revision],'No-op still requires coordinator or Super Admin permission');
  await root();await db.query('delete from public.staff_profiles where user_id=any($1::uuid[])',[[office,office2]]);
