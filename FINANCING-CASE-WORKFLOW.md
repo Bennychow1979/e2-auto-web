@@ -393,3 +393,38 @@ Storage verification and real backup/restore evidence are still outstanding.
 No merge or deployment before 2026-10-13 00:00 Asia/Kuala_Lumpur; reaching that
 date does not bypass the separate production migration, capability or activation
 approvals described above.
+
+## Institution follow-up history - 2026-10-10
+
+The database already preserves each application's follow-up evidence, but the
+workspace previously showed only its latest note and a mixed case timeline
+without institution attribution. Staff can now expand each application's history
+to read the original missing-document requests, resolved follow-up, earlier and
+revised offers, submission reference/time, actor and note. The case timeline names
+and links the related institution application while retaining case-level events.
+
+History is grouped by application ID, so separate applications at the same
+institution remain separate. Values come from the event's recorded evidence;
+current application terms are never substituted for earlier or absent evidence.
+Only supported evidence fields are rendered as escaped text, without external
+links, credentials, file fetches or new writes. Existing authorized workspace
+responses supply all history. Auth changes and navigation clear it with the rest
+of the case. This update changes no SQL, RLS, roles, accounts or rollout settings.
+
+The synthetic staff sequence covers a document request, receipt acknowledgement,
+original approval and revised offer for both guest and registered sources, while
+another institution remains unchanged. Separate checks cover multiple applications
+at the same institution, historical zero-rate offers, empty histories, untrusted
+text and clearing on account change. Production backup/restore, isolated hosted
+Auth/Storage checks, institution verification and separate activation approvals
+remain outstanding; the October 13 Malaysia release hold still applies.
+
+Validation passed `npm run check`, the full `npm test` suite (404 synthetic
+financing security/workflow assertions and 52 release-gate assertions), and all
+240 desktop/mobile Chromium tests (132 financing, 108 existing preview/gate).
+The missing-history regression failed against the previous UI before the fix.
+All ten new browser scenarios passed, with desktop/mobile synthetic screenshots
+visually reviewed. Six added database assertions verify case scope, newest-event
+order, preserved missing items, original/revised offers, independent application
+terms and the actual submission reference. No hosted or real-customer test is
+claimed by these local results.

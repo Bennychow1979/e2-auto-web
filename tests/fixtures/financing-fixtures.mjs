@@ -35,11 +35,11 @@ export const institutions = [
   {id: ids.portal, name: 'Synthetic Portal Bank', kind: 'bank', active: true, revision: 1, portal_url: 'https://portal.example.test/financing', email_to: null, required_documents: ['Identity document', 'Three months of statements']},
   {id: ids.email, name: 'Synthetic Email Credit', kind: 'credit_company', active: true, revision: 1, portal_url: null, email_to: 'financing@example.test', required_documents: ['Identity document']},
 ];
-export function fixture({role = 'office_admin', userId, tracking = true, handed = true, assigned = true, dispatcher = true, caseOverrides = {}, sourceOverrides = {}, applications = [], defer = []} = {}) {
+export function fixture({role = 'office_admin', userId, tracking = true, handed = true, assigned = true, dispatcher = true, caseOverrides = {}, sourceOverrides = {}, applications = [], history = [], defer = []} = {}) {
   const user = {id: userId || ({sales: ids.sales, office_admin: ids.office, admin: ids.other, super_admin: ids.super}[role]), role};
   user.is_dispatcher = user.id === ids.coordinator && dispatcher;
   return {
-    ids, user, source: {...source,...sourceOverrides}, files, staff: staff.map(member => ({...member, ...(member.user_id === ids.coordinator ? {is_dispatcher: dispatcher} : {})})), institutions, applications, tracking, defer,
+    ids, user, source: {...source,...sourceOverrides}, files, staff: staff.map(member => ({...member, ...(member.user_id === ids.coordinator ? {is_dispatcher: dispatcher} : {})})), institutions, applications, history, tracking, defer,
     bytes: [...pdfBytes],
     financeCase: {
       id: ids.case, case_name: 'Synthetic test applicant', revision: 1, content_revision: 1,
@@ -98,7 +98,8 @@ export function initializeFinancingFixture(data) {
   const copy = value => structuredClone(value);
   const state = {
     ...copy(data), calls: [], pending: [], settled: {}, failures: {}, auth: null,
-    liveURLs: new Set(), createdURLs: [], revokedURLs: [], openedWindows: [], popups: [], lenderNavigations: [], popupBlocked: false, sequence: 1,
+    liveURLs: new Set(), createdURLs: [], revokedURLs: [], openedWindows: [], popups: [], lenderNavigations: [], popupBlocked: false,
+    sequence: Math.max(0, ...data.history.map(event => Number(event.id))) + 1,
   };
   // Intercept every lender-opening attempt; browser tests never navigate off-origin.
   window.open = (...args) => {
@@ -137,7 +138,7 @@ export function initializeFinancingFixture(data) {
   state.load = async (...args) => {
     state.calls.push({method: 'load', args});
     const value = {source: copy(state.source), files: copy(state.files), workspace: state.tracking ? {
-      case: copy(state.financeCase), applications: copy(state.applications), institutions: copy(state.institutions), staff: copy(state.staff), history: [],
+      case: copy(state.financeCase), applications: copy(state.applications), institutions: copy(state.institutions), staff: copy(state.staff), history: copy(state.history),
     } : null};
     try {await state.wait('load'); return value;} finally {state.finish('load');}
   };
@@ -174,7 +175,19 @@ export function initializeFinancingFixture(data) {
       }
       if (method === 'reviewApplication') Object.assign(a, {status: 'ready', revision: a.revision + 1, review_note: args[1]});
       if (method === 'recordSubmission') Object.assign(a, {status: 'submitted', submitted_at: args[1].submitted_at, external_reference: args[1].external_reference, submission_evidence: args[1].evidence, revision: a.revision + 1});
-      if (method === 'outcome') Object.assign(a, copy(args[1]), {status: args[1].next_status, revision: a.revision + 1});
+      if (method === 'outcome') {
+        const p = args[1];
+        Object.assign(a, copy(p), {status: p.next_status, revision: a.revision + 1,
+          offer_amount: p.next_status === 'approved' ? p.offer_amount : null,
+          offer_rate: p.next_status === 'approved' ? p.offer_rate : null,
+          offer_tenure_months: p.next_status === 'approved' ? p.offer_tenure_months : null});
+        // Mirror the existing RPC's append-only evidence; never derive historical
+        // terms or missing items from the application's later current state.
+        state.history.unshift({id: state.sequence++, case_id: c.id, application_id: a.id,
+          actor: state.user.id, event: 'financier_' + a.status, note: p.note,
+          created_at: '2026-01-04T12:00:00.000Z', evidence: copy({missing_documents: a.missing_documents,
+            offer_amount: a.offer_amount, offer_rate: a.offer_rate, offer_tenure_months: a.offer_tenure_months})});
+      }
       if (method === 'selectOffer') Object.assign(c, {selected_application_id: args[1].id, selection_evidence: args[2], revision: c.revision + 1});
       if (method === 'saveInstitution') throw Error('Institution mutation not part of this browser fixture.');
       return copy(method === 'start' || ['review', 'handoff', 'selectOffer'].includes(method) ? c : a || null);

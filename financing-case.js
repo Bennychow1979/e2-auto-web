@@ -94,11 +94,11 @@ function render(message = '') {
     ${canAssign ? `<section class="financeSection"><h2>Assign the Submission Admin.</h2><p>Your coordinator capability covers all submitted loan cases. You can assign or reassign this Admin after Salesman handover. Submission actions belong to the assigned Admin.</p><form data-action="assign-admin" data-current-admin="${esc(c.office_admin || '')}"><label class="field"><span>Responsible Submission Admin</span><select name="office" required><option value="">Choose the Admin</option>${options(officeChoices,c.office_admin,'user_id','choice_name')}</select></label>${textArea('note','Assignment / reassignment reason','','required')}${check('access','Give this Admin access to the case and its documents. The previous Admin loses assigned-case access unless separately authorized as a global loan coordinator or Super Admin.')}<button class="primary" ${c.office_admin ? 'disabled' : ''}>Save Admin assignment</button></form></section>` : ''}
     ${c.handed_at && !c.office_admin ? `<p class="financeNotice">Awaiting ${esc(person(c.coordinator))} to assign the Submission Admin.</p>` : ''}
     <section class="financeSection"><h2>Bank & credit applications.</h2><p>Each institution has its own submission, reference, follow-up and offer. Assignee labels do not grant access to other staff.</p>${!ready && c.handed_at ? '<p class="financeNotice">Customer details or files need Salesman review before further submissions.</p>' : ''}
-      ${applications.map(a => applicationHTML(a,{c,files,institutions,staff,person,canProcess,office})).join('') || '<p>No lender applications recorded yet.</p>'}
+      ${applications.map(a => applicationHTML(a,{c,files,institutions,staff,person,canProcess,office,history:w.history || []})).join('') || '<p>No lender applications recorded yet.</p>'}
       ${canProcess ? `<details><summary>Add an institution application</summary>${institutions.some(i=>i.active) ? applicationForm(null,{c,files,institutions,staff}) : '<p>Ask Super Admin to configure verified institution details first. No real institutions or email recipients are supplied automatically.</p>'}</details>` : !c.handed_at ? '<p>Complete the Salesman review and explicit Admin handover first.</p>' : ''}</section>
     ${institutionChecklistHTML(institutions)}
     ${user.role === 'super_admin' ? institutionHTML(institutions) : ''}
-    <section class="financeSection"><details><summary>Case history</summary><ol class="financeTimeline">${(w.history || []).map(e=>`<li><strong>${esc(e.event)}</strong><small>${esc(date(e.created_at))}${e.actor ? ' · '+esc(person(e.actor)) : ''}</small><p class="financeHistoryNote">${esc(e.note || '')}</p></li>`).join('') || '<li>No events yet.</li>'}</ol></details></section>`}
+    <section class="financeSection"><details id="financeCaseHistory"><summary>Case history</summary>${historyHTML(w.history || [],person,applications)}</details></section>`}
     <section class="financeSection"><h2>Customer documents.</h2><p>${files.length} available files · ${esc(source.applicant_type || 'Applicant type not set')}</p><ul>${checklist(source.applicant_type).map(item=>`<li>${esc(item.label)} · ${esc(categoryProgress(item, files))}</li>`).join('')}</ul><p class="financeHint">Open a file to preview or download it securely. For a lender portal, upload only the required downloaded files. For email, attach the selected files manually in the approved email tool.</p><ul class="financeFiles">${files.map(f=>`<li><span>${esc(f.filename)}<br><small>${esc(f.category)}${f.covered_months?.length ? ' · '+esc(f.covered_months.join(', ')) : ''}</small></span><button class="textButton" data-file="${esc(f.id)}">Preview / download</button></li>`).join('')}</ul></section>`;
   $('financeRefresh').onclick=()=>{if(!busy)void refresh('Case refreshed. Review any changes before continuing.');};
   if ($('startFinance')) $('startFinance').onclick = () => change(()=>api.start(sourceKind,sourceId),'Case tracking started. Review completeness before handover.');
@@ -117,8 +117,9 @@ function applicationForm(a, {c, files, institutions, staff}) {
     ${textArea('note','Internal application note',a?.note || '')}
     <button class="secondary">${a ? 'Save draft changes' : 'Create application draft'}</button></form>`;
 }
-function applicationHTML(a, {c, files, institutions, staff, person, canProcess, office}) {
+function applicationHTML(a, {c, files, institutions, staff, person, canProcess, office, history}) {
   const i = institutions.find(i=>i.id===a.institution_id), selected=c.selected_application_id===a.id;
+  const events = history.filter(e=>e.application_id===a.id);
   const canEdit=canProcess && ['draft','ready'].includes(a.status);
   const submitted=!!a.submitted_at, portal=portalURL(a.portal_url);
   const destinationCurrent=!!i?.active && a.institution_revision === i.revision;
@@ -136,7 +137,34 @@ function applicationHTML(a, {c, files, institutions, staff, person, canProcess, 
     ${canUsePrepared ? `<details><summary>Record an actual ${a.channel==='email'?'email sent':'portal submission'}</summary><form data-action="submission" data-id="${esc(a.id)}"><p class="financeNotice">Only record a completed action. This form does not send email or submit to a lender. For email, check the sent message and attachment list in your email tool first.</p><div class="financeGrid">${field('time','Actual submission time (your local time)','datetime-local',localDateTime(new Date()),'required step="1"')}${field('reference','Lender reference / sent-message reference','text','','required maxlength="200"')}</div>${textArea('evidence',a.channel==='email'?'Human confirmation: sent-message reference, recipient and evidence of successful sending':'Human confirmation: portal result and reference evidence','','required')}${check('confirmed',a.channel==='email'?'I personally verified this email was sent successfully with the reviewed attachments.':'I personally confirmed successful submission on the lender portal.')}<button class="primary">Record completed submission</button></form></details>` : ''}
     ${office && submitted && !selected ? `<details><summary>Record lender follow-up / offer</summary><form data-action="outcome" data-id="${esc(a.id)}"><label class="field"><span>Lender-reported status</span><select name="status">${['under_review','needs_information','approved','rejected','withdrawn'].map(s=>`<option value="${s}" ${a.status===s?'selected':''}>${esc(label(s))}</option>`).join('')}</select></label>${textArea('missing','Missing documents requested by lender, one per line',(a.missing_documents || []).join('\n'),'maxlength="6000"')}<div class="financeGrid">${field('amount','Offered amount (RM)','number',a.offer_amount??'','min="1" max="100000000" step="0.01"')}${field('rate','Lender-stated annual rate (%)','number',a.offer_rate??'','min="0" max="100" step="0.001"')}${field('tenure','Offered tenure (months)','number',a.offer_tenure_months??'','min="1" max="120" step="1"')}</div>${textArea('note','Actual lender response and rate basis / conditions','','required')}<p class="financeHint">Record whether the rate is flat or effective and any conditions in the note. No eligibility decision is made by E2.</p><button class="secondary">Record follow-up</button></form></details>` : ''}
     ${office && a.status==='approved' && !selected ? `<details><summary>Record this as the customer’s selected offer</summary><form data-action="select" data-id="${esc(a.id)}">${textArea('instruction','Customer instruction: when and how this offer was chosen','','required')}${check('choice','The customer explicitly chose this offer. Recording it does not accept a lender contract or disburse funds.')}<button class="primary">Record customer-selected offer</button></form></details>` : ''}
+    <details data-application-history><summary>Application history (${events.length})</summary><p class="financeHint">Newest records first. These are staff-recorded events; earlier terms and missing items describe that point in time.</p>${historyHTML(events,person)}</details>
     </article>`;
+}
+function historyHTML(events, person, applications) {
+  const titles = {
+    case_opened:'Case tracking started', legacy_case_adopted:'Legacy handover adopted', case_renamed:'Case renamed',
+    sales_review_complete:'Salesman review completed', missing_information:'Missing information recorded',
+    coordinator_handoff:'Handed over to coordinator', submission_admin_assigned:'Submission Admin assigned',
+    application_draft_saved:'Application draft saved', submission_reviewed:'Submission preparation reviewed',
+    actual_submission_recorded:'Actual submission recorded', customer_offer_selected:'Customer offer choice recorded',
+    source_changed:'Customer details or documents changed', financier_under_review:'Lender review in progress',
+    financier_needs_information:'Lender requested information', financier_approved:'Lender approval recorded',
+    financier_rejected:'Lender rejection recorded', financier_withdrawn:'Withdrawal recorded',
+  };
+  return `<ol class="financeTimeline">${events.map(e=>{
+    const evidence=e.evidence || {}, application=applications?.find(a=>a.id===e.application_id);
+    const outcome=['financier_under_review','financier_needs_information','financier_approved','financier_rejected','financier_withdrawn'].includes(e.event);
+    const missing=outcome ? evidence.missing_documents : e.event==='missing_information' ? evidence.missing_items : null;
+    const terms=['financier_approved','customer_offer_selected'].includes(e.event) && [evidence.offer_amount,evidence.offer_rate,evidence.offer_tenure_months].every(v=>v!=null);
+    // Show only supported evidence fields from this event. Never backfill older
+    // terms, missing items or references from the application's current state.
+    return `<li><strong>${esc(titles[e.event] || e.event)}</strong>${application ? `<p><a href="#application-${esc(application.id)}">${esc(application.institution_name || 'Institution application')}</a></p>` : applications && e.application_id ? '<p>Institution application unavailable</p>' : ''}<small>${esc(date(e.created_at))}${e.actor ? ' - '+esc(person(e.actor)) : ''}</small>
+      ${e.event==='actual_submission_recorded' ? `<p>Recorded reference: ${esc(evidence.external_reference || 'Not recorded')}<br>Actual submission time: ${esc(date(evidence.submitted_at))}${evidence.channel ? '<br>Channel: '+esc(label(evidence.channel)) : ''}</p>` : ''}
+      ${Array.isArray(missing) ? missing.length ? `<p>Missing items at this update:</p><ul>${missing.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>` : '<p>No missing items recorded at this update.</p>' : ''}
+      ${e.event==='customer_offer_selected' && evidence.institution_name ? `<p>Recorded institution: ${esc(evidence.institution_name)}</p>` : ''}
+      ${terms ? `<p>Recorded offer: ${rm(evidence.offer_amount)} / ${esc(evidence.offer_rate)}% / ${esc(evidence.offer_tenure_months)} months</p>` : ''}
+      ${e.note ? `<p class="financeHistoryNote">${esc(e.note)}</p>` : ''}</li>`;
+  }).join('') || `<li>${applications ? 'No events yet.' : 'No application events recorded yet.'}</li>`}</ol>`;
 }
 function institutionChecklistHTML(institutions) {
   const entries = institutionChecklist(institutionDraft.institutions, institutions);

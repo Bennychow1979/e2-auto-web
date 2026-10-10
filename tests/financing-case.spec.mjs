@@ -38,6 +38,12 @@ const card = (page, id) => page.locator(`#application-${id}`);
 const calls = (page, method) => page.evaluate(method => window.__financeFixture.calls.filter(call => call.method === method), method);
 const state = page => page.evaluate(() => ({financeCase: window.__financeFixture.financeCase, applications: window.__financeFixture.applications}));
 const summary = (parent, name) => parent.locator('summary').filter({hasText: name});
+const lenderHistory = (page, id) => card(page, id).locator('details[data-application-history]');
+
+function historyEvent(application, event, evidence = {}, note = 'Synthetic historical staff note.') {
+  return {id: 1, case_id: ids.case, application_id: application.id, event, evidence, note,
+    actor: ids.office, created_at: '2026-01-03T10:00:00.000Z'};
+}
 
 async function install(page, options = {}, source = 'intake', ready = true) {
   await page.addInitScript(initializeFinancingFixture, fixture(options));
@@ -251,6 +257,106 @@ test('only an approved offer can be recorded as the customer choice with explici
   expect((await calls(page, 'selectOffer'))[0].args[1]).toMatchObject({id: portal.id, revision: 2, status: 'approved'});
   expect((await state(page)).applications[1].status).toBe('under_review');
   await expect(form(view, 'select')).toHaveCount(0);
+});
+
+for (const source of ['intake', 'loan']) {
+  test(`${source}: lender history retains each missing-document request and earlier offer after later follow-up`, async ({page}, testInfo) => {
+    const portal = application('portal', 'submitted'), email = application('email', 'submitted');
+    await install(page, {applications: [portal, email], history: [
+      historyEvent(portal, 'actual_submission_recorded', {external_reference: 'SYNTHETIC-PORTAL-RECEIPT', submitted_at: portal.submitted_at, channel: 'portal'}),
+      {...historyEvent(email, 'actual_submission_recorded', {external_reference: 'SYNTHETIC-EMAIL-RECEIPT', submitted_at: email.submitted_at, channel: 'email'}), id: 2},
+    ]}, source);
+    const view = card(page, portal.id);
+    const record = async (status, missing, note, amount = '', rate = '', tenure = '') => {
+      await summary(view, 'Record lender follow-up / offer').click();
+      const followup = form(view, 'outcome');
+      await followup.locator('[name="status"]').selectOption(status);
+      for (const [name, value] of Object.entries({missing, note, amount, rate, tenure})) await followup.locator(`[name="${name}"]`).fill(value);
+      await followup.getByRole('button', {name: 'Record follow-up', exact: true}).click();
+      await expect(view.locator('.financeDraftBadge')).toHaveText({needs_information: 'Missing information', under_review: 'Under review', approved: 'Approved'}[status]);
+    };
+    await record('needs_information', 'Synthetic updated employment letter', 'Synthetic bank requested an updated employment letter.');
+    await record('under_review', '', 'Synthetic bank confirmed receipt of the additional letter.');
+    await record('approved', '', 'Synthetic original flat-rate offer; externally verified.', '55000', '0', '60');
+    await record('approved', '', 'Synthetic revised flat-rate offer; awaiting customer choice.', '52500', '3.25', '48');
+    await expect(view.locator('dd').filter({hasText: 'RM52,500'})).toBeVisible();
+    const history = lenderHistory(page, portal.id);
+    await expect(history.locator('summary')).toHaveText('Application history (5)');
+    await history.locator('summary').click();
+    await expect(history).toContainText('Synthetic updated employment letter');
+    await expect(history).toContainText('Synthetic bank confirmed receipt');
+    await expect(history).toContainText('RM55,000');
+    await expect(history).toContainText('0%');
+    await expect(history).toContainText('60 months');
+    await expect(history).toContainText('RM52,500');
+    await expect(history).toContainText('SYNTHETIC-PORTAL-RECEIPT');
+    await expect(history.locator('li').first()).toContainText('Synthetic revised flat-rate offer');
+    await expect(history).not.toContainText('SYNTHETIC-EMAIL-RECEIPT');
+    const otherHistory = lenderHistory(page, email.id);
+    await otherHistory.locator('summary').click();
+    await expect(otherHistory).toContainText('SYNTHETIC-EMAIL-RECEIPT');
+    await expect(otherHistory).not.toContainText('employment letter');
+    await expect(card(page, email.id).locator('.financeDraftBadge')).toHaveText('Submitted');
+    const timeline = page.locator('#financeCaseHistory');
+    await timeline.locator('summary').click();
+    await expect(timeline.getByRole('link', {name: portal.institution_name, exact: true})).toHaveCount(5);
+    await expect(timeline.getByRole('link', {name: email.institution_name, exact: true})).toHaveAttribute('href', `#application-${email.id}`);
+    expect(await calls(page, 'recordSubmission')).toEqual([]);
+    expect(await calls(page, 'selectOffer')).toEqual([]);
+    expect(await calls(page, 'download')).toEqual([]);
+    await history.scrollIntoViewIfNeeded();
+    await page.screenshot({path: testInfo.outputPath(`synthetic-lender-history-${source}-${testInfo.project.name}.png`)});
+  });
+}
+
+test('lender history groups by application ID even when an institution has multiple applications', async ({page}) => {
+  const first = application('portal', 'approved'), second = application('portal', 'rejected', {id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'});
+  await install(page, {applications: [first, second], history: [
+    historyEvent(first, 'financier_approved', {offer_amount: 49000, offer_rate: 2.5, offer_tenure_months: 72, missing_documents: []}, 'Synthetic first application approval.'),
+    {...historyEvent(second, 'financier_rejected', {}, 'Synthetic second application rejection.'), id: 2},
+    {...historyEvent(first, 'submission_admin_assigned', {}, 'Synthetic case-level reassignment.'), id: 3, application_id: null},
+  ]});
+  for (const a of [first, second]) await lenderHistory(page, a.id).locator('summary').click();
+  await expect(lenderHistory(page, first.id)).toContainText('first application approval');
+  await expect(lenderHistory(page, first.id)).not.toContainText('second application rejection');
+  await expect(lenderHistory(page, second.id)).toContainText('second application rejection');
+  await expect(lenderHistory(page, second.id)).not.toContainText('first application approval');
+  await expect(lenderHistory(page, first.id)).not.toContainText('case-level reassignment');
+  const timeline = page.locator('#financeCaseHistory');
+  await timeline.locator('summary').click();
+  await expect(timeline).toContainText('Submission Admin assigned');
+  await expect(timeline.locator(`a[href="#application-${first.id}"]`)).toHaveCount(1);
+  await expect(timeline.locator(`a[href="#application-${second.id}"]`)).toHaveCount(1);
+});
+
+test('lender history escapes recorded text, omits arbitrary evidence and clears on account change', async ({page}) => {
+  const a = application('email', 'approved');
+  const text = '<img src=x onerror="window.historyInjected=true">';
+  await install(page, {applications: [a], history: [
+    historyEvent(a, 'financier_needs_information', {missing_documents: [text], internal_test_extra: 'DO-NOT-RENDER-ARBITRARY-EVIDENCE'}, text),
+    {...historyEvent(a, 'customer_offer_selected', {institution_name: 'Synthetic original institution name', offer_amount: 47000, offer_rate: 0, offer_tenure_months: 48}, 'Synthetic previous customer instruction.'), id: 2, actor: ids.other},
+  ]});
+  const history = lenderHistory(page, a.id);
+  await history.locator('summary').click();
+  await expect(history).toContainText(text);
+  await expect(history.locator('img,script,a[href^="http"]')).toHaveCount(0);
+  await expect(history).not.toContainText('DO-NOT-RENDER');
+  await expect(history).toContainText('Synthetic original institution name');
+  await expect(history).toContainText('Other Synthetic Admin');
+  await expect(history).toContainText('RM47,000');
+  expect(await page.evaluate(() => window.historyInjected)).toBeUndefined();
+  await page.evaluate(() => window.__financeFixture.auth('USER_UPDATED', {user: {id: 'different-authenticated-user'}}));
+  await expectPrivateUICleared(page);
+  await expect(page.locator('[data-application-history], #financeCaseHistory')).toHaveCount(0);
+});
+
+test('lender history has an explicit empty state without borrowing current terms as past evidence', async ({page}) => {
+  const a = application('portal', 'approved');
+  await install(page, {applications: [a]});
+  const history = lenderHistory(page, a.id);
+  await history.locator('summary').click();
+  await expect(history).toContainText('No application events recorded yet.');
+  await expect(history).not.toContainText('RM55,000');
 });
 
 for (const role of ['sales', 'office_admin', 'admin']) {
