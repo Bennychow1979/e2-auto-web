@@ -5,13 +5,17 @@ const api=enabled?await import('./financing-data.js?v=case-1'):null;
 import {esc, rm} from './loan-ui.js';
 import {checklist, categoryProgress} from './document-fields.js';
 import {createDocumentPreview} from './document-preview.js?v=pdf-preview-1';
-import {uuid, label, items, portalURL, emailAddress, localDateTime, isoDateTime, offerNumber, emailReviewText} from './financing-core.mjs';
+import {uuid, label, items, portalURL, emailAddress, localDateTime, isoDateTime, offerNumber, emailReviewText, staffLabel} from './financing-core.mjs';
+
+import {loadInstitutionDraft, institutionChecklist} from './financing-institutions.mjs';
 
 const $ = id => document.getElementById(id), main = $('financeMain');
 const params = new URLSearchParams(location.search), sourceKind = params.get('source'), sourceId = params.get('id');
 const back = sourceKind === 'loan' ? 'loans.html' : 'intake-workspace.html';
 let user = null, snapshot = null, epoch = 0, busy = false, observedAuthUser;
+let institutionDraft = {institutions:[], error:false};
 const locked = new Map();
+const emailChecks = new WeakMap();
 const preview = createDocumentPreview({dialog:$('financeFilePreview'),title:$('financeFileTitle'),content:$('financeFileBody'),closeButton:$('financeFileClose'),download:path => api.download(sourceKind, path)});
 const date = value => value ? new Date(value).toLocaleString('en-MY', {dateStyle:'medium',timeStyle:'short'}) : 'Not recorded';
 const field = (name, title, type = 'text', value = '', extra = '') => `<label class="field"><span>${esc(title)}</span><input name="${name}" type="${type}" value="${esc(value)}" ${extra}></label>`;
@@ -37,9 +41,9 @@ function error(message) {
 async function refresh(message = '') {
   preview.close(); const run = ++epoch;
   try {
-    const result = await api.load(sourceKind, sourceId);
+    const [result, draft] = await Promise.all([api.load(sourceKind, sourceId), loadInstitutionDraft().then(institutions=>({institutions,error:false}),()=>({institutions:[],error:true}))]);
     if (run !== epoch || !user) return;
-    snapshot = result; render(message);
+    snapshot = result; institutionDraft = draft; render(message);
   } catch (e) {
     if (run !== epoch || !user) return;
     snapshot = null;
@@ -59,7 +63,7 @@ async function change(action, message = 'Saved. The case has been refreshed.') {
 }
 function render(message = '') {
   const {source, files, workspace:w} = snapshot, c = w?.case;
-  const staff = w?.staff || [], applications = w?.applications || [], institutions = w?.institutions || [];
+  const staff = (w?.staff || []).map(p=>({...p,display_name:staffLabel(p)})), applications = w?.applications || [], institutions = w?.institutions || [];
   const person = id => staff.find(p => p.user_id === id)?.display_name || (id ? id : 'Not assigned');
   const sales = c && (user.role === 'super_admin' || c.salesperson === user.id && ['sales','admin'].includes(user.role));
   const office = c && (user.role === 'super_admin' || c.handed_at && c.office_admin === user.id && ['office_admin','admin'].includes(user.role));
@@ -87,13 +91,14 @@ function render(message = '') {
       ${check('documents','I have opened and checked the required documents and statement months.',false)}
       <p class="financeHint">Both checks and no missing items are required to mark the case complete. Saving missing items does not notify the customer.${sourceKind === 'intake' ? ' Guest supplemental uploads are not available; follow up directly and resolve the supported document path before handover.' : ''}</p><button class="secondary">Save completeness review</button></form></section>` : ''}
     ${sales && ready && !c.handed_at ? `<section class="financeSection"><h2>2. Hand over to case coordinator.</h2><form data-action="handoff"><label class="field"><span>Receiving coordinator</span><select name="office" required><option value="">Choose the receiving coordinator</option>${options(coordinators,c.coordinator,'user_id','choice_name')}</select></label>${textArea('note','Handover note','','required')}${check('access','I confirm the case is complete. This coordinator will receive its details and documents, then assign the Submission Admin.')}<button class="primary">Hand over complete case →</button><p class="financeHint">${coordinators.length ? 'The coordinator receives the case and controls Admin assignment.' : 'No receiving coordinator is configured. Super Admin must verify the staff identity and enable the dispatcher capability before handover.'}</p></form></section>` : ''}
-    ${canAssign ? `<section class="financeSection"><h2>Assign the Submission Admin.</h2><p>Your coordinator capability covers all submitted loan cases. You can assign or reassign this Admin after Salesman handover. Submission actions belong to the assigned Admin.</p><form data-action="assign-admin"><label class="field"><span>Responsible Submission Admin</span><select name="office" required><option value="">Choose the Admin</option>${options(officeChoices,c.office_admin,'user_id','choice_name')}</select></label>${textArea('note','Assignment / reassignment reason','','required')}${check('access','Give this Admin access to the case and its documents. The previous Admin loses assigned-case access unless separately authorized as a global loan coordinator or Super Admin.')}<button class="primary">Save Admin assignment</button></form></section>` : ''}
+    ${canAssign ? `<section class="financeSection"><h2>Assign the Submission Admin.</h2><p>Your coordinator capability covers all submitted loan cases. You can assign or reassign this Admin after Salesman handover. Submission actions belong to the assigned Admin.</p><form data-action="assign-admin" data-current-admin="${esc(c.office_admin || '')}"><label class="field"><span>Responsible Submission Admin</span><select name="office" required><option value="">Choose the Admin</option>${options(officeChoices,c.office_admin,'user_id','choice_name')}</select></label>${textArea('note','Assignment / reassignment reason','','required')}${check('access','Give this Admin access to the case and its documents. The previous Admin loses assigned-case access unless separately authorized as a global loan coordinator or Super Admin.')}<button class="primary" ${c.office_admin ? 'disabled' : ''}>Save Admin assignment</button></form></section>` : ''}
     ${c.handed_at && !c.office_admin ? `<p class="financeNotice">Awaiting ${esc(person(c.coordinator))} to assign the Submission Admin.</p>` : ''}
     <section class="financeSection"><h2>Bank & credit applications.</h2><p>Each institution has its own submission, reference, follow-up and offer. Assignee labels do not grant access to other staff.</p>${!ready && c.handed_at ? '<p class="financeNotice">Customer details or files need Salesman review before further submissions.</p>' : ''}
-      ${applications.map(a => applicationHTML(a,{c,files,institutions,staff,person,canProcess,office})).join('') || '<p>No lender applications recorded yet.</p>'}
+      ${applications.map(a => applicationHTML(a,{c,files,institutions,staff,person,canProcess,office,history:w.history || []})).join('') || '<p>No lender applications recorded yet.</p>'}
       ${canProcess ? `<details><summary>Add an institution application</summary>${institutions.some(i=>i.active) ? applicationForm(null,{c,files,institutions,staff}) : '<p>Ask Super Admin to configure verified institution details first. No real institutions or email recipients are supplied automatically.</p>'}</details>` : !c.handed_at ? '<p>Complete the Salesman review and explicit Admin handover first.</p>' : ''}</section>
+    ${institutionChecklistHTML(institutions)}
     ${user.role === 'super_admin' ? institutionHTML(institutions) : ''}
-    <section class="financeSection"><details><summary>Case history</summary><ol class="financeTimeline">${(w.history || []).map(e=>`<li><strong>${esc(e.event)}</strong><small>${esc(date(e.created_at))}${e.actor ? ' · '+esc(person(e.actor)) : ''}</small><p class="financeHistoryNote">${esc(e.note || '')}</p></li>`).join('') || '<li>No events yet.</li>'}</ol></details></section>`}
+    <section class="financeSection"><details id="financeCaseHistory"><summary>Case history</summary>${historyHTML(w.history || [],person,applications)}</details></section>`}
     <section class="financeSection"><h2>Customer documents.</h2><p>${files.length} available files · ${esc(source.applicant_type || 'Applicant type not set')}</p><ul>${checklist(source.applicant_type).map(item=>`<li>${esc(item.label)} · ${esc(categoryProgress(item, files))}</li>`).join('')}</ul><p class="financeHint">Open a file to preview or download it securely. For a lender portal, upload only the required downloaded files. For email, attach the selected files manually in the approved email tool.</p><ul class="financeFiles">${files.map(f=>`<li><span>${esc(f.filename)}<br><small>${esc(f.category)}${f.covered_months?.length ? ' · '+esc(f.covered_months.join(', ')) : ''}</small></span><button class="textButton" data-file="${esc(f.id)}">Preview / download</button></li>`).join('')}</ul></section>`;
   $('financeRefresh').onclick=()=>{if(!busy)void refresh('Case refreshed. Review any changes before continuing.');};
   if ($('startFinance')) $('startFinance').onclick = () => change(()=>api.start(sourceKind,sourceId),'Case tracking started. Review completeness before handover.');
@@ -112,8 +117,9 @@ function applicationForm(a, {c, files, institutions, staff}) {
     ${textArea('note','Internal application note',a?.note || '')}
     <button class="secondary">${a ? 'Save draft changes' : 'Create application draft'}</button></form>`;
 }
-function applicationHTML(a, {c, files, institutions, staff, person, canProcess, office}) {
+function applicationHTML(a, {c, files, institutions, staff, person, canProcess, office, history}) {
   const i = institutions.find(i=>i.id===a.institution_id), selected=c.selected_application_id===a.id;
+  const events = history.filter(e=>e.application_id===a.id);
   const canEdit=canProcess && ['draft','ready'].includes(a.status);
   const submitted=!!a.submitted_at, portal=portalURL(a.portal_url);
   const destinationCurrent=!!i?.active && a.institution_revision === i.revision;
@@ -131,10 +137,42 @@ function applicationHTML(a, {c, files, institutions, staff, person, canProcess, 
     ${canUsePrepared ? `<details><summary>Record an actual ${a.channel==='email'?'email sent':'portal submission'}</summary><form data-action="submission" data-id="${esc(a.id)}"><p class="financeNotice">Only record a completed action. This form does not send email or submit to a lender. For email, check the sent message and attachment list in your email tool first.</p><div class="financeGrid">${field('time','Actual submission time (your local time)','datetime-local',localDateTime(new Date()),'required step="1"')}${field('reference','Lender reference / sent-message reference','text','','required maxlength="200"')}</div>${textArea('evidence',a.channel==='email'?'Human confirmation: sent-message reference, recipient and evidence of successful sending':'Human confirmation: portal result and reference evidence','','required')}${check('confirmed',a.channel==='email'?'I personally verified this email was sent successfully with the reviewed attachments.':'I personally confirmed successful submission on the lender portal.')}<button class="primary">Record completed submission</button></form></details>` : ''}
     ${office && submitted && !selected ? `<details><summary>Record lender follow-up / offer</summary><form data-action="outcome" data-id="${esc(a.id)}"><label class="field"><span>Lender-reported status</span><select name="status">${['under_review','needs_information','approved','rejected','withdrawn'].map(s=>`<option value="${s}" ${a.status===s?'selected':''}>${esc(label(s))}</option>`).join('')}</select></label>${textArea('missing','Missing documents requested by lender, one per line',(a.missing_documents || []).join('\n'),'maxlength="6000"')}<div class="financeGrid">${field('amount','Offered amount (RM)','number',a.offer_amount??'','min="1" max="100000000" step="0.01"')}${field('rate','Lender-stated annual rate (%)','number',a.offer_rate??'','min="0" max="100" step="0.001"')}${field('tenure','Offered tenure (months)','number',a.offer_tenure_months??'','min="1" max="120" step="1"')}</div>${textArea('note','Actual lender response and rate basis / conditions','','required')}<p class="financeHint">Record whether the rate is flat or effective and any conditions in the note. No eligibility decision is made by E2.</p><button class="secondary">Record follow-up</button></form></details>` : ''}
     ${office && a.status==='approved' && !selected ? `<details><summary>Record this as the customer’s selected offer</summary><form data-action="select" data-id="${esc(a.id)}">${textArea('instruction','Customer instruction: when and how this offer was chosen','','required')}${check('choice','The customer explicitly chose this offer. Recording it does not accept a lender contract or disburse funds.')}<button class="primary">Record customer-selected offer</button></form></details>` : ''}
+    <details data-application-history><summary>Application history (${events.length})</summary><p class="financeHint">Newest records first. These are staff-recorded events; earlier terms and missing items describe that point in time.</p>${historyHTML(events,person)}</details>
     </article>`;
 }
+function historyHTML(events, person, applications) {
+  const titles = {
+    case_opened:'Case tracking started', legacy_case_adopted:'Legacy handover adopted', case_renamed:'Case renamed',
+    sales_review_complete:'Salesman review completed', missing_information:'Missing information recorded',
+    coordinator_handoff:'Handed over to coordinator', submission_admin_assigned:'Submission Admin assigned',
+    application_draft_saved:'Application draft saved', submission_reviewed:'Submission preparation reviewed',
+    actual_submission_recorded:'Actual submission recorded', customer_offer_selected:'Customer offer choice recorded',
+    source_changed:'Customer details or documents changed', financier_under_review:'Lender review in progress',
+    financier_needs_information:'Lender requested information', financier_approved:'Lender approval recorded',
+    financier_rejected:'Lender rejection recorded', financier_withdrawn:'Withdrawal recorded',
+  };
+  return `<ol class="financeTimeline">${events.map(e=>{
+    const evidence=e.evidence || {}, application=applications?.find(a=>a.id===e.application_id);
+    const outcome=['financier_under_review','financier_needs_information','financier_approved','financier_rejected','financier_withdrawn'].includes(e.event);
+    const missing=outcome ? evidence.missing_documents : e.event==='missing_information' ? evidence.missing_items : null;
+    const terms=['financier_approved','customer_offer_selected'].includes(e.event) && [evidence.offer_amount,evidence.offer_rate,evidence.offer_tenure_months].every(v=>v!=null);
+    // Show only supported evidence fields from this event. Never backfill older
+    // terms, missing items or references from the application's current state.
+    return `<li><strong>${esc(titles[e.event] || e.event)}</strong>${application ? `<p><a href="#application-${esc(application.id)}">${esc(application.institution_name || 'Institution application')}</a></p>` : applications && e.application_id ? '<p>Institution application unavailable</p>' : ''}<small>${esc(date(e.created_at))}${e.actor ? ' - '+esc(person(e.actor)) : ''}</small>
+      ${e.event==='actual_submission_recorded' ? `<p>Recorded reference: ${esc(evidence.external_reference || 'Not recorded')}<br>Actual submission time: ${esc(date(evidence.submitted_at))}${evidence.channel ? '<br>Channel: '+esc(label(evidence.channel)) : ''}</p>` : ''}
+      ${Array.isArray(missing) ? missing.length ? `<p>Missing items at this update:</p><ul>${missing.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>` : '<p>No missing items recorded at this update.</p>' : ''}
+      ${e.event==='customer_offer_selected' && evidence.institution_name ? `<p>Recorded institution: ${esc(evidence.institution_name)}</p>` : ''}
+      ${terms ? `<p>Recorded offer: ${rm(evidence.offer_amount)} / ${esc(evidence.offer_rate)}% / ${esc(evidence.offer_tenure_months)} months</p>` : ''}
+      ${e.note ? `<p class="financeHistoryNote">${esc(e.note)}</p>` : ''}</li>`;
+  }).join('') || `<li>${applications ? 'No events yet.' : 'No application events recorded yet.'}</li>`}</ol>`;
+}
+function institutionChecklistHTML(institutions) {
+  const entries = institutionChecklist(institutionDraft.institutions, institutions);
+  return `<section class="financeSection" id="institutionChecklist"><h2>Bank & credit checklist.</h2>${institutionDraft.error ? '<p role="status">Institution checklist unavailable. Refresh the case to retry. Saved institution settings remain available.</p>' : `<p>${entries.length} owner-listed institutions. Pending entries need confirmation of institution type, submission channel, destination and required documents before use.</p><ul class="financeInstitutionList">${entries.map(item=>`<li><strong>${esc(item.name)}</strong><span>${item.configured ? item.configured.active ? 'Configured for applications' : 'Configured, inactive' : 'Pending verification'}</span></li>`).join('')}</ul>`}<p class="financeHint">Super Admin reviews institution settings. Each enabled institution can have its own application record; submissions and email sending are completed manually outside E2.</p></section>`;
+}
 function institutionHTML(institutions) {
-  const form = i => `<form data-action="institution" data-id="${esc(i?.id || '')}"><div class="financeGrid">${field('name','Institution display name','text',i?.name || '','required maxlength="120"')}<label class="field"><span>Institution type</span><select name="kind"><option value="bank">Bank</option><option value="credit_company" ${i?.kind==='credit_company'?'selected':''}>Credit company</option></select></label>${field('portal','Verified HTTPS portal URL','url',i?.portal_url || '','maxlength="1000"')}${field('email','Verified financing email recipient','email',i?.email_to || '','maxlength="254"')}</div>${textArea('required','Required documents, one per line',(i?.required_documents || []).join('\n'),'maxlength="6000"')}${check('active','Available for new applications',false,i?.active??true)}<p class="financeHint">Verify destinations with the institution before enabling. Do not enter credentials, customer details or tokens. This configuration does not send anything.</p><button class="secondary">Save institution configuration</button></form>`;
+  const pending = institutionChecklist(institutionDraft.institutions, institutions).filter(item=>!item.configured);
+  const form = i => `<form data-action="institution" data-id="${esc(i?.id || '')}">${!i && pending.length ? `<label class="field"><span>Pending institution</span><select name="draft"><option value="">Choose a name to review, or enter another</option>${pending.map(item=>`<option value="${esc(item.name)}">${esc(item.name)}</option>`).join('')}</select></label>` : ''}<div class="financeGrid">${field('name','Institution display name','text',i?.name || '','required maxlength="120"')}<label class="field"><span>Institution type</span><select name="kind" required><option value="">Choose a verified institution type</option><option value="bank" ${i?.kind==='bank'?'selected':''}>Bank</option><option value="credit_company" ${i?.kind==='credit_company'?'selected':''}>Credit company</option></select></label>${field('portal','Verified HTTPS portal URL','url',i?.portal_url || '','maxlength="1000"')}${field('email','Verified financing email recipient','email',i?.email_to || '','maxlength="254"')}</div>${textArea('required','Required documents, one per line',(i?.required_documents || []).join('\n'),'maxlength="6000"')}${check('active','Available for new applications',false,i?.active??false)}<p class="financeHint">Verify destinations with the institution before enabling. Do not enter credentials, customer details or tokens. This configuration does not send anything.</p><button class="secondary">Save institution configuration</button></form>`;
   return `<section class="financeSection"><details><summary>Institution settings · Super Admin</summary>${institutions.map(i=>`<details><summary>${esc(i.name)}${i.active?'':' · inactive'}</summary>${form(i)}</details>`).join('')}<details><summary>Add a verified institution</summary>${form(null)}</details></details></section>`;
 }
 async function verifyPreparation(application) {
@@ -151,13 +189,16 @@ main.addEventListener('toggle', async event=>{
   const details=event.target.closest('details[data-email]');
   if(!details || event.target!==details) return;
   const body=details.querySelector('[data-email-body]'); body.hidden=true;
+  // A close/reopen starts a new check even while an older request is pending.
+  const checkToken={}; emailChecks.set(details,checkToken);
+  const current=()=>emailChecks.get(details)===checkToken && details.isConnected && details.open && !document.hidden;
   if(!details.open || !snapshot || !user) return;
   const app=snapshot.workspace.applications.find(a=>a.id===details.dataset.email);
-  try {if(app && await verifyPreparation(app) && details.isConnected && details.open) body.hidden=false;}
-  catch(e){if(details.isConnected){details.open=false;error(e.message);}}
+  try {if(app && await verifyPreparation(app) && current()) body.hidden=false;}
+  catch(e){if(current()){details.open=false;error(e.message);}}
 },true);
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden) main.querySelectorAll('details[data-email]').forEach(details=>{details.open=false;details.querySelector('[data-email-body]').hidden=true;});
+  if(document.hidden) main.querySelectorAll('details[data-email]').forEach(details=>{emailChecks.delete(details);details.open=false;details.querySelector('[data-email-body]').hidden=true;});
 });
 main.addEventListener('click', async event => {
   const portalButton=event.target.closest('[data-portal]');
@@ -180,6 +221,19 @@ main.addEventListener('click', async event => {
   const file=snapshot.files.find(file=>file.id===button.dataset.file), run=epoch;
   if(file) void preview.open(file,()=>run===epoch&&!!user);
 });
+main.addEventListener('change', event => {
+  const form = event.target.closest('form[data-action]');
+  if (!form || busy) return;
+  if (form.dataset.action === 'assign-admin' && event.target.name === 'office') {
+    form.querySelector('button[type="submit"],button.primary').disabled = !event.target.value || event.target.value === form.dataset.currentAdmin;
+  }
+  if (form.dataset.action === 'institution' && !form.dataset.id && event.target.name === 'draft') {
+    const draft = institutionDraft.institutions.find(item=>item.name===event.target.value);
+    if (!draft) return;
+    for (const name of ['name','kind','portal','email','required']) form.elements.namedItem(name).value = name === 'name' ? draft.name : '';
+    form.elements.namedItem('active').checked = false;
+  }
+});
 main.addEventListener('submit', event => {
   const form=event.target.closest('form[data-action]'); if(!form) return; event.preventDefault();
   if(busy||!snapshot) return;
@@ -191,7 +245,7 @@ main.addEventListener('submit', event => {
     switch(form.dataset.action) {
       case 'review': return void change(()=>api.review(c,{details_checked:values.has('details'),documents_checked:values.has('documents'),missing_items:items(get('missing')),review_note:get('note')}));
       case 'handoff': return void change(()=>api.handoff(c,get('office'),get('note')),'Complete case handed over to the receiving coordinator.');
-      case 'assign-admin': return void change(()=>api.assignAdmin(c,get('office'),get('note')),'Submission Admin assignment saved.');
+      case 'assign-admin': if (get('office') === c.office_admin) return; return void change(()=>api.assignAdmin(c,get('office'),get('note')),'Submission Admin assignment saved.');
       case 'save-application': {
         const payload={institution_id:get('institution'),assignee:get('assignee'),channel:get('channel'),email_subject:get('subject'),email_body:get('body'),attachment_ids:values.getAll('attachment'),missing_documents:items(get('missing')),note:get('note')};
         return void change(()=>api.saveApplication(c,app,payload),'Draft saved. No application has been submitted.');

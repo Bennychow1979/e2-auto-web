@@ -38,6 +38,12 @@ const card = (page, id) => page.locator(`#application-${id}`);
 const calls = (page, method) => page.evaluate(method => window.__financeFixture.calls.filter(call => call.method === method), method);
 const state = page => page.evaluate(() => ({financeCase: window.__financeFixture.financeCase, applications: window.__financeFixture.applications}));
 const summary = (parent, name) => parent.locator('summary').filter({hasText: name});
+const lenderHistory = (page, id) => card(page, id).locator('details[data-application-history]');
+
+function historyEvent(application, event, evidence = {}, note = 'Synthetic historical staff note.') {
+  return {id: 1, case_id: ids.case, application_id: application.id, event, evidence, note,
+    actor: ids.office, created_at: '2026-01-03T10:00:00.000Z'};
+}
 
 async function install(page, options = {}, source = 'intake', ready = true) {
   await page.addInitScript(initializeFinancingFixture, fixture(options));
@@ -253,6 +259,106 @@ test('only an approved offer can be recorded as the customer choice with explici
   await expect(form(view, 'select')).toHaveCount(0);
 });
 
+for (const source of ['intake', 'loan']) {
+  test(`${source}: lender history retains each missing-document request and earlier offer after later follow-up`, async ({page}, testInfo) => {
+    const portal = application('portal', 'submitted'), email = application('email', 'submitted');
+    await install(page, {applications: [portal, email], history: [
+      historyEvent(portal, 'actual_submission_recorded', {external_reference: 'SYNTHETIC-PORTAL-RECEIPT', submitted_at: portal.submitted_at, channel: 'portal'}),
+      {...historyEvent(email, 'actual_submission_recorded', {external_reference: 'SYNTHETIC-EMAIL-RECEIPT', submitted_at: email.submitted_at, channel: 'email'}), id: 2},
+    ]}, source);
+    const view = card(page, portal.id);
+    const record = async (status, missing, note, amount = '', rate = '', tenure = '') => {
+      await summary(view, 'Record lender follow-up / offer').click();
+      const followup = form(view, 'outcome');
+      await followup.locator('[name="status"]').selectOption(status);
+      for (const [name, value] of Object.entries({missing, note, amount, rate, tenure})) await followup.locator(`[name="${name}"]`).fill(value);
+      await followup.getByRole('button', {name: 'Record follow-up', exact: true}).click();
+      await expect(view.locator('.financeDraftBadge')).toHaveText({needs_information: 'Missing information', under_review: 'Under review', approved: 'Approved'}[status]);
+    };
+    await record('needs_information', 'Synthetic updated employment letter', 'Synthetic bank requested an updated employment letter.');
+    await record('under_review', '', 'Synthetic bank confirmed receipt of the additional letter.');
+    await record('approved', '', 'Synthetic original flat-rate offer; externally verified.', '55000', '0', '60');
+    await record('approved', '', 'Synthetic revised flat-rate offer; awaiting customer choice.', '52500', '3.25', '48');
+    await expect(view.locator('dd').filter({hasText: 'RM52,500'})).toBeVisible();
+    const history = lenderHistory(page, portal.id);
+    await expect(history.locator('summary')).toHaveText('Application history (5)');
+    await history.locator('summary').click();
+    await expect(history).toContainText('Synthetic updated employment letter');
+    await expect(history).toContainText('Synthetic bank confirmed receipt');
+    await expect(history).toContainText('RM55,000');
+    await expect(history).toContainText('0%');
+    await expect(history).toContainText('60 months');
+    await expect(history).toContainText('RM52,500');
+    await expect(history).toContainText('SYNTHETIC-PORTAL-RECEIPT');
+    await expect(history.locator('li').first()).toContainText('Synthetic revised flat-rate offer');
+    await expect(history).not.toContainText('SYNTHETIC-EMAIL-RECEIPT');
+    const otherHistory = lenderHistory(page, email.id);
+    await otherHistory.locator('summary').click();
+    await expect(otherHistory).toContainText('SYNTHETIC-EMAIL-RECEIPT');
+    await expect(otherHistory).not.toContainText('employment letter');
+    await expect(card(page, email.id).locator('.financeDraftBadge')).toHaveText('Submitted');
+    const timeline = page.locator('#financeCaseHistory');
+    await timeline.locator('summary').click();
+    await expect(timeline.getByRole('link', {name: portal.institution_name, exact: true})).toHaveCount(5);
+    await expect(timeline.getByRole('link', {name: email.institution_name, exact: true})).toHaveAttribute('href', `#application-${email.id}`);
+    expect(await calls(page, 'recordSubmission')).toEqual([]);
+    expect(await calls(page, 'selectOffer')).toEqual([]);
+    expect(await calls(page, 'download')).toEqual([]);
+    await history.scrollIntoViewIfNeeded();
+    await page.screenshot({path: testInfo.outputPath(`synthetic-lender-history-${source}-${testInfo.project.name}.png`)});
+  });
+}
+
+test('lender history groups by application ID even when an institution has multiple applications', async ({page}) => {
+  const first = application('portal', 'approved'), second = application('portal', 'rejected', {id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'});
+  await install(page, {applications: [first, second], history: [
+    historyEvent(first, 'financier_approved', {offer_amount: 49000, offer_rate: 2.5, offer_tenure_months: 72, missing_documents: []}, 'Synthetic first application approval.'),
+    {...historyEvent(second, 'financier_rejected', {}, 'Synthetic second application rejection.'), id: 2},
+    {...historyEvent(first, 'submission_admin_assigned', {}, 'Synthetic case-level reassignment.'), id: 3, application_id: null},
+  ]});
+  for (const a of [first, second]) await lenderHistory(page, a.id).locator('summary').click();
+  await expect(lenderHistory(page, first.id)).toContainText('first application approval');
+  await expect(lenderHistory(page, first.id)).not.toContainText('second application rejection');
+  await expect(lenderHistory(page, second.id)).toContainText('second application rejection');
+  await expect(lenderHistory(page, second.id)).not.toContainText('first application approval');
+  await expect(lenderHistory(page, first.id)).not.toContainText('case-level reassignment');
+  const timeline = page.locator('#financeCaseHistory');
+  await timeline.locator('summary').click();
+  await expect(timeline).toContainText('Submission Admin assigned');
+  await expect(timeline.locator(`a[href="#application-${first.id}"]`)).toHaveCount(1);
+  await expect(timeline.locator(`a[href="#application-${second.id}"]`)).toHaveCount(1);
+});
+
+test('lender history escapes recorded text, omits arbitrary evidence and clears on account change', async ({page}) => {
+  const a = application('email', 'approved');
+  const text = '<img src=x onerror="window.historyInjected=true">';
+  await install(page, {applications: [a], history: [
+    historyEvent(a, 'financier_needs_information', {missing_documents: [text], internal_test_extra: 'DO-NOT-RENDER-ARBITRARY-EVIDENCE'}, text),
+    {...historyEvent(a, 'customer_offer_selected', {institution_name: 'Synthetic original institution name', offer_amount: 47000, offer_rate: 0, offer_tenure_months: 48}, 'Synthetic previous customer instruction.'), id: 2, actor: ids.other},
+  ]});
+  const history = lenderHistory(page, a.id);
+  await history.locator('summary').click();
+  await expect(history).toContainText(text);
+  await expect(history.locator('img,script,a[href^="http"]')).toHaveCount(0);
+  await expect(history).not.toContainText('DO-NOT-RENDER');
+  await expect(history).toContainText('Synthetic original institution name');
+  await expect(history).toContainText('Other Synthetic Admin');
+  await expect(history).toContainText('RM47,000');
+  expect(await page.evaluate(() => window.historyInjected)).toBeUndefined();
+  await page.evaluate(() => window.__financeFixture.auth('USER_UPDATED', {user: {id: 'different-authenticated-user'}}));
+  await expectPrivateUICleared(page);
+  await expect(page.locator('[data-application-history], #financeCaseHistory')).toHaveCount(0);
+});
+
+test('lender history has an explicit empty state without borrowing current terms as past evidence', async ({page}) => {
+  const a = application('portal', 'approved');
+  await install(page, {applications: [a]});
+  const history = lenderHistory(page, a.id);
+  await history.locator('summary').click();
+  await expect(history).toContainText('No application events recorded yet.');
+  await expect(history).not.toContainText('RM55,000');
+});
+
 for (const role of ['sales', 'office_admin', 'admin']) {
   test(`unrelated ${role} has no review, handover, application, outcome, choice, or configuration controls`, async ({page}) => {
     await install(page, {role, userId: ids.other, applications: [application('portal', 'ready'), application('email', 'approved')]});
@@ -269,6 +375,79 @@ test('only Super Admin sees institution configuration controls', async ({page}) 
   await expect(form(page, 'institution')).toHaveCount(3);
   await summary(page, 'Add a verified institution').click();
   await expect(page.getByRole('textbox', {name: 'Verified HTTPS portal URL', exact: true}).last()).toBeVisible();
+});
+
+test('all 13 pending institutions are visible without creating or enabling configuration', async ({page}, testInfo) => {
+  await install(page);
+  const checklist = page.locator('#institutionChecklist');
+  await expect(checklist.locator('li')).toHaveCount(13);
+  await expect(checklist.locator('li strong')).toHaveText(['AEON Credit','Chailease','GFS','X Star','Carsome','FS','Elk','Maybank','Public Bank','AmBank','CIMB','HLB','Bank Muamalat']);
+  await expect(checklist.getByText('Pending verification',{exact:true})).toHaveCount(13);
+  await expect(form(page,'institution')).toHaveCount(0);
+  expect(await calls(page,'saveInstitution')).toEqual([]);
+  await summary(page,'Add an institution application').click();
+  await expect(form(page,'save-application').locator('[name="institution"] option')).toHaveCount(3);
+  await checklist.screenshot({path:testInfo.outputPath('pending-institutions.png')});
+  await testInfo.attach('Pending institution checklist',{path:testInfo.outputPath('pending-institutions.png'),contentType:'image/png'});
+});
+
+test('selecting an owner-listed name prefills an inactive form with no guessed type or destination', async ({page}) => {
+  await install(page,{role:'super_admin'});
+  await summary(page,'Institution settings · Super Admin').click();
+  await summary(page,'Add a verified institution').click();
+  const draft=page.locator('form[data-action="institution"][data-id=""]');
+  await draft.getByRole('combobox',{name:'Pending institution',exact:true}).selectOption('AEON Credit');
+  await expect(draft.getByRole('textbox',{name:'Institution display name',exact:true})).toHaveValue('AEON Credit');
+  await expect(draft.getByRole('combobox',{name:'Institution type',exact:true})).toHaveValue('');
+  await expect(draft.locator('[name="portal"]')).toHaveValue('');
+  await expect(draft.locator('[name="email"]')).toHaveValue('');
+  await expect(draft.locator('[name="required"]')).toHaveValue('');
+  await expect(draft.getByRole('checkbox',{name:'Available for new applications',exact:true})).not.toBeChecked();
+  await draft.getByRole('button',{name:'Save institution configuration',exact:true}).click();
+  expect(await calls(page,'saveInstitution')).toEqual([]);
+  await draft.getByRole('combobox',{name:'Institution type',exact:true}).selectOption('credit_company');
+  await draft.getByRole('button',{name:'Save institution configuration',exact:true}).click();
+  expect((await calls(page,'saveInstitution'))[0].args[1]).toEqual({name:'AEON Credit',kind:'credit_company',portal_url:null,email_to:null,required_documents:[],active:false});
+  await expect(page.getByRole('alert')).toContainText('Institution mutation not part of this browser fixture.');
+});
+
+test('unavailable public institution checklist does not hide saved lender applications', async ({page}) => {
+  await page.route('**/config/finance-institutions.draft.json',route=>route.fulfill({status:503,body:'Unavailable'}));
+  await install(page,{applications:[application('portal','ready')]});
+  await expect(page.locator('#institutionChecklist')).toContainText('Institution checklist unavailable.');
+  await expect(page.locator('.financeApplication')).toHaveCount(1);
+  expect(await calls(page,'saveInstitution')).toEqual([]);
+  await page.unroute('**/config/finance-institutions.draft.json');
+  await page.getByRole('button',{name:'Refresh case',exact:true}).click();
+  await expect(page.locator('#institutionChecklist li')).toHaveCount(13);
+});
+
+test('same-assignee UI guard preserves reviews and does not submit an assignment request', async ({page}) => {
+  await install(page,{role:'office_admin',userId:ids.coordinator,applications:[application('portal','ready')]});
+  const assign=form(page,'assign-admin'), button=assign.getByRole('button',{name:'Save Admin assignment',exact:true});
+  const before=await state(page);
+  await expect(button).toBeDisabled();
+  await assign.getByRole('combobox',{name:'Responsible Submission Admin',exact:true}).selectOption(ids.other);
+  await expect(button).toBeEnabled();
+  await assign.getByRole('combobox',{name:'Responsible Submission Admin',exact:true}).selectOption(ids.office);
+  await expect(button).toBeDisabled();
+  await assign.evaluate(node=>node.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+  expect(await calls(page,'assignAdmin')).toEqual([]);
+  expect(await state(page)).toEqual(before);
+});
+
+test('profile-less Admin labels stay distinguishable and assignment values remain UUIDs', async ({page}) => {
+  await install(page,{role:'super_admin'});
+  await page.evaluate(({office,other})=>{
+    const staff=window.__financeFixture.staff;
+    Object.assign(staff.find(member=>member.user_id===office),{display_name:'E2 staff',email:'synthetic-office-one@example.test'});
+    Object.assign(staff.find(member=>member.user_id===other),{display_name:'E2 staff',email:'synthetic-office-two@example.test'});
+  },{office:ids.office,other:ids.other});
+  await page.getByRole('button',{name:'Refresh case',exact:true}).click();
+  const choices=form(page,'assign-admin').getByRole('combobox',{name:'Responsible Submission Admin',exact:true});
+  await expect(choices.locator(`option[value="${ids.office}"]`)).toHaveText('synthetic-office-one@example.test · Submission Admin');
+  await expect(choices.locator(`option[value="${ids.other}"]`)).toHaveText('synthetic-office-two@example.test · Inventory Admin');
+  await expect(page.locator('.financeOwners')).toContainText('synthetic-office-one@example.test');
 });
 
 test('repeated draft submission is locked until completion and creates only one application', async ({page}) => {
@@ -664,4 +843,132 @@ test('assigned legacy registered-loan Admin keeps their own permitted follow-up 
   await page.locator(`[data-loan="${ids.source}"]`).click();
   await expect(page.locator('#statusLoan')).toBeVisible();
   await expect(page.locator('#assignLoan')).toHaveCount(0);
+});
+
+
+for (const cancellation of ['close', 'leave page']) {
+  test('email preview: '+cancellation+' invalidates the earlier pending validation', async ({page}) => {
+    const a = application('email', 'ready');
+    await install(page, {applications:[a]});
+    await page.evaluate(() => window.__financeFixture.defer.push('load'));
+    const view = card(page,a.id), toggle = summary(view,'Review prepared email & attachment checklist');
+    const email = view.getByRole('textbox',{name:'Prepared email review',exact:true});
+    await toggle.click();
+    await expect.poll(async () => (await calls(page,'load')).length).toBe(2);
+    if (cancellation === 'close') await toggle.click();
+    else await page.evaluate(() => {
+      Object.defineProperty(document,'hidden',{configurable:true,value:true});
+      document.dispatchEvent(new Event('visibilitychange'));
+      delete document.hidden;
+    });
+    await expect(view.locator('details[data-email]')).not.toHaveAttribute('open','');
+    await page.evaluate(() => window.__financeFixture.financeCase.revision++);
+    await toggle.click();
+    await expect.poll(async () => (await calls(page,'load')).length).toBe(3);
+    await release(page,'load',2);
+    await expect(email).not.toBeVisible();
+    await release(page,'load',3);
+    await expect(page.getByRole('alert')).toContainText('Case or institution configuration changed.');
+    await expect(email).not.toBeVisible();
+    expect(await calls(page,'recordSubmission')).toEqual([]);
+  });
+}
+
+test('email preview: a cancelled request failure cannot close a newer validated preview', async ({page}) => {
+  const a = application('email','ready');
+  await install(page,{applications:[a]});
+  await page.evaluate(() => window.__financeFixture.defer.push('load'));
+  const view=card(page,a.id), toggle=summary(view,'Review prepared email & attachment checklist');
+  const email=view.getByRole('textbox',{name:'Prepared email review',exact:true});
+  await toggle.click();
+  await expect.poll(async () => (await calls(page,'load')).length).toBe(2);
+  await toggle.click();
+  await expect(view.locator('details[data-email]')).not.toHaveAttribute('open','');
+  await toggle.click();
+  await expect.poll(async () => (await calls(page,'load')).length).toBe(3);
+  await page.evaluate(() => {
+    const pending=window.__financeFixture.pending.filter(p=>p.method==='load'&&!p.released)[1];
+    pending.released=true;pending.resolve();
+  });
+  await expect(email).toBeVisible();
+  await page.evaluate(() => {window.__financeFixture.failures.load='Synthetic cancelled request failure.';});
+  await release(page,'load',3);
+  await expect(email).toBeVisible();
+  await expect(page.getByRole('alert')).toBeEmpty();
+});
+
+test('repeated Admin assignment stays locked and refresh disables the new current Admin', async ({page}) => {
+  await install(page,{role:'office_admin',userId:ids.coordinator,defer:['assignAdmin']});
+  const assign=form(page,'assign-admin');
+  await assign.locator('[name="office"]').selectOption(ids.other);
+  await assign.locator('[name="note"]').fill('Synthetic workload reassignment.');
+  await assign.locator('[name="access"]').check();
+  await assign.getByRole('button',{name:'Save Admin assignment',exact:true}).click();
+  await expect(assign.getByRole('button')).toBeDisabled();
+  await assign.evaluate(node=>{
+    node.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+    node.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+  });
+  expect(await calls(page,'assignAdmin')).toHaveLength(1);
+  await release(page,'assignAdmin');
+  await expect(form(page,'assign-admin').locator('[name="office"]')).toHaveValue(ids.other);
+  await expect(form(page,'assign-admin').getByRole('button')).toBeDisabled();
+  expect(await calls(page,'assignAdmin')).toHaveLength(1);
+});
+
+test('stale Admin reassignment preserves the newer owner and recovers through explicit refresh', async ({page}) => {
+  await install(page,{role:'office_admin',userId:ids.coordinator,applications:[application('portal','ready')]});
+  const assign=form(page,'assign-admin');
+  await assign.locator('[name="office"]').selectOption(ids.other);
+  await assign.locator('[name="note"]').fill('Synthetic attempted reassignment from an old view.');
+  await assign.locator('[name="access"]').check();
+  await page.evaluate(other=>{
+    const s=window.__financeFixture;
+    s.financeCase.office_admin=other;s.financeCase.revision++;
+    s.failures.assignAdmin='Case changed. Reload before saving.';
+  },ids.other);
+  const current=await state(page);
+  await assign.getByRole('button').click();
+  await expect(page.getByRole('alert')).toHaveText('Case changed. Reload before saving.');
+  expect(await state(page)).toEqual(current);
+  expect((await calls(page,'assignAdmin'))[0].args[0].revision).toBe(1);
+  await expect(assign.locator('[name="note"]')).toHaveValue('Synthetic attempted reassignment from an old view.');
+  await page.getByRole('button',{name:'Refresh case',exact:true}).click();
+  await expect(form(page,'assign-admin').locator('[name="office"]')).toHaveValue(ids.other);
+  await expect(form(page,'assign-admin').getByRole('button')).toBeDisabled();
+  expect(await calls(page,'assignAdmin')).toHaveLength(1);
+});
+
+for (const source of ['intake','loan']) {
+  test(source+': revoked access after closing a pending file clears the case and discards late bytes', async ({page}) => {
+    await install(page,{defer:['download']},source);
+    await page.locator('[data-file="'+ids.file+'"]').click();
+    await expect(page.locator('#financeFilePreview')).toBeVisible();
+    await page.locator('#financeFileClose').click();
+    await page.evaluate(() => {window.__financeFixture.failures.load='Assigned case access required.';});
+    await page.getByRole('button',{name:'Refresh case',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Case unavailable.',exact:true})).toBeVisible();
+    await release(page,'download');
+    await expect(page.locator('#financeMain')).not.toContainText('Synthetic');
+    await expect(page.locator('#financeMain form, .financeApplication, [data-file]')).toHaveCount(0);
+    await expect(page.locator('#financeFilePreview')).not.toBeVisible();
+    await expect(page.locator('#financeFilePreview canvas, #financeFilePreview a[download]')).toHaveCount(0);
+    expect(await page.evaluate(() => window.__financeFixture.createdURLs)).toEqual([]);
+  });
+}
+
+test('page navigation during Admin reassignment cannot repopulate the departed workspace', async ({page}) => {
+  await install(page,{role:'office_admin',userId:ids.coordinator,defer:['assignAdmin']});
+  const assign=form(page,'assign-admin');
+  await assign.locator('[name="office"]').selectOption(ids.other);
+  await assign.locator('[name="note"]').fill('Synthetic assignment already in flight before navigation.');
+  await assign.locator('[name="access"]').check();
+  await assign.getByRole('button').click();
+  await expect(page.locator('#financeMain')).toHaveAttribute('aria-busy','true');
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true})));
+  await release(page,'assignAdmin');
+  await expect(page.locator('#financeMain')).toBeEmpty();
+  await expect(page.locator('#financeFilePreview')).not.toBeVisible();
+  expect(await calls(page,'load')).toHaveLength(1);
+  expect(await calls(page,'assignAdmin')).toHaveLength(1);
 });

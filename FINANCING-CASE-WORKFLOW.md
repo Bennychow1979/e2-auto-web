@@ -94,25 +94,25 @@ no access.
 
 ## Owner-provided institution list · configuration pending
 
-The owner supplied these 13 display names on 2026-10-08 and then clarified that
-the first institution is AEON Credit:
+The owner supplied these 13 display names, with the spelling below confirmed
+for the 2026-10-09 workspace update:
 
 1. AEON Credit
-2. Chailease Credit
-3. GFS Credit
-4. X Star Credit
-5. Carsome Credit
-6. FS Credit
-7. Elk Credit
+2. Chailease
+3. GFS
+4. X Star
+5. Carsome
+6. FS
+7. Elk
 8. Maybank
 9. Public Bank
 10. AmBank
-11. CIMB Bank
-12. HLB Bank
+11. CIMB
+12. HLB
 13. Bank Muamalat
 
-`config/finance-institutions.draft.json` is a separate, disabled review checklist.
-It is not loaded by the application or inserted by the migration. All records
+`config/finance-institutions.draft.json` is loaded as a read-only checklist in
+the authorized financing workspace. It is not inserted by a migration. All records
 have `active: false`; institution type, submission channels, recipient, portal
 URL and required-document list remain unset. The owner explicitly chose to leave
 all submission channels pending confirmation; do not default to portal or email.
@@ -120,12 +120,17 @@ An unknown document list is stored
 as null, not an empty list that could imply no requirements.
 
 Do not guess portal/email routing from an institution's name, and do not expand
-FS Credit or Elk Credit into an assumed corporate identity. Verify each actual
+FS or Elk into an assumed corporate identity. Verify each actual
 institution and its accepted channels/destinations with the owner or the
 institution. The named draft is not directly importable into the RPC: review
 its type and required fields first. Keep records disabled until configuration
 and any production activation are separately approved. No real lender requests
 were made; all workflow tests still use synthetic cases and institution data.
+Super Admin can select a pending name to prefill an inactive configuration
+form. Type and destinations remain blank, and selecting a name sends no write.
+Existing saved institutions are matched by exact name ignoring case and outer
+whitespace; the checklist does not guess corporate aliases. A missing checklist
+shows a retry message while existing applications remain available.
 
 ## Concurrency and history
 
@@ -347,3 +352,79 @@ Only after separate backend approval/application and successful staging/hosted
 checks should the explicit rollout flag be enabled in another reviewed release.
 A static deployment with the flag off must be reported as code published,
 financing tracking not enabled. No production SQL is applied by Pages CI.
+
+
+## Workspace follow-up · 2026-10-09
+
+The follow-up migration is `supabase/migrations/202610090001_financing_admin_workspace.sql`. The released `202610080001_case_submissions.sql` remains unchanged. In staging, apply the base financing migration only if it has not already been applied, then this follow-up. On a database that already has the base, apply only the follow-up after verifying its functions and dependencies. Do not rerun historical migrations.
+
+The follow-up replaces two existing functions and preserves their ACLs. Authorized workspace responses use a staff profile name, falling back to that staff account's email and finally UUID. It does not return full Auth records or unrelated customer identities. This limited staff-email display must be included in the production review. No real emails or account IDs are hardcoded.
+
+Assignment keeps its authorization, handover, active-role and expected-revision checks. Choosing the current Admin is a no-op: the case, original source, application reviews, revisions, timestamps and audit history stay unchanged. The UI disables that save and guards synthetic submit events. A real change still requires a reason, records old/new UUIDs and invalidates unsubmitted application reviews. Existing case/file access and independent global-coordinator permissions remain in force.
+
+Local validation passed `npm run check`, the full `npm test` suite (including 394 synthetic financing workflow/security assertions and the institution checklist suite), and 214 desktop/mobile Chromium tests: 106 financing cases plus 108 document-preview/release-gate cases. Tests ran with the existing Chrome binary and isolated test profiles. These are not hosted Supabase or physical iPhone/Safari results. The public fixture checklist itself contains only owner-supplied institution names; all accounts, documents, destinations and applications used in tests are synthetic.
+
+Production activation remains gated on approved database and Storage backup destinations and restoration validation, isolated staging, real hosted Auth/Storage and concurrent-session isolation tests, and confirmed institution destinations/documents. Preserve existing staff accounts and Ada's Super Admin role. Do not create or re-invite existing Office Admins. Any dispatcher grant or role change needs a separate exact approval.
+
+The base financing migration revokes service-role execution from `e2_intake_handoff`, `e2_intake_progress`, `e2_update_loan_status` and `e2_assign_loan`. Repository consumer review found the staff browser calls in `intake-staff-data.js` and `loans.js`; no matching service-role consumer was found in repository functions or scripts. External integrations remain unverified. This follow-up does not change those grants.
+
+Keep `financingCases: false` until the backend gates and activation approval are complete. Neither loading the checklist nor selecting a pending institution creates a bank configuration, enables a destination, sends email or submits an application.
+
+## Focused lifecycle review - 2026-10-09
+
+Closing and reopening a prepared-email preview could let an earlier validation
+response reveal the new preview before its own check completed, or let an earlier
+failure close a newly validated preview. Each opening now owns a separate check
+token, invalidated on close and page hiding. Cancelled responses cannot reveal
+content or overwrite the current preview with an old error. This does not send
+email or change submission records.
+
+Three desktop regressions reproduced the issue before the fix. The final syntax
+check and full unit suite passed, including 398 synthetic financing security
+checks and 52 release-gate assertions. All 230 desktop/mobile browser tests passed
+(122 financing, 108 document-preview/release-gate). Added cases cover repeated
+Admin assignment, stale competing reassignment for both source types, explicit
+refresh after conflict, leaving during assignment, and late private-file responses
+after access is revoked. Existing tests continue to cover distinct staff labels,
+assigned-only access and all 13 inactive, unconfirmed institution names.
+
+This follow-up changes no migration or production configuration. Hosted Auth and
+Storage verification and real backup/restore evidence are still outstanding.
+No merge or deployment before 2026-10-13 00:00 Asia/Kuala_Lumpur; reaching that
+date does not bypass the separate production migration, capability or activation
+approvals described above.
+
+## Institution follow-up history - 2026-10-10
+
+The database already preserves each application's follow-up evidence, but the
+workspace previously showed only its latest note and a mixed case timeline
+without institution attribution. Staff can now expand each application's history
+to read the original missing-document requests, resolved follow-up, earlier and
+revised offers, submission reference/time, actor and note. The case timeline names
+and links the related institution application while retaining case-level events.
+
+History is grouped by application ID, so separate applications at the same
+institution remain separate. Values come from the event's recorded evidence;
+current application terms are never substituted for earlier or absent evidence.
+Only supported evidence fields are rendered as escaped text, without external
+links, credentials, file fetches or new writes. Existing authorized workspace
+responses supply all history. Auth changes and navigation clear it with the rest
+of the case. This update changes no SQL, RLS, roles, accounts or rollout settings.
+
+The synthetic staff sequence covers a document request, receipt acknowledgement,
+original approval and revised offer for both guest and registered sources, while
+another institution remains unchanged. Separate checks cover multiple applications
+at the same institution, historical zero-rate offers, empty histories, untrusted
+text and clearing on account change. Production backup/restore, isolated hosted
+Auth/Storage checks, institution verification and separate activation approvals
+remain outstanding; the October 13 Malaysia release hold still applies.
+
+Validation passed `npm run check`, the full `npm test` suite (404 synthetic
+financing security/workflow assertions and 52 release-gate assertions), and all
+240 desktop/mobile Chromium tests (132 financing, 108 existing preview/gate).
+The missing-history regression failed against the previous UI before the fix.
+All ten new browser scenarios passed, with desktop/mobile synthetic screenshots
+visually reviewed. Six added database assertions verify case scope, newest-event
+order, preserved missing items, original/revised offers, independent application
+terms and the actual submission reference. No hosted or real-customer test is
+claimed by these local results.

@@ -70,7 +70,25 @@ All third-party requests are blocked and asserted absent. The checked source,
 files and case revision arrive as one database snapshot in production; the
 adapter unit suite independently verifies that boundary.
 
-The finance suite has 96 desktop/mobile cases, including global coordinator
+The finance suite has 132 desktop/mobile cases, including global coordinator
 visibility and cross-coordinator assignment without submission powers. Its screenshot test can capture
 synthetic multi-institution views when run on a browser-capable host. Test
-collection alone is not an executed browser pass.
+collection alone is not an executed browser pass. It also covers the 13-name
+pending checklist, inactive configuration prefilling, failed checklist fetches,
+distinct profile-less staff labels and the same-assignee submission guard.
+
+The cancellation regressions defer and reorder email checks across close/reopen
+and page visibility changes. Older success and failure responses cannot affect
+a later opening. Assignment coverage also checks repeated saves, stale-owner
+conflicts with explicit refresh, and page departure during an in-flight save.
+Both source types discard late file bytes after a preview is closed and a refresh
+reports revoked access. Database tests separately enforce real RLS/RPC checks.
+
+The lender-history scenarios exercise guest and registered cases through a
+document request, receipt acknowledgement, original approval and revised offer.
+They retain earlier missing items and terms, separate two institutions and two
+applications at the same institution, attribute the case timeline, escape recorded
+text and clear history on account change. Screenshots use fictional staff,
+institutions, documents and references. The fixture copies the existing outcome
+RPC's event snapshots; database tests independently verify that persisted history
+retains those snapshots in event order and stays within the authorized case.
