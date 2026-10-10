@@ -31,6 +31,22 @@ configuration, apply SQL, create staff accounts or add role assignments.
 - Numeric dates that could mean either day/month or month/day, conflicting label
   values and unsupported money/currency formats remain blank. Money suggestions
   require RM or MYR; reviewed money values are stored as decimal text in RM.
+- Parser v2 identifies explicitly headed schedule/certificate pages in mixed
+  bundles. A schedule is the primary source; certificate conflicts are flagged.
+  Instalment, road-tax, ownership, costing and privacy pages are excluded when
+  recognized. Unknown continuation layouts are not silently absorbed. Explicit
+  page numbering that shows missing schedule/certificate pages blocks upload;
+  unnumbered or unrecognized packets cannot be certified complete.
+- Takaful certificate number, participant, sum covered, inception/expiry date-time
+  and total contribution labels are supported. The saved date is date-only; its
+  source excerpt retains the time and conflicting times require review. A cover
+  note is never substituted for a missing policy/certificate number. Blank, N/A
+  and dot placeholders remain missing. Receipt/email/contact data is not inferred.
+- Basic/gross contribution, road-tax totals, internal insurance extras, tax and
+  stamp duty are not independently mapped or summed into final premium. Conflicting
+  total contribution and rounded payable values, even one cent apart, remain blank
+  with both labelled excerpts shown. A windscreen repair limit is not vehicle sum
+  insured or a replacement-cover value.
 - Text-free PDFs and JPG/PNG files retain the original and use manual field entry.
   No text is recognized from image pixels. Password-protected PDFs have no password
   entry flow; use an approved readable original instead. Encrypted PDF handling
@@ -43,6 +59,17 @@ configuration, apply SQL, create staff accounts or add role assignments.
   explicit confirmation. A registration that differs from the case vehicle is
   rejected. Insured name/case ownership also needs human verification; there is
   no automatic identity match.
+
+Vehicle identity is checked even when registration is not among selected fields.
+Detected registration/chassis conflicts or ambiguous vehicle evidence stop the
+local reservation/upload. Previously retained conflicting originals also block
+every reviewed save on the server. Staff must choose the correct original and
+transaction; the form cannot override a conflict. Chassis is retained as identity
+evidence, not a tenth autofill field or a new canonical vehicle record. Optional
+`chassis`/`vin` values in the existing case snapshot are compared when present;
+current application creation does not populate them. Missing values are explicitly
+unverified and require human comparison before the existing case-confirmation
+step. See [Customer and vehicle transactions](CUSTOMER-TRANSACTIONS.md).
 
 ## Original files, access and evidence
 
@@ -98,11 +125,11 @@ mobile layout. PGlite covers the migration, RPCs and RLS with synthetic identiti
 These results do not prove hosted Supabase Auth/Storage behavior or multi-connection
 database concurrency.
 
-Local verification on 2026-10-10 passed `npm run check`, the complete `npm test`
-command and all 292 desktop/mobile browser tests (including 52 insurance cases).
-The insurance suites passed 39 parser/review assertions and 82 database checks,
-plus original-byte retry adapter checks. Desktop/mobile synthetic screenshots were
-visually inspected. These are local results; check the draft PR for hosted CI.
+The original draft passed `npm run check`, complete `npm test` and 292 browser
+tests. Its mixed-bundle follow-up adds entirely invented nine-page bundles,
+five-vehicle transactions and a later transaction for the same vehicle. See the
+draft PR for final follow-up test counts and CI results; no real source documents
+or identifiers are in these fixtures.
 
 Before activation, obtain separate approval for these concrete steps:
 

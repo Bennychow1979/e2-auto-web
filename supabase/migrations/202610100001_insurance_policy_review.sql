@@ -51,7 +51,7 @@ create function public.e2_policy_valid_fields(value jsonb) returns boolean langu
 declare k text;v text;parsed date;begin
  if value is null or jsonb_typeof(value)<>'object' then return false;end if;
  for k,v in select key,val#>>'{}' from jsonb_each(value) as x(key,val) loop
-  if k not in ('insurer','policy_number','registration','insured_name','sum_insured','premium','ncd','inception','expiry') or jsonb_typeof(value->k)<>'string' or length(v) not between 1 and 160 or v<>btrim(v) or v~'[[:cntrl:]]' then return false;end if;
+  if k not in ('insurer','policy_number','registration','insured_name','sum_insured','premium','ncd','inception','expiry') or jsonb_typeof(value->k)<>'string' or length(v) not between 1 and 160 or v<>btrim(v) or lower(v) in ('n/a','na','not applicable','not available') or v~'^[.–—-]+$' or v~'[[:cntrl:]]' then return false;end if;
   if k in ('sum_insured','premium','ncd') then
    if v!~'^(0|[1-9][0-9]*)(\.[0-9]{1,2})?$' then return false;end if;
    if v::numeric>(case when k='ncd' then 100 else 100000000 end) then return false;end if;
@@ -66,12 +66,22 @@ declare k text;v text;parsed date;begin
 end;$$;
 create function public.e2_policy_valid_extraction(value jsonb) returns boolean language plpgsql immutable set search_path='' as $$
 declare k text;f jsonb;begin
- if value is null or jsonb_typeof(value)<>'object' or octet_length(value::text)>16000 or value->>'version' is distinct from 'local-policy-text-v1' or value->>'mode' not in ('text_pdf','manual_image','manual_scanned_pdf') or value->>'mode' is null or jsonb_typeof(value->'fields') is distinct from 'object' then return false;end if;
- if exists(select 1 from jsonb_object_keys(value) as entry(top_key) where entry.top_key not in ('version','mode','fields')) or (select count(*) from jsonb_object_keys(value->'fields'))<>9 then return false;end if;
- for k,f in select * from jsonb_each(value->'fields') loop
-  if k not in ('insurer','policy_number','registration','insured_name','sum_insured','premium','ncd','inception','expiry') or jsonb_typeof(f)<>'object' or exists(select 1 from jsonb_object_keys(f) x where x not in ('value','issue','page','excerpt')) then return false;end if;
+ if value is null or jsonb_typeof(value)<>'object' or octet_length(value::text)>16000 or coalesce(value->>'version','') not in ('local-policy-text-v1','local-policy-text-v2') or value->>'mode' not in ('text_pdf','manual_image','manual_scanned_pdf') or value->>'mode' is null or jsonb_typeof(value->'fields') is distinct from 'object' then return false;end if;
+ if exists(select 1 from jsonb_object_keys(value) as entry(top_key) where entry.top_key not in ('version','mode','fields','identity')) or (select count(*) from jsonb_object_keys(value->'fields'))<>9 then return false;end if;
+ if exists(select 1 from jsonb_object_keys(value->'fields') as entry(field_key) where entry.field_key not in ('insurer','policy_number','registration','insured_name','sum_insured','premium','ncd','inception','expiry')) then return false;end if;
+ if value->>'version'='local-policy-text-v1' and value ? 'identity' then return false;end if;
+ if value->>'version'='local-policy-text-v2' then
+  if jsonb_typeof(value->'identity') is distinct from 'object' or not(value->'identity' ? 'chassis') then return false;end if;
+  if (select count(*) from jsonb_object_keys(value->'identity'))<>1 then return false;end if;
+ end if;
+ for k,f in select key,val from jsonb_each(value->'fields') as entries(key,val) union all select 'chassis',value->'identity'->'chassis' where value->>'version'='local-policy-text-v2' loop
+  if k not in ('insurer','policy_number','registration','insured_name','sum_insured','premium','ncd','inception','expiry','chassis') or jsonb_typeof(f)<>'object' or exists(select 1 from jsonb_object_keys(f) x where x not in ('value','issue','page','excerpt')) then return false;end if;
   if not(f ?& array['value','issue','page','excerpt']) or jsonb_typeof(f->'issue')<>'string' or length(f->>'issue')>240 or jsonb_typeof(f->'excerpt')<>'string' or length(f->>'excerpt')>240 then return false;end if;
-  if f->'value'<>'null'::jsonb and not public.e2_policy_valid_fields(jsonb_build_object(k,f->'value')) then return false;end if;
+  if f->'value'<>'null'::jsonb then
+   if k='chassis' then
+    if jsonb_typeof(f->'value')<>'string' or f->>'value'!~'^[A-Z0-9]{5,40}$' then return false;end if;
+   elsif not public.e2_policy_valid_fields(jsonb_build_object(k,f->'value')) then return false;end if;
+  end if;
   if f->'page'<>'null'::jsonb and (jsonb_typeof(f->'page')<>'number' or (f->>'page')!~'^[0-9]+$') then return false;end if;
   if f->'page'<>'null'::jsonb and (f->>'page')::int not between 1 and 20 then return false;end if;
   if value->>'mode'<>'text_pdf' and f->'value'<>'null'::jsonb then return false;end if;
@@ -110,7 +120,7 @@ declare d public.insurance_policy_documents;meta jsonb;begin
 end;$$;
 
 create function public.e2_save_policy_review(target uuid,document_id uuid,expected_case_revision bigint,expected_revision bigint,patch jsonb,replace_fields text[],reviewed boolean,case_confirmed boolean,note text) returns public.insurance_policy_records language plpgsql security definer set search_path='' as $$
-declare c public.finance_cases;d public.insurance_policy_documents;r public.insurance_policy_records;prior jsonb;merged jsonb;origins jsonb;selected_origins jsonb:='{}';k text;plate text;begin
+declare c public.finance_cases;d public.insurance_policy_documents;r public.insurance_policy_records;prior jsonb;merged jsonb;origins jsonb;selected_origins jsonb:='{}';k text;plate text;chassis text;vehicle jsonb;begin
  if expected_case_revision is null or expected_revision is null then raise exception 'Case and policy revisions required.';end if;
  c:=public.e2_finance_lock_case(target,expected_case_revision,'office');
  select * into d from public.insurance_policy_documents where id=document_id and case_id=target and state='ready' for share;
@@ -118,18 +128,23 @@ declare c public.finance_cases;d public.insurance_policy_documents;r public.insu
  perform 1 from storage.objects where bucket_id='insurance-policies' and name=d.path and metadata->>'size'=d.byte_size::text and metadata->>'mimetype'=d.mime_type for share;
  if not found then raise exception 'Original policy file is unavailable or changed. Restore it through the approved recovery process before review.';end if;
  if reviewed is distinct from true or case_confirmed is distinct from true or length(btrim(coalesce(note,''))) not between 10 and 1000 then raise exception 'Check the original, confirm the case and record a review note.';end if;
+ if c.loan_id is not null then select vehicle_summary into vehicle from public.loan_applications where id=c.loan_id;
+ else select vehicle_summary into vehicle from public.intake_submissions where id=c.intake_id;end if;
+ plate:=nullif(btrim(vehicle->>'plate'),'');chassis:=coalesce(nullif(btrim(vehicle->>'chassis'),''),nullif(btrim(vehicle->>'vin'),''));
+ if nullif(btrim(vehicle->>'chassis'),'') is not null and nullif(btrim(vehicle->>'vin'),'') is not null and regexp_replace(upper(vehicle->>'chassis'),'[[:space:]-]','','g')<>regexp_replace(upper(vehicle->>'vin'),'[[:space:]-]','','g') then raise exception 'Case chassis identifiers conflict. Resolve the case record before saving.';end if;
+ if (d.extraction->'fields'->'registration'->>'page' is not null and d.extraction->'fields'->'registration'->>'value' is null) or (d.extraction->'identity'->'chassis'->>'page' is not null and d.extraction->'identity'->'chassis'->>'value' is null) then raise exception 'Vehicle identity evidence is ambiguous. Resolve the correct original and case before saving.';end if;
+ if plate is not null and d.extraction->'fields'->'registration'->>'value' is not null and d.extraction->'fields'->'registration'->>'value'<>regexp_replace(upper(plate),'[[:space:]-]','','g') then raise exception 'Original registration differs from this case. Choose the matching vehicle transaction and original.';end if;
+ if chassis is not null and d.extraction->'identity'->'chassis'->>'value' is not null and d.extraction->'identity'->'chassis'->>'value'<>regexp_replace(upper(chassis),'[[:space:]-]','','g') then raise exception 'Original chassis differs from this case. Choose the matching vehicle transaction and original.';end if;
  if not public.e2_policy_valid_fields(patch) or patch='{}'::jsonb then raise exception 'Select valid reviewed policy fields. Blank values cannot overwrite saved values.';end if;
  if replace_fields is null or cardinality(replace_fields)>9 or exists(select 1 from unnest(replace_fields) key where key is null or not(patch ? key)) then raise exception 'Replacement confirmation must name selected fields only.';end if;
  select * into r from public.insurance_policy_records where case_id=target for update;
  if expected_revision is distinct from coalesce(r.revision,0) then raise exception 'Policy changed. Reload and review the latest values before saving.';end if;
  prior:=coalesce(r.fields,'{}');origins:=coalesce(r.provenance,'{}');merged:=prior||patch;
  if not public.e2_policy_valid_fields(merged) then raise exception 'Reviewed dates or policy values conflict with existing fields.';end if;
- if c.loan_id is not null then select vehicle_summary->>'plate' into plate from public.loan_applications where id=c.loan_id;
- else select vehicle_summary->>'plate' into plate from public.intake_submissions where id=c.intake_id;end if;
  if patch ? 'registration' and coalesce(plate,'')<>'' and patch->>'registration'<>regexp_replace(upper(plate),'[[:space:]-]','','g') then raise exception 'Vehicle registration differs from this case. Choose the correct case and policy.';end if;
  for k in select jsonb_object_keys(patch) loop
   if prior ? k and prior->k is distinct from patch->k and not(k=any(replace_fields)) then raise exception 'Explicit replacement confirmation required for %.',k;end if;
-  selected_origins:=selected_origins||jsonb_build_object(k,jsonb_build_object('document_id',d.id,'reviewed_by',auth.uid(),'reviewed_at',now(),'parser_version',d.extraction->>'version','method',case when d.extraction->'fields'->k->'value'=patch->k then 'reviewed_local_suggestion' else 'manual_review' end,'source',d.extraction->'fields'->k));
+  selected_origins:=selected_origins||jsonb_build_object(k,jsonb_build_object('document_id',d.id,'reviewed_by',auth.uid(),'reviewed_at',now(),'parser_version',d.extraction->>'version','method',case when d.extraction->'fields'->k->'value'=patch->k then 'reviewed_local_suggestion' else 'manual_review' end,'source',d.extraction->'fields'->k,'vehicle_check',jsonb_build_object('case_registration',plate,'case_chassis',chassis,'original_chassis',d.extraction->'identity'->'chassis','staff_confirmed',true)));
  end loop;
  insert into public.insurance_policy_records(case_id,fields,provenance,revision,updated_by) values(target,merged,origins||selected_origins,1,auth.uid())
  on conflict(case_id) do update set fields=excluded.fields,provenance=excluded.provenance,revision=insurance_policy_records.revision+1,updated_by=auth.uid(),updated_at=now() returning * into r;
@@ -140,8 +155,8 @@ create function public.e2_policy_workspace(target uuid) returns jsonb language p
 declare c public.finance_cases;source jsonb;begin
  if not public.e2_finance_case_access(target) then raise exception 'Assigned case access required.';end if;
  select * into c from public.finance_cases where id=target;
- if c.loan_id is not null then select jsonb_build_object('name',details->>'name','plate',vehicle_summary->>'plate') into source from public.loan_applications where id=c.loan_id;
- else select jsonb_build_object('name',details->>'name','plate',vehicle_summary->>'plate') into source from public.intake_submissions where id=c.intake_id;end if;
+ if c.loan_id is not null then select jsonb_build_object('name',details->>'name','plate',vehicle_summary->>'plate','chassis',vehicle_summary->>'chassis','vin',vehicle_summary->>'vin') into source from public.loan_applications where id=c.loan_id;
+ else select jsonb_build_object('name',details->>'name','plate',vehicle_summary->>'plate','chassis',vehicle_summary->>'chassis','vin',vehicle_summary->>'vin') into source from public.intake_submissions where id=c.intake_id;end if;
  return jsonb_build_object('case',jsonb_build_object('id',c.id,'revision',c.revision,'case_name',c.case_name,'source_kind',case when c.loan_id is not null then 'loan' else 'intake' end,'source_id',coalesce(c.loan_id,c.intake_id)),
  'source',source,'can_write',public.e2_policy_can_write(target),
  'record',(select to_jsonb(r) from public.insurance_policy_records r where case_id=target),

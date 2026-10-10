@@ -1,5 +1,15 @@
 # E2 workspace: prototype and production boundary
 
+## Enduring transaction design requirement
+
+One customer can have multiple independent vehicle transactions, including later
+transactions for the same vehicle. Shared customer basics must not merge policies,
+applications, amounts, payments, delivery or audit history across transactions.
+Use stable customer, vehicle and transaction IDs; names, plates and equal amounts
+are not transaction identity. See [Customer and vehicle transactions](CUSTOMER-TRANSACTIONS.md)
+for the current model, tested boundaries and separately scoped future work. This
+requirement applies to future E2 design as well as the current policy review feature.
+
 ## Delivered prototype
 
 - Public showroom Login link opens a clearly labelled role demo without password fields.

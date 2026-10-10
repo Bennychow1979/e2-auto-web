@@ -28,6 +28,17 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{randomUUID}=re
  const g=await row("insert into public.finance_cases(intake_id,case_name,salesperson,office_admin,handed_at) values($1,'Synthetic guest policy',$2,$3,now()) returning *",[intake,sales2,office2]);
  await db.query('insert into public.finance_dispatchers(user_id) values($1)',[coordinator]);
  const {extraction}=await import('../../tests/fixtures/insurance-fixtures.mjs');
+ const {mixedPolicyPages,takafulExpected}=await import('../../tests/fixtures/insurance-fixtures.mjs');
+ const {extractPolicyText}=await import('../../insurance-core.mjs');
+ const mixedExtraction=extractPolicyText(mixedPolicyPages());
+ check(await scalar('select public.e2_policy_valid_extraction($1)',[JSON.stringify(mixedExtraction)]),true,'Mixed-bundle parser v2 evidence is accepted without extra data fields');
+ const {identity:unusedIdentity,...legacyExtraction}=extraction;
+ check(await scalar('select public.e2_policy_valid_extraction($1)',[JSON.stringify({...legacyExtraction,version:'local-policy-text-v1'})]),true,'Previously retained parser v1 evidence remains valid');
+ check(await scalar('select public.e2_policy_valid_extraction($1)',[JSON.stringify({...extraction,version:'unknown'})]),false,'Unknown parser version is rejected');
+ const malformedEvidence=[{...extraction,identity:{}},{...extraction,identity:{...extraction.identity,email:{value:'agent@example.test'}}},structuredClone(extraction),structuredClone(extraction)];
+ delete malformedEvidence[2].fields.premium;malformedEvidence[2].fields.chassis=extraction.identity.chassis;
+ malformedEvidence[3].identity.chassis.value='INVALID/CHASSIS';
+ for(const evidence of malformedEvidence)check(await scalar('select public.e2_policy_valid_extraction($1)',[JSON.stringify(evidence)]),false,'Malformed identity evidence cannot expand the nine reviewed policy fields');
  const reserveSQL='select * from public.e2_reserve_policy($1,$2,$3,$4,$5,$6)',finishSQL='select * from public.e2_finish_policy($1,$2,$3,$4)',saveSQL='select * from public.e2_save_policy_review($1,$2,$3,$4,$5,$6,$7,$8,$9)';
  const reserve=(target=c,hash='a',size=123,mime='application/pdf')=>row(reserveSQL,[target.id,target.revision,'synthetic-policy.pdf',mime,size,hash.repeat(64)]);
  const finish=(target,d,e=extraction)=>row(finishSQL,[target.id,d.id,target.revision,JSON.stringify(e)]);
@@ -95,5 +106,62 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),{randomUUID}=re
  await fail(reserveSQL,[changed.id,changed.revision,'synthetic-over-limit.pdf','application/pdf',123,'f'.repeat(64)],'Pending and ready originals share a bounded per-case quota');
  await as(customer);check(await scalar('select count(*)::int from public.insurance_policy_events'),0,'Customer cannot read internal policy review audit');
  await root();check(await scalar("select has_function_privilege('service_role','public.e2_save_policy_review(uuid,uuid,bigint,bigint,jsonb,text[],boolean,boolean,text)','EXECUTE')"),false,'No inherited service-role review RPC grant');
+ await as(owner);const bundle=await reserve(g,'c');await upload(bundle);await finish(g,bundle,mixedExtraction);
+ const reviewed=await row(saveSQL,args(g,bundle,1,takafulExpected,Object.keys(takafulExpected)));
+ check(reviewed.fields.premium,'1116.80','Reviewed final contribution is saved instead of a subtotal or road-tax amount');
+ check(reviewed.provenance.premium.source.page,6,'Final contribution keeps the schedule continuation page');
+ check(reviewed.provenance.policy_number.source.excerpt,'Certificate Number: SYN-CERT-2040-A','Certificate evidence stays distinct from the cover-note number');
+ check(reviewed.provenance.expiry.source.page,5,'Policy expiry provenance excludes instalment and road-tax pages');
+ check(reviewed.provenance.premium.parser_version,'local-policy-text-v2','Saved review records the actual parser version');
+ // One fictional customer, five vehicle transactions, five different financiers
+ // and insurers. Equal draft amounts are data, never a transaction identity.
+ const fleet=[];
+ for(let n=1;n<=5;n++){
+  await root();const plate='FLEET'+n,chassis='SYNTHCHASSIS'+String(n).padStart(5,'0');
+  const vehicleId=await scalar("insert into public.vehicles(plate,brand,model,variant,year,engine_litres,transmission,fuel_type,price) values($1,'Fictional','Fleet car','Auto',2024,1.5,'Auto','PETROL',50000) returning id",[plate]);
+  const photoId=randomUUID(),photoPath=vehicleId+'/'+photoId+'.webp';
+  await db.query("insert into storage.objects(bucket_id,name) values('vehicle-photos',$1)",[photoPath]);await db.query('insert into public.vehicle_photos(id,vehicle_id,path,position) values($1,$2,$3,0)',[photoId,vehicleId,photoPath]);
+  await db.query("update public.vehicles set publication='published' where id=$1",[vehicleId]);
+  await as(customer);const application=await row('select * from public.e2_start_loan($1,null,true)',[vehicleId]);
+  await root();await db.query("update public.loan_applications set details=$1,vehicle_summary=vehicle_summary||$2::jsonb,status='Submitted to E2',submitted_at=now() where id=$3",[JSON.stringify({name:'One Fictional Fleet Customer'}),JSON.stringify({chassis}),application.id]);
+  const transaction=await row("insert into public.finance_cases(loan_id,case_name,salesperson,office_admin,handed_at) values($1,$2,$3,$4,now()) returning *",[application.id,'Fictional fleet transaction '+n,sales,owner]);
+  const institution=await scalar("insert into public.finance_institutions(name,kind) values($1,'bank') returning id",['Fictional Financier '+n]);
+  const finance=await scalar("insert into public.finance_applications(case_id,institution_id,institution_name,institution_revision,assignee,channel,status,offer_amount,note) values($1,$2,$3,1,$4,'portal','draft',42000,'Fictional draft amount only; no approval decision.') returning id",[transaction.id,institution,'Fictional Financier '+n,owner]);
+  await db.query("insert into public.finance_events(case_id,application_id,actor,event,note) values($1,$2,$3,'synthetic_history',$4)",[transaction.id,finance,owner,'Fictional application history '+n]);
+  const local=extractPolicyText([{page:1,lines:['Insurer: Fictional Insurer '+n,'Policy Number: SYN-FLEET-'+n,'Vehicle Registration: '+plate,'Chassis Number: '+chassis,'Insured Name: One Fictional Fleet Customer','Total Premium: RM 1250.50']}]);
+  await as(owner);const original=await reserve(transaction,String(n));
+  await upload(original);await finish(transaction,original,local);
+  const patch=Object.fromEntries(Object.entries(local.fields).filter(([,f])=>f.value!=null).map(([key,f])=>[key,f.value]));
+  await row(saveSQL,args(transaction,original,0,patch));
+  const snapshot=await workspace(transaction);
+  check(snapshot.documents.every(d=>d.case_id===transaction.id),true,'Fleet '+n+' originals remain in their vehicle case');
+  check(snapshot.record.fields.policy_number,'SYN-FLEET-'+n,'Fleet '+n+' keeps its distinct policy despite shared customer and amount');
+  check(snapshot.source.chassis,chassis,'Fleet '+n+' review reads only its own optional chassis snapshot');
+  fleet.push({transaction,original,application,vehicleId,local,plate,chassis});
+ }
+ await root();const fleetIds=fleet.map(f=>f.transaction.id);
+ check(await scalar('select count(distinct customer_id)::int from public.loan_applications where id=any($1)',[fleet.map(f=>f.application.id)]),1,'Five transactions share one customer identity');
+ check(await scalar('select count(distinct vehicle_id)::int from public.loan_applications where id=any($1)',[fleet.map(f=>f.application.id)]),5,'Five vehicle IDs remain distinct');
+ check(await scalar('select count(distinct institution_id)::int from public.finance_applications where case_id=any($1) and offer_amount=42000',[fleetIds]),5,'Equal draft amounts at five financiers do not merge applications');
+ check(await scalar("select count(distinct fields->>'insurer')::int from public.insurance_policy_records where case_id=any($1)",[fleetIds]),5,'Five same-customer transactions retain five distinct insurers');
+ const financeBefore=JSON.stringify((await db.query('select * from public.finance_applications where case_id=any($1) order by id',[fleetIds])).rows);
+ const historyBefore=JSON.stringify((await db.query('select * from public.finance_events where case_id=any($1) order by id',[fleetIds])).rows);
+ await as(owner);await fail(saveSQL,args(fleet[0].transaction,fleet[1].original,1,{premium:'1300.00'},['premium']),'Same customer does not allow another vehicle original to supply reviewed fields');
+ await row(saveSQL,args(fleet[0].transaction,fleet[0].original,1,{premium:'1300.00'},['premium']));
+ for(const item of fleet.slice(1))check((await workspace(item.transaction)).record.fields.premium,'1250.50','Other vehicle premium is unchanged by a same-customer review');
+ await root();check(JSON.stringify((await db.query('select * from public.finance_applications where case_id=any($1) order by id',[fleetIds])).rows),financeBefore,'Policy review does not change financing applications or amounts');
+ check(JSON.stringify((await db.query('select * from public.finance_events where case_id=any($1) order by id',[fleetIds])).rows),historyBefore,'Policy review does not mix vehicle financing history');
+ await as(owner);
+ for(const [label,change] of [['registration',e=>e.fields.registration.value=fleet[1].plate],['chassis',e=>e.identity.chassis.value=fleet[1].chassis],['ambiguous chassis',e=>{e.identity.chassis.value=null;e.identity.chassis.issue='Conflicting chassis identifiers.';} ]]){
+  const evidence=structuredClone(fleet[0].local);change(evidence);const original=await reserve(fleet[0].transaction,label==='registration'?'e':label==='chassis'?'f':'b');await upload(original);await finish(fleet[0].transaction,original,evidence);
+  await fail(saveSQL,args(fleet[0].transaction,original,2,{premium:'1400.00'},['premium']),'A '+label+' conflict blocks even a premium-only save');
+ }
+ await root();await db.query("update public.loan_applications set status='Outcome recorded' where id=$1",[fleet[0].application.id]);
+ await as(customer);const repeat=await row('select * from public.e2_start_loan($1,null,true)',[fleet[0].vehicleId]);
+ check(repeat.id!==fleet[0].application.id,true,'A later transaction for the same vehicle receives a new application ID');
+ check(repeat.vehicle_id,fleet[0].vehicleId,'Repeat transaction references the same vehicle without replacing history');
+ await root();await db.query("update public.loan_applications set status='Submitted to E2',submitted_at=now() where id=$1",[repeat.id]);const repeatCase=await row("insert into public.finance_cases(loan_id,case_name,salesperson,office_admin,handed_at) values($1,'Fictional later vehicle transaction',$2,$3,now()) returning *",[repeat.id,sales,owner]);
+ await as(owner);const repeatWorkspace=await workspace(repeatCase);check(repeatWorkspace.documents.length,0,'Later transaction does not inherit an earlier original merely because the plate matches');
+ check(repeatWorkspace.record,null,'Later transaction starts with no inherited policy fields');check(repeatWorkspace.history.length,0,'Later transaction has its own review history');
  console.log(`${passed} synthetic insurance policy security/workflow checks passed. No production calls or data.`);await db.close();
 })().catch(error=>{console.error(error);process.exitCode=1;});

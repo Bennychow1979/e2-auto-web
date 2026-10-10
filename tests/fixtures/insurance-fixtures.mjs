@@ -10,21 +10,42 @@ export function policyPNG(){
 export const policyLines=['Insurer: Synthetic Assurance Berhad','Policy Number: TEST-POLICY-001','Vehicle Registration: SYNTH123','Insured Name: Fictional Customer','Sum Insured: RM 50,000.00','Total Premium: RM 1,250.50','NCD: 55%','Inception Date: 2026-10-13','Expiry Date: 2027-10-12'];
 export const caseId='44444444-4444-4444-8444-444444444444',sourceId='11111111-1111-4111-8111-111111111111',userId='55555555-5555-4555-8555-555555555555';
 export function policyPDF(lines=policyLines,pageCount=1){
+  return policyPagesPDF(Array.from({length:pageCount},()=>({lines})));
+}
+export function policyPagesPDF(pages){
   const objects=['<< /Type /Catalog /Pages 2 0 R >>','', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
   const kids=[];
-  for(let p=0;p<pageCount;p++){
+  for(const {lines=[],raster=false} of pages){
     const id=objects.length+1;kids.push(id+' 0 R');
-    const stream='BT /F1 12 Tf 40 760 Td '+lines.map((line,n)=>(n?'0 -24 Td ':'')+'('+line.replace(/[\\()]/g,'\\$&')+') Tj').join('\n')+' ET\n';
-    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${id+1} 0 R >>`,`<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}endstream`);
+    const stream=raster?'q 420 0 0 600 70 90 cm /Im1 Do Q\n':'BT /F1 12 Tf 40 760 Td '+lines.map((line,n)=>(n?'0 -24 Td ':'')+'('+line.replace(/[\\()]/g,'\\$&')+') Tj').join('\n')+' ET\n';
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> ${raster?`/XObject << /Im1 ${id+2} 0 R >>`:''} >> /Contents ${id+1} 0 R >>`,`<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}endstream`);
+    if(raster){
+      // Invented form-shaped pixels only: no real scan, text layer or identity.
+      const pixels=Array.from({length:32*48},(_,n)=>{const x=n%32,y=Math.floor(n/32);return x>2&&x<29&&(y===4||y>10&&y%5===0)?'88':'ff';}).join('')+'>\n';
+      objects.push(`<< /Type /XObject /Subtype /Image /Width 32 /Height 48 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /ASCIIHexDecode /Length ${Buffer.byteLength(pixels)} >>\nstream\n${pixels}endstream`);
+    }
   }
-  objects[1]=`<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${pageCount} >>`;
+  objects[1]=`<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${pages.length} >>`;
   let pdf='%PDF-1.4\n';const offsets=[0];objects.forEach((object,n)=>{offsets.push(Buffer.byteLength(pdf));pdf+=`${n+1} 0 obj\n${object}\nendobj\n`;});const xref=Buffer.byteLength(pdf);
   pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`+offsets.slice(1).map(n=>String(n).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
   return Buffer.from(pdf);
 }
+// Wholly invented mixed delivery bundle. Only its document categories and label
+// distinctions model the requested layout; every identifier/value is fictional.
+export const takafulExpected={insurer:'Fictional Cedar Takaful',policy_number:'SYN-CERT-2040-A',registration:'SYNTH123',insured_name:'Imaginary Rowan Example',sum_insured:'64000.00',premium:'1116.80',ncd:'45',inception:'2040-11-18',expiry:'2041-11-17'};
+export function mixedPolicyPages(){return [
+  {page:1,lines:['Vehicle Instalment Note','Borrower: Fictional Borrower Example','Loan Instalment Date: 2040-12-28','Expiry Date: 2045-12-28','Monthly Instalment: RM 825.00','Receipt Number:']},
+  {page:2,lines:[],raster:true},{page:3,lines:[],raster:true},
+  {page:4,lines:['Road Tax Receipt','Receipt Number:','Expiry Date: 2042-09-25','Total: RM 93.00','Email:']},
+  {page:5,lines:['Motor Takaful Schedule - Page 1 of 2','Takaful Operator: Fictional Cedar Takaful','Certificate Number: SYN-CERT-2040-A','Cover Note Number: SYN-COVER-2040-B','Participant Name: Imaginary Rowan Example','Vehicle Registration: SYNTH123','Chassis Number: SYNTHCHASSIS00001','Inception Date/Time: 18 Nov 2040 14:30','Expiry Date/Time: 17 Nov 2041 23:59','Sum Covered: RM 64,000.00','NCD: 45%','Email:','Receipt Number:']},
+  {page:6,lines:['Motor Takaful Schedule - Page 2 of 2','Certificate Number: SYN-CERT-2040-A','Basic Contribution: RM 1,200.00','Gross Contribution: RM 1,040.00','Tax: RM 66.80','Stamp Duty: RM 10.00','Total Contribution: RM 1,116.80','Packaged Windscreen Repair Limit: RM 650.00','Agent Name: Fictional Agent Example','Agent Email: agent-only@example.test','Agent Phone: +000 000 0000']},
+  {page:7,lines:['Motor Takaful Certificate','Certificate Number: SYN-CERT-2040-A','Cover Note Number: SYN-COVER-2040-B','Participant Name: Imaginary Rowan Example','Vehicle Registration: SYNTH123','Chassis Number: SYNTHCHASSIS00001','Inception Date/Time: 18 Nov 2040 14:30','Expiry Date/Time: 17 Nov 2041 23:59']},
+  {page:8,lines:['Privacy Notice','Synthetic privacy text with no policy fields.']},
+  {page:9,lines:['Privacy Notice - continued','Agent Email: privacy-agent@example.test','Email:']},
+];}
 export const extraction=extractPolicyText([{page:1,lines:policyLines}]);
 export const policyDocument={id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc',case_id:caseId,uploaded_by:userId,filename:'synthetic-policy.pdf',path:caseId+'/cccccccc-cccc-4ccc-8ccc-cccccccccccc',mime_type:'application/pdf',byte_size:policyPDF().length,client_sha256:'a'.repeat(64),state:'ready',extraction,created_at:'2026-10-10T10:00:00Z'};
-export function policyFixture({documents=[],record=null,canWrite=true,defer=[]}={}){return {user:{id:userId},workspace:{case:{id:caseId,case_name:'Synthetic policy case',revision:1,source_kind:'loan',source_id:sourceId},source:{name:'Fictional Customer',plate:'SYNTH123'},can_write:canWrite,documents,record,history:[]},defer,bytes:[...policyPDF()]};}
+export function policyFixture({documents=[],record=null,canWrite=true,defer=[],source={name:'Fictional Customer',plate:'SYNTH123'}}={}){return {user:{id:userId},workspace:{case:{id:caseId,case_name:'Synthetic policy case',revision:1,source_kind:'loan',source_id:sourceId},source,can_write:canWrite,documents,record,history:[]},defer,bytes:[...policyPDF()]};}
 export function policyDataMock(){return `const s=()=>window.__policyFixture;export const db={auth:{onAuthStateChange(fn){s().auth=fn}}};export const who=()=>s().call('who',[]);export const load=(...args)=>s().call('load',args);export const reserve=(...args)=>s().call('reserve',args);export const upload=(...args)=>s().call('upload',args);export const finish=(...args)=>s().call('finish',args);export const save=(...args)=>s().call('save',args);export const download=(...args)=>s().call('download',args);export const signOut=async()=>s().auth('SIGNED_OUT',null);`;}
 export function initializePolicyFixture(data){
   const copy=v=>structuredClone(v),s={...copy(data),calls:[],pending:[],failures:{},settled:{},auth:null,sequence:1};

@@ -1,5 +1,5 @@
 import {test as base,expect} from '@playwright/test';
-import {caseId,policyLines,policyPDF,policyPNG,policyDocument,policyFixture,policyDataMock,initializePolicyFixture} from './fixtures/insurance-fixtures.mjs';
+import {caseId,policyLines,policyPDF,policyPNG,policyDocument,policyFixture,policyDataMock,initializePolicyFixture,policyPagesPDF,mixedPolicyPages,takafulExpected} from './fixtures/insurance-fixtures.mjs';
 import {createTwoPagePDF,corruptPDFBytes} from './fixtures/preview-fixtures.mjs';
 const test=base.extend({audit:[async({page,context,baseURL},use)=>{
   const errors=[],external=[];page.on('pageerror',e=>errors.push(e.message));
@@ -120,4 +120,71 @@ test('JPEG originals use manual entry and oversized image dimensions are rejecte
   await install(page);const jpeg=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=c.height=2;return c.toDataURL('image/jpeg').split(',')[1];});
   await upload(page,Buffer.from(jpeg,'base64'),'synthetic-policy.jpg','image/jpeg');await expect(page.locator('#policyReview')).toContainText('No OCR performed.');expect(await calls(page,'reserve')).toHaveLength(1);
   const oversized=policyPNG();oversized.writeUInt32BE(30000,16);oversized.writeUInt32BE(30000,20);await upload(page,oversized,'synthetic-oversized.png','image/png');await expect(page.getByRole('alert')).toContainText('25 megapixel');expect(await calls(page,'reserve')).toHaveLength(1);
+});
+
+test('fictional nine-page bundle uses its takaful schedule and final contribution, with no contact inference',async({page},info)=>{
+  await install(page);const bytes=policyPagesPDF(mixedPolicyPages());
+  const structure=await page.evaluate(async bytes=>{
+    const pdfjs=await import('/vendor/pdfjs/pdf.mjs?v=6.4.299');pdfjs.GlobalWorkerOptions.workerSrc='/vendor/pdfjs/pdf.worker.mjs?v=6.4.299';
+    const loading=pdfjs.getDocument({data:new Uint8Array(bytes),isEvalSupported:false}),pdf=await loading.promise;
+    try{return {pages:pdf.numPages,ownershipText:await Promise.all([2,3].map(async n=>(await (await pdf.getPage(n)).getTextContent()).items.map(i=>i.str||'').join('')))};}
+    finally{await loading.destroy();}
+  },[...bytes]);
+  expect(structure).toEqual({pages:9,ownershipText:['','']});
+  await upload(page,bytes,'fictional-delivery-bundle.pdf');await expect(page.locator('#policyReviewForm')).toBeVisible();
+  for(const [key,value] of Object.entries(takafulExpected))await expect(input(page,key)).toHaveValue(value);
+  const extraction=(await calls(page,'finish'))[0].args[2];
+  expect(extraction.version).toBe('local-policy-text-v2');expect(extraction.fields.premium.page).toBe(6);expect(extraction.fields.expiry.page).toBe(5);
+  expect(extraction.fields.policy_number.excerpt).toBe('Certificate Number: SYN-CERT-2040-A');expect(extraction.fields.expiry.excerpt).toContain('23:59');
+  expect(Object.keys(extraction.fields).sort()).toEqual(Object.keys(takafulExpected).sort());
+  await expect(page.locator('#policyReview')).not.toContainText('agent-only@example.test');await expect(page.locator('[name="selected"]:checked')).toHaveCount(0);expect(await calls(page,'save')).toEqual([]);
+  await input(page,'premium').scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath(`fictional-mixed-policy-${info.project.name}.png`)});
+  await checkReview(page,Object.keys(takafulExpected));await page.getByRole('button',{name:'Save checked policy fields',exact:true}).click();await expect(page.locator('#policyStatus')).toContainText('Checked policy fields saved');
+  expect((await calls(page,'save'))[0].args[2].patch).toEqual(takafulExpected);
+});
+
+for(const [name,change,fields,issue] of [
+  ['certificate time conflicts with the schedule',p=>{p[6].lines=p[6].lines.map(s=>s.replace('23:59','22:59'));},['expiry'],'Schedule and certificate evidence conflict'],
+  ['conflicting final totals stay blank',p=>{p[5].lines.push('Total Contribution: RM 1,999.00');},['premium'],'Ambiguous or unsupported value'],
+  ['only a subtotal and windscreen repair limit cannot populate full policy values',p=>{p[4].lines=p[4].lines.filter(s=>!s.startsWith('Sum Covered:'));p[5].lines=p[5].lines.filter(s=>!s.startsWith('Total Contribution:'));},['premium','sum_insured'],'Not found'],
+]){
+  test(`fictional bundle: ${name}`,async({page})=>{
+    await install(page);const pages=mixedPolicyPages();change(pages);await upload(page,policyPagesPDF(pages),'fictional-ambiguous-bundle.pdf');await expect(page.locator('#policyReviewForm')).toBeVisible();
+    for(const field of fields)await expect(input(page,field)).toHaveValue('');await expect(page.locator('#policyReview')).toContainText(issue);
+    expect(await calls(page,'save')).toEqual([]);await expect(page.locator('[name="selected"]:checked')).toHaveCount(0);
+  });
+}
+
+for(const [name,change] of [
+  ['multiple schedules',p=>p.push({page:10,lines:['Motor Takaful Schedule - Page 1 of 1',...policyLines]})],
+  ['detectably incomplete schedule',p=>p.splice(5,1)],
+  ['conflicting chassis evidence',p=>p[6].lines.push('Chassis Number: SYNTHCHASSIS00002')],
+]){
+  test(`fictional bundle: ${name} blocks reservation and requires the correct original`,async({page})=>{
+    await install(page);const pages=mixedPolicyPages();change(pages);await upload(page,policyPagesPDF(pages),'fictional-identity-conflict.pdf');
+    await expect(page.locator('#policyError')).toContainText('ambiguous');expect(await calls(page,'reserve')).toEqual([]);expect(await calls(page,'upload')).toEqual([]);expect(await calls(page,'save')).toEqual([]);
+  });
+}
+
+test('a one-cent rounded payable difference stays visible for human review',async({page})=>{
+  await install(page);const pages=mixedPolicyPages();pages[5].lines.push('Rounded Payable: RM 1,116.81');await upload(page,policyPagesPDF(pages),'fictional-rounding.pdf');await expect(page.locator('#policyReviewForm')).toBeVisible();
+  await expect(input(page,'premium')).toHaveValue('');await expect(page.locator('#policyReview')).toContainText('Total Contribution: RM 1,116.80');await expect(page.locator('#policyReview')).toContainText('Rounded Payable: RM 1,116.81');expect(await calls(page,'save')).toEqual([]);
+});
+
+for(const [name,source,change] of [
+  ['plate mismatch despite shared name and premium',{name:'Imaginary Rowan Example',plate:'SYNTH456'},()=>{}],
+  ['chassis mismatch despite the same plate',{name:'Imaginary Rowan Example',plate:'SYNTH123',chassis:'SYNTHCHASSIS00002'},()=>{}],
+]){
+  test(`vehicle transaction check: ${name}`,async({page})=>{
+    await install(page,{source});const pages=mixedPolicyPages();change(pages);await upload(page,policyPagesPDF(pages),'fictional-wrong-vehicle.pdf');
+    await expect(page.locator('#policyError')).toContainText('differs from this case');expect(await calls(page,'reserve')).toEqual([]);expect(await calls(page,'save')).toEqual([]);
+  });
+}
+
+test('a previously retained mismatched original cannot bypass the vehicle check with a premium-only review',async({page})=>{
+  const wrong=structuredClone(policyDocument);wrong.extraction.fields.registration.value='SYNTH456';
+  await install(page,{documents:[wrong]});await page.getByRole('button',{name:'Review fields',exact:true}).click();await expect(page.locator('#policyIdentity')).toContainText('SYNTH456 differs from this case (SYNTH123)');
+  await expect(page.getByRole('button',{name:'Save checked policy fields',exact:true})).toBeDisabled();await checkReview(page,['premium']);
+  await page.locator('#policyReviewForm').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+  await expect(page.locator('#policyError')).toContainText('differs from this case');expect(await calls(page,'save')).toEqual([]);
 });
