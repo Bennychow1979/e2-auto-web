@@ -92,3 +92,24 @@ text and clear history on account change. Screenshots use fictional staff,
 institutions, documents and references. The fixture copies the existing outcome
 RPC's event snapshots; database tests independently verify that persisted history
 retains those snapshots in event order and stays within the authorized case.
+
+# Insurance policy review tests
+
+`insurance-policy.spec.mjs` has 52 desktop/mobile cases using synthetic PDF,
+PNG and JPG fixtures. The text PDF uses real local PDF.js extraction and preview;
+text-free PDFs and images use manual review. No real customer documents or hosted
+Supabase sessions are used. Third-party requests are blocked and asserted absent.
+
+The suite checks all nine field suggestions, ambiguity, file/page/pixel limits,
+explicit selection, original preview, replacement confirmation, stale saves,
+duplicate upload, incomplete upload retry, cancel at multiple upload stages,
+sign-out/account races, inert untrusted text, local extraction cancellation and
+the disabled feature gate. Screenshots show fictional policy data only.
+
+`supabase/tests/insurance-core.mjs` has 39 parser/review assertions.
+`insurance-data.mjs` verifies that a duplicate retry checks existing bytes and
+never overwrites an original. `insurance-policy.cjs` has 82 PGlite security and
+workflow assertions covering case/file isolation, direct-write denial, review
+provenance, stale revisions, reassignment, inactivity and bounded pending uploads.
+Hosted Auth/Storage and true multi-connection races remain staging checks, as
+described in `INSURANCE-POLICY-REVIEW.md`.
