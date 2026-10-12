@@ -13,6 +13,12 @@ export function localizedPage(source,file,lang){
  // Option values must remain the database / form values after labels change.
  html=html.replace(/<option(?![^>]*\bvalue=)([^>]*)>([^<]*)<\/option>/g,(_,attrs,label)=>'<option value="'+escapeHTML(label)+'"'+attrs+'>'+label+'</option>');
  html=translateHTML(html,lang).replace('<html lang="en">','<html lang="'+(lang==='zh'?'zh-Hans':lang)+'">');
+ // Owner-approved hero copy is scoped here; existing footer and body translations stay unchanged.
+ if(['index.html','showroom.html'].includes(file)&&lang!=='en'){
+  const hero={ms:['Pemanduan Lebih Hebat,','Impian Lebih Tinggi'],zh:['驾驭更好，','梦想更远']}[lang];
+  if(hero)html=html.replace(/<h1 id="galleryHeading" class="e2ShinyTitle">[\s\S]*?<\/h1>/,
+   '<h1 id="galleryHeading" class="e2ShinyTitle"><span class="e2ShinyLine">'+escapeHTML(hero[0])+'</span><span class="e2ShinyLine"><em>'+escapeHTML(hero[1])+'<span class="e2ShineWindow" aria-hidden="true"><span class="e2ShineInk">'+escapeHTML(hero[1])+'</span></span></em></span></h1>');
+ }
  // Localized pages live one directory below the existing assets and private workspaces.
  html=html.replace(/\b(href|src)="([^"#?][^"]*)"/g,(whole,attr,value)=>{
   if(value.startsWith('https://wa.me/')){

@@ -1,0 +1,20 @@
+/* Approved EN/BM/Chinese heroes. Both lines inherit one size, weight and system family. */
+.galleryIntro.e2ShinyHero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:0;margin:48px auto 28px}
+.e2ShinyHero .introSignature{margin-bottom:20px}
+.galleryIntro #galleryHeading.e2ShinyTitle{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Arial,sans-serif;font-size:clamp(2rem,5.3vw,5rem);font-weight:650;font-style:normal;letter-spacing:-.065em;line-height:1.05;margin:0;color:#111214}
+.e2ShinyLine{display:block;white-space:nowrap}
+.galleryIntro .e2ShinyTitle em{position:relative;display:inline-block;font:inherit;font-style:italic;color:#876921;isolation:isolate;white-space:nowrap}
+:lang(zh) .galleryIntro .e2ShinyTitle em{font-style:normal}
+.e2ShinyLine:last-child{padding-top:.1em;padding-bottom:.14em}
+.e2ShineWindow{display:none;position:absolute;inset:0;pointer-events:none;user-select:none;mask-image:linear-gradient(110deg,transparent 30%,#0006 42%,#000 50%,#0006 58%,transparent 70%);-webkit-mask-image:linear-gradient(110deg,transparent 30%,#0006 42%,#000 50%,#0006 58%,transparent 70%);transform:translateX(-90%);animation:e2-shine-window 3.4s linear .2s infinite;animation-play-state:paused}
+.e2ShineInk{display:block;width:100%;height:100%;font:inherit;letter-spacing:inherit;white-space:nowrap;color:#d6bd80;transform:translateX(90%);animation:e2-shine-ink 3.4s linear .2s infinite;animation-play-state:paused}
+.e2ShinyTitle[data-shine-running=true] .e2ShineWindow{display:block}
+.e2ShinyTitle[data-shine-running=true] .e2ShineWindow,.e2ShinyTitle[data-shine-running=true] .e2ShineInk{animation-play-state:running}
+@keyframes e2-shine-window{0%{transform:translateX(-90%)}60%,100%{transform:translateX(90%)}}
+@keyframes e2-shine-ink{0%{transform:translateX(90%)}60%,100%{transform:translateX(-90%)}}
+.galleryIntro.e2ShinyHero>p{margin:20px 0 14px}
+.galleryIntro.e2ShinyHero>p br{display:block}
+.e2ShinyHero .exploreLink{position:static;margin-top:8px}
+@media(max-width:700px){.galleryIntro.e2ShinyHero{width:calc(100% - 40px);margin:30px auto 22px}.galleryIntro #galleryHeading.e2ShinyTitle{font-size:clamp(1.15rem,6.1vw,2.65rem)}.e2ShinyHero .introSignature{margin-bottom:18px}}
+@media(prefers-reduced-motion:reduce),(forced-colors:active){.e2ShineWindow{display:none!important}.e2ShineWindow,.e2ShineInk{animation:none}}
+@media print{.e2ShineWindow{display:none!important}}
