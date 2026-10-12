@@ -7,7 +7,7 @@ import {publicContacts} from './referral.js?v=car-share-1';
 import {steps,titles,missingSteps} from './loan-fields.js';
 import {esc,rm,renderStep,renderReview} from './loan-ui.js';
 const $=id=>document.getElementById(id),main=$('main');
-let user=null,profile=null,cars=[],contacts=[],applications=[],active=null,details={},step=0,dirty=false,busy=false,epoch=0,page='home',selected=null;
+let user=null,profile=null,cars=[],contacts=[],applications=[],active=null,details={},step=0,dirty=false,busy=false,epoch=0,page='home',selected=null,sessionIdentity;
 const summary=a=>a.vehicle_summary;
 const date=value=>new Date(value).toLocaleString('en-MY',{dateStyle:'medium',timeStyle:'short'});
 function toast(message){$('toast').textContent=message;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),4500)}
@@ -64,5 +64,11 @@ $('closeStart').onclick=()=>{if(!busy)$('startDialog').close()};$('startDialog')
 $('startForm').onsubmit=async e=>{e.preventDefault();if(busy||!selected)return;lock(true);const run=epoch;try{const a=await startLoan(selected.id,$('chooseSales').value);if(run!==epoch)return;$('startDialog').close();active=a;details={...a.details};step=a.last_step;dirty=false;history.replaceState(null,'','my-e2.html?application='+a.id);if(!Object.keys(a.details).length){details={name:profile?.full_name||'',phone:profile?.phone||'',email:user.email||''};dirty=true}if(editable(a))renderWizard();else await renderStatus();focusMain()}catch(e){$('startError').textContent=e.message||'Could not create a draft.'}finally{lock(false)}};
 $('signOut').onclick=async()=>{if(busy)return;if(dirty&&!confirm('Sign out without saving your latest changes?'))return;lock(true);try{check(await db.auth.signOut({scope:'local'}));gate('Signed out. Your saved drafts remain in your account.')}catch(e){toast(e.message)}finally{lock(false)}};
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
-db?.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT')gate('Sign in to continue your application.')});
+// Remember auth identity independently of the in-flight customer/profile reads.
+// Same-user refresh events keep unsaved work; account changes invalidate it.
+db?.auth.onAuthStateChange((event,session)=>{
+ const next=session?.user?.id||null,changed=event!=='INITIAL_SESSION'&&next!==sessionIdentity;
+ sessionIdentity=next;
+ if(event==='SIGNED_OUT'||changed)gate('Sign in to continue your application.');
+});
 try{const run=epoch,verified=await customer();if(run===epoch){user=verified;if(!user)gate();else{const loaded=await Promise.all([db.from('customer_profiles').select('full_name,phone').eq('user_id',user.id).maybeSingle().then(check),getVehicles(),publicContacts(window.E2_CONFIG).catch(()=>[]),getLoans()]);if(run===epoch){[profile,cars,contacts,applications]=loaded;$('signOut').hidden=false;document.querySelector('.avatar').textContent=(profile?.full_name||'My E2').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();const params=new URLSearchParams(location.search);if(validId(params.get('application')))await open(params.get('application'));else{renderHome();if(validId(params.get('car')))start(params.get('car'))}}}}}catch(e){gate(e.message||'Applications are temporarily unavailable. Please try again later.')}

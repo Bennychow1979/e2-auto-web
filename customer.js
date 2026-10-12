@@ -3,7 +3,7 @@ import {pendingSave} from './saved-intent.js';
 import {customerDB as db,check,fields} from './customer-data.js?v=customer-1';
 import {normalizeWhatsApp} from './profile-utils.js';
 const $=id=>document.getElementById(id),profile=$('customerProfile'),register=$('customerRegister'),login=$('customerSignIn');
-let user=null,saved=null,busy=false,epoch=0,dirty=false,recovery=false;
+let user=null,saved=null,busy=false,epoch=0,dirty=false,recovery=false,sessionIdentity;
 try{recovery=sessionStorage.getItem('e2-customer-recovery')==='1'}catch{}
 let emailWait=0;try{const n=Number(sessionStorage.getItem('e2-customer-email-wait'));if(n>Date.now()&&n<Date.now()+61000)emailWait=n}catch{}
 const redirect=()=>new URL('customer.html',location.href).href;
@@ -57,7 +57,14 @@ $('reloadCustomer').onclick=async()=>{if(busy||(dirty&&!confirm('Discard unsaved
 $('customerSignOut').onclick=async()=>{if(busy||(dirty&&!confirm('Discard unsaved changes and sign out?')))return;lock(true);try{check(await db.auth.signOut({scope:'local'}));clearRecovery();gate()}catch{note('customerProfileMessage','Could not sign out. Please try again.',true)}finally{lock(false)}};
 window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue=''}});
 if(!db){lock(true);note('customerAuthMessage','Customer accounts are being prepared. Please try again later.',true)}else{
- db.auth.onAuthStateChange(event=>{if(event==='PASSWORD_RECOVERY'){recovery=true;try{sessionStorage.setItem('e2-customer-recovery','1')}catch{}showRecovery()}if(event==='SIGNED_OUT'){clearRecovery();gate()}});
+ // Track session identity before profile hydration completes. A different login
+ // in another tab must also invalidate pending reads/saves and clear old fields.
+ db.auth.onAuthStateChange((event,session)=>{
+  const next=session?.user?.id||null,changed=event!=='INITIAL_SESSION'&&next!==sessionIdentity;
+  sessionIdentity=next;
+  if(event==='PASSWORD_RECOVERY'){recovery=true;try{sessionStorage.setItem('e2-customer-recovery','1')}catch{}showRecovery()}
+  else if(event==='SIGNED_OUT'||changed){clearRecovery();gate()}
+ });
  const badLink=new URLSearchParams(location.hash.slice(1)).has('error')||new URLSearchParams(location.search).has('error');
  try{await hydrate(check(await db.auth.getSession()).session)}catch{gate();note('customerAuthMessage','This sign-in link could not be used. Please request a new email.',true)}
  history.replaceState(null,'',location.pathname);
