@@ -1,3 +1,25 @@
+# Customer account and application acceptance
+
+`customer-journey.spec.mjs` runs the real customer, My E2 and Documents pages,
+including their production data adapters. Only the Supabase SDK boundary and
+anonymous contact-list response are replaced with synthetic fixtures. All other
+external HTTP requests are blocked and fail the test. No live account, email,
+customer file, credential, SQL execution or permission change is required.
+
+Run `npx playwright test tests/customer-journey.spec.mjs` for desktop and mobile
+Chromium. Coverage includes registration and confirmation state, invalid login,
+email-request cooldowns, password recovery, profile and draft retries, a complete
+application, customer-owned progress, PDF/PNG upload and preview, replacement
+failure, duplicate submission, lost upload-finalization responses, logout,
+cross-tab account changes, and delayed responses after an identity change.
+Same-account refresh events must preserve unsaved inputs.
+
+This suite verifies browser behavior against a synthetic backend contract. The
+`supabase/tests/{customers,loans,documents,case-submissions}.cjs` suites separately
+exercise SQL authorization in PGlite. Neither proves current production migration
+state, email delivery or callback configuration; those require a separately
+approved live acceptance using designated test accounts and synthetic documents.
+
 # Private document preview browser tests
 
 These tests open the real `documents.html` and `intake-workspace.html` screens.
