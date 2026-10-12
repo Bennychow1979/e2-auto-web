@@ -1,0 +1,38 @@
+/* Only the explicitly marked editorial headings participate. Original <br>,
+   emphasis and whitespace remain in place; no duplicate screen-reader copy. */
+h2[data-headline-reveal] .e2HeadlineWord {
+  display: inline-block;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  opacity: 1;
+  filter: none;
+  transform: none;
+}
+h2[data-headline-state="pending"] .e2HeadlineWord { opacity: .12; }
+h2[data-headline-reveal="approach"][data-headline-state="pending"] .e2HeadlineWord {
+  filter: blur(12px);
+  transform: translateY(-18px);
+}
+h2[data-headline-reveal="finance"][data-headline-state="pending"] .e2HeadlineWord {
+  filter: blur(8px);
+  transform: translateY(-10px);
+}
+h2[data-headline-reveal="visit"][data-headline-state="pending"] .e2HeadlineWord {
+  filter: blur(10px);
+  transform: translateY(-14px);
+}
+@media (prefers-reduced-motion: reduce) {
+  h2[data-headline-reveal] .e2HeadlineWord {
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+  }
+}
+@media print {
+  h2[data-headline-reveal] .e2HeadlineWord {
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+  }
+}
