@@ -7,20 +7,38 @@ import {publicContact,enquiryURL,vehicleShareURL,vehiclePageURL,withVehicleLink}
 import {setupCarSharing} from './car-share.js?v=languages-1';
 import {db,check,esc,rm,getVehicles,photoURLs,coverURL,friendlyError} from './e2-data.js?v=drive-1';
 import {validVehicleId,applyVehicleMetadata,excludeVehicleFromSearch} from './vehicle-seo.mjs?v=languages-1';
-const $=id=>document.getElementById(id);
+import {vehicleIdentity,usesStaticVehiclePages} from './vehicle-routes.mjs';
+import {withDeadline} from './vehicle-loading.mjs';
+import {vehicleCopy} from './vehicle-page-copy.mjs';
+const $=id=>document.getElementById(id),staticSnapshot=Boolean(document.documentElement.dataset.vehicleSnapshot);
+let unavailable=false,verified=false;
 (async()=>{
 try {
-const params=new URLSearchParams(location.search), id=params.get('id'), preview=params.get('preview')==='1';
-if(!validVehicleId(id)) { excludeVehicleFromSearch(); throw new Error('This vehicle link is invalid. Return to the showroom to choose a car.'); }
+const params=new URLSearchParams(location.search),preview=params.get('preview')==='1';
+let id;try{id=vehicleIdentity(location)}catch(error){unavailable=true;excludeVehicleFromSearch();throw error}
+if(staticSnapshot&&preview){unavailable=true;excludeVehicleFromSearch();throw Error('Draft previews use the staff preview link.');}
+if(!validVehicleId(id)) { unavailable=true;excludeVehicleFromSearch(); throw new Error('This vehicle link is invalid. Return to the showroom to choose a car.'); }
 if(preview) {
   if(!db) throw new Error('The inventory connection is being prepared.');
   const session=check(await db.auth.getSession()).session;
   if(!session) throw new Error('Sign in to E2 Workspace to preview a draft.');
 }
 const rows=await getVehicles({id,staff:preview});
-if(!rows.length) { excludeVehicleFromSearch(); throw new Error('This vehicle is not currently published or is no longer accessible. Please ask E2 about availability.'); }
+if(!rows.length||rows[0].id.toLowerCase()!==id.toLowerCase()||(!preview&&rows[0].publication!=='published')) { unavailable=true;excludeVehicleFromSearch(); throw new Error('This vehicle is not currently published or is no longer accessible. Please ask E2 about availability.'); }
 const car=rows[0]; car.name=car.brand+' '+car.model;car.priceValue=Number(car.price);
-applyVehicleMetadata(car,{preview,lang:language});
+applyVehicleMetadata(car,{preview,lang:language,staticPages:usesStaticVehiclePages()});
+$('make').textContent=car.brand;$('model').textContent=car.model;$('heroEyebrow').textContent=[car.year,t(car.body_type),t(car.stock_status)].filter(Boolean).join(' · ');
+$('heroLine').textContent=car.variant;$('heroLine').hidden=!car.variant;$('heroPrice').textContent=rm(car.price);$('heroPlate').textContent=t('PLATE · {plate}',{plate:car.plate});
+if($('vehicleHeadingVariant'))$('vehicleHeadingVariant').textContent=' '+(car.variant||'');
+if($('vehicleHeadingYear'))$('vehicleHeadingYear').textContent=car.year+' ';
+$('story').textContent=descriptionFor(car.description,language)||t('See the actual vehicle. Ask the questions that matter to you.');
+loadVehicleDescription(db,car,language).then(text=>{if(text)$('story').textContent=text;});
+$('publicationNote').textContent=t(car.publication==='draft'?'PRIVATE DRAFT PREVIEW · Not on the website':car.stock_status);
+const specs=[['Car plate',car.plate],['Year',car.year],['Brand',car.brand],['Model',car.model],['Variant / SPEC',car.variant],['Engine size',car.engine_litres==null?null:Number(car.engine_litres).toFixed(1)+' L'],['Transmission',t(car.transmission)],['Fuel type',t(car.fuel_type)],['Mileage',mileageText(car)]];
+$('specGrid').innerHTML=specs.filter(([,value])=>value!==null&&value!==undefined&&String(value).trim()!=='').map(([label,value])=>'<div><dt>'+esc(t(label))+'</dt><dd>'+esc(value)+'</dd></div>').join('');
+$('dockModel').textContent=car.name;$('dockPrice').textContent=rm(car.price);
+verified=true;$('carState').hidden=true;$('carMain').hidden=false;$('carDock').hidden=false;
+if($('inventoryNotice')){$('inventoryNotice').textContent=vehicleCopy('verified',language);$('inventoryNotice').dataset.verified='true'}
 let contact=await publicContact(params.get('sales'),window.E2_CONFIG);
 setupCarSharing(car,()=>contact);
 $('applyLoan').hidden=preview||car.stock_status!=='Available';$('applyLoan').href='/my-e2.html?car='+encodeURIComponent(car.id)+(contact?'&sales='+encodeURIComponent(contact.user_id):'');
@@ -61,46 +79,37 @@ async function refreshContact(){
 }
 window.addEventListener('focus',refreshContact);
 setInterval(()=>{if(!document.hidden)refreshContact()},60000);
-$('make').textContent=car.brand;$('model').textContent=car.model;$('heroEyebrow').textContent=[car.year,t(car.body_type),t(car.stock_status)].filter(Boolean).join(' · ');
-$('heroLine').textContent=car.variant;$('heroLine').hidden=!car.variant;$('heroPrice').textContent=rm(car.price);$('heroPlate').textContent=t('PLATE · {plate}',{plate:car.plate});
-$('story').textContent=descriptionFor(car.description,language)||t('See the actual vehicle. Ask the questions that matter to you.');
-loadVehicleDescription(db,car,language).then(text=>{if(text)$('story').textContent=text;});
-$('publicationNote').textContent=t(car.publication==='draft'?'PRIVATE DRAFT PREVIEW · Not on the website':car.stock_status);
-const specs=[['Car plate',car.plate],['Year',car.year],['Brand',car.brand],['Model',car.model],['Variant / SPEC',car.variant],['Engine size',Number(car.engine_litres).toFixed(1)+' L'],['Transmission',t(car.transmission)],['Fuel type',t(car.fuel_type)],['Mileage',mileageText(car)]];
-$('specGrid').innerHTML=specs.filter(([,value])=>value!==null&&value!==undefined&&String(value).trim()!=='').map(([label,value])=>'<div><dt>'+esc(t(label))+'</dt><dd>'+esc(value)+'</dd></div>').join('');
-$('dockModel').textContent=car.name;$('dockPrice').textContent=rm(car.price);
 $('enquire').href=wa(intro+t('Please confirm availability, price and vehicle details.'));
 $('tradeLink').href=wa(intro+t('I would like to discuss a trade-in and the information you need for an inspection.'));
 $('loanLink').href=wa(intro+t('Please explain loan application documents and available terms. I understand approval is subject to assessment.'));
-let photos=[],photoIndex=0;
+let photos=[],photoIndex=0,photoRun=0;
 function choosePhoto(index){
   if(!photos.length)return;
   photoIndex=(index+photos.length)%photos.length;const p=photos[photoIndex];
-  for(const key of ['heroImage','largePhoto']){$(key).src=p.url;$(key).alt=car.name+' · '+t('photo {count}',{count:photoIndex+1})}
+  for(const key of ['heroImage','largePhoto']){$(key).src=p.url;$(key).alt=[car.year,car.name,car.variant].filter(Boolean).join(' ')+' · '+t('photo {count}',{count:photoIndex+1})}
   $('photoPosition').textContent=(photoIndex+1)+' / '+photos.length;
   document.querySelector('.photoCaption>span').textContent=t('PHOTO {count} / {total}',{count:photoIndex+1,total:photos.length});
   document.querySelectorAll('#photoThumbs button').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===photoIndex)));
 }
 async function refreshPhotos(){
-  photos=(await photoURLs(car.photos)).filter(p=>p.url);
+  const run=++photoRun;$('photoCount').textContent=vehicleCopy('photosLoading',language);
+  let loaded;try{loaded=await withDeadline(photoURLs(car.photos));}catch{if(run===photoRun){$('photoCount').textContent=vehicleCopy('photosUnavailable',language);$('openPhoto').hidden=!photos.length;}return;}
+  if(run!==photoRun)return;photos=loaded.filter(p=>p.url);
   $('openPhoto').hidden=!photos.length;
-  $('photoCount').textContent=photos.length?t('{count} vehicle photos · Select a photo to take a closer look.',{count:photos.length}):t('No photos available for this draft.');
+  $('photoCount').textContent=photos.length?t('{count} vehicle photos · Select a photo to take a closer look.',{count:photos.length}):vehicleCopy('photosUnavailable',language);
   $('photoThumbs').innerHTML=photos.map((p,i)=>'<button aria-label="'+esc(t('View photo {count}',{count:i+1}))+'" aria-pressed="false"><img src="'+esc(p.url)+'" alt="" loading="lazy"></button>').join('');
   document.querySelectorAll('#photoThumbs button').forEach((b,i)=>b.onclick=()=>choosePhoto(i));choosePhoto(Math.min(photoIndex,photos.length-1));
 }
 $('prevPhoto').onclick=()=>choosePhoto(photoIndex-1);$('nextPhoto').onclick=()=>choosePhoto(photoIndex+1);
 $('reloadPhotos').onclick=()=>refreshPhotos().catch(error=>$('photoCount').textContent=t(friendlyError(error)));
-await refreshPhotos();
+// Photo URL resolution runs separately from text and interactive controls.
+$('openPhoto').hidden=true;
 let refreshedAt=Date.now();
 window.addEventListener('focus',()=>{if(Date.now()-refreshedAt>240000){refreshedAt=Date.now();refreshPhotos().catch(error=>$('photoCount').textContent=t(friendlyError(error)))}});
 setInterval(()=>{if(!document.hidden){refreshedAt=Date.now();refreshPhotos().catch(error=>$('photoCount').textContent=t(friendlyError(error)))}},240000);
-if(!preview)await setupPartnerReferral(car,()=>contact);
+if(!preview)setupPartnerReferral(car,()=>contact).catch(()=>{});
 $('carState').hidden=true;$('carMain').hidden=false;$('carDock').hidden=false;
 if(!preview)viewVehicle(car);
-const related=(await getVehicles().catch(()=>[])).filter(c=>c.id!==car.id).slice(0,3);
-$('relatedCars').innerHTML=related.map(c=>'<a class="relatedCard" href="'+esc(contact?vehicleShareURL(location.href,c.id,contact.user_id):'car.html?id='+c.id)+'"><div class="noPhoto" data-related="'+c.id+'">'+esc(t('Loading photo…'))+'</div><small>'+c.year+' · '+esc(t(c.stock_status))+'</small><h3>'+esc(c.brand+' '+c.model)+'</h3><p>'+rm(c.price)+' <span aria-hidden="true">↗</span></p></a>').join('');
-document.querySelector('.moreCars').hidden=!related.length;
-for(const c of related)coverURL(c).then(url=>{const node=document.querySelector('[data-related="'+c.id+'"]');if(url&&node)node.innerHTML='<img src="'+esc(url)+'" alt="'+esc(c.brand+' '+c.model)+'" loading="lazy">'}).catch(()=>{});
 function calculate(){
 const depositPct=Number($('deposit').value),years=Number($('tenure').value),rate=Number($('rate').value);
 const valid=$('rate').value.trim()!==''&&$('rate').validity.valid&&rate>=0&&rate<=15;
@@ -122,5 +131,15 @@ function clearBooking(){ $('bookingReady').hidden=true;$('bookingForm').querySel
 ['viewDate','viewTime'].forEach(id=>$(id).addEventListener('input',clearBooking));
 $('bookingForm').onsubmit=e=>{e.preventDefault();const date=$('viewDate').value;if(!date||date<malaysiaDate()){$('bookingError').hidden=false;return}$('bookingLink').href=wa(intro+t('I would like a viewing of this vehicle. Preferred date: {date}, {time} (Malaysia time). Please confirm availability and the viewing time at Centre Point Batu Caves, LG Basement Parking.',{date,time:t($('viewTime').value)}));$('bookingReady').hidden=false;$('bookingForm').querySelector('button[type=submit]').hidden=true;$('bookingLink').focus()};
 document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target!==d)return;const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}));
-} catch(error) { $('carState').hidden=false;$('carState').textContent=t(friendlyError(error));$('carMain').hidden=true;$('carDock').hidden=true; }
+document.documentElement.dataset.inventoryVerified='true';
+document.querySelectorAll('[data-requires-live]').forEach(node=>node.disabled=false);
+refreshPhotos();
+(async()=>{
+const related=(await getVehicles().catch(()=>[])).filter(c=>c.id!==car.id).slice(0,3);
+$('relatedCars').innerHTML=related.map(c=>'<a class="relatedCard" href="'+esc(vehiclePageURL(location.href,c.id,contact?.user_id))+'"><div class="noPhoto" data-related="'+c.id+'">'+esc(t('Loading photo…'))+'</div><small>'+c.year+' · '+esc(t(c.stock_status))+'</small><h3>'+esc(c.brand+' '+c.model)+'</h3><p>'+rm(c.price)+' <span aria-hidden="true">↗</span></p></a>').join('');
+document.querySelector('.moreCars').hidden=!related.length;
+for(const c of related)coverURL(c).then(url=>{const node=document.querySelector('[data-related="'+c.id+'"]');if(url&&node)node.innerHTML='<img src="'+esc(url)+'" alt="'+esc(c.brand+' '+c.model)+'" loading="lazy">'}).catch(()=>{});
+})().catch(()=>{});
+} catch(error) { $('carState').hidden=false;$('carState').textContent=t(friendlyError(error));if(unavailable||(!staticSnapshot&&!verified)){$('carMain').hidden=true;$('carDock').hidden=true;}else if(staticSnapshot&&!verified){$('carState').hidden=true;if($('inventoryNotice'))$('inventoryNotice').textContent=vehicleCopy('offline',language);}
+ }
 })();
