@@ -5,3 +5,12 @@ dialog{padding:0;border:0;border-radius:24px;background:#fcfcfa;color:#111214;ma
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}button,.pill,.circleLink{transition:none}button:active,.pill:active,.circleLink:active{transform:none}}
 @media(prefers-reduced-transparency:reduce){.nav,.actionDock{background:#fcfcfa;backdrop-filter:none}}
 @media(prefers-contrast:more){.nav,.actionDock{background:#fcfcfa;border-color:#111214}.eyebrow{color:#684e10}}
+
+/* Keep full-width finance links separate; wrap the price and plate as needed. */
+@media(max-width:700px){
+  .heroPrice{display:flex;flex-wrap:wrap}
+  .heroPrice .sampleLabel{flex-basis:100%}
+  .heroPrice>strong{flex:1 1 auto;max-width:100%;overflow-wrap:anywhere}
+  .heroPrice>a{flex-basis:100%;min-width:0;line-height:1.5;overflow-wrap:anywhere;order:1}
+  .heroPrice .plate{max-width:100%;overflow-wrap:anywhere}
+}
