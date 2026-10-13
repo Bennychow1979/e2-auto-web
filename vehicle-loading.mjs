@@ -1,0 +1,1 @@
+export function withDeadline(promise,ms=8000){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Photos are taking longer than expected. Retry photos; vehicle details remain available.')),ms)})]).finally(()=>clearTimeout(timer));}

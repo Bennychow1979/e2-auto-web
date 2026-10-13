@@ -2,8 +2,10 @@ import {takeLoan} from './loan-intent.js';
 import {pendingSave} from './saved-intent.js';
 import {customerDB as db,check,fields} from './customer-data.js?v=customer-1';
 import {normalizeWhatsApp} from './profile-utils.js';
+import {createSessionIdentity} from './customer-session.mjs';
 const $=id=>document.getElementById(id),profile=$('customerProfile'),register=$('customerRegister'),login=$('customerSignIn');
-let user=null,saved=null,busy=false,epoch=0,dirty=false,recovery=false,sessionIdentity;
+let user=null,saved=null,busy=false,epoch=0,dirty=false,recovery=false;
+const sessionIdentity=createSessionIdentity();
 try{recovery=sessionStorage.getItem('e2-customer-recovery')==='1'}catch{}
 let emailWait=0;try{const n=Number(sessionStorage.getItem('e2-customer-email-wait'));if(n>Date.now()&&n<Date.now()+61000)emailWait=n}catch{}
 const redirect=()=>new URL('customer.html',location.href).href;
@@ -18,9 +20,10 @@ function showRecovery(){epoch++;$('customerAuth').hidden=true;$('customerAccount
 function clearRecovery(){recovery=false;try{sessionStorage.removeItem('e2-customer-recovery')}catch{}}
 function fillProfile(){profile.reset();for(const key of fields)profile.elements[key].value=saved?.[key]??(key==='full_name'?user.user_metadata?.full_name||'':key==='phone'?user.user_metadata?.phone||'':'');$('customerEmail').value=user.email;profile.elements.privacy.required=!saved;$('profilePrivacy').hidden=!!saved;dirty=false}
 async function hydrate(session){
-  const run=++epoch;if(!session){gate();return}if(recovery){showRecovery();return}
+  const run=++epoch;if(!session||!sessionIdentity.accepts(session.user)){gate();return}if(recovery){showRecovery();return}
   try{
-    const result=check(await db.auth.getUser());if(run!==epoch)return;user=result.user;
+    const result=check(await db.auth.getUser());if(run!==epoch)return;
+    if(result.user?.id!==session.user.id||!sessionIdentity.accepts(result.user)){gate();return}user=result.user;
     if(!user?.email_confirmed_at||!check(await db.rpc('e2_customer_allowed')))throw Error('Confirm your email and sign in with an active account.');
     const row=check(await db.from('customer_profiles').select('*').eq('user_id',user.id).maybeSingle());if(run!==epoch)return;saved=row;
     if(!saved&&user.user_metadata?.e2_customer_signup===true&&user.user_metadata?.privacy_version==='2026-09-13'){
@@ -60,8 +63,7 @@ if(!db){lock(true);note('customerAuthMessage','Customer accounts are being prepa
  // Track session identity before profile hydration completes. A different login
  // in another tab must also invalidate pending reads/saves and clear old fields.
  db.auth.onAuthStateChange((event,session)=>{
-  const next=session?.user?.id||null,changed=event!=='INITIAL_SESSION'&&next!==sessionIdentity;
-  sessionIdentity=next;
+  const changed=sessionIdentity.observe(session);
   if(event==='PASSWORD_RECOVERY'){recovery=true;try{sessionStorage.setItem('e2-customer-recovery','1')}catch{}showRecovery()}
   else if(event==='SIGNED_OUT'||changed){clearRecovery();gate()}
  });

@@ -78,6 +78,15 @@ This opt-in mode rewrites test-server responses only. It never changes the
 production HTML or data modules. Do not enable it on a production server.
 
 
+# Customer initialization timing
+
+`customer-initialization.spec.mjs` covers refresh/initial-session ordering, the
+profile-to-My-E2 link, stale identity reads, sign-out and account changes, and
+same-revision stale profile submissions. It uses synthetic SDK/session state.
+Set `E2_TEST_BASELINE=1` locally to also compare the published `e2e32cc` behavior;
+that optional comparison requires the commit in local Git history and is not
+enabled by default in shallow CI checkouts. No real credentials are used.
+
 # Financing-case browser tests
 
 `financing-case.spec.mjs` exercises the staff financing page with a fully mocked

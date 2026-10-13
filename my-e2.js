@@ -6,8 +6,10 @@ import {getVehicles,coverURL} from './e2-data.js';
 import {publicContacts} from './referral.js?v=car-share-1';
 import {steps,titles,missingSteps} from './loan-fields.js';
 import {esc,rm,renderStep,renderReview} from './loan-ui.js';
+import {createSessionIdentity} from './customer-session.mjs';
 const $=id=>document.getElementById(id),main=$('main');
-let user=null,profile=null,cars=[],contacts=[],applications=[],active=null,details={},step=0,dirty=false,busy=false,epoch=0,page='home',selected=null,sessionIdentity;
+let user=null,profile=null,cars=[],contacts=[],applications=[],active=null,details={},step=0,dirty=false,busy=false,epoch=0,page='home',selected=null;
+const sessionIdentity=createSessionIdentity();
 const summary=a=>a.vehicle_summary;
 const date=value=>new Date(value).toLocaleString('en-MY',{dateStyle:'medium',timeStyle:'short'});
 function toast(message){$('toast').textContent=message;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),4500)}
@@ -67,8 +69,7 @@ window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.return
 // Remember auth identity independently of the in-flight customer/profile reads.
 // Same-user refresh events keep unsaved work; account changes invalidate it.
 db?.auth.onAuthStateChange((event,session)=>{
- const next=session?.user?.id||null,changed=event!=='INITIAL_SESSION'&&next!==sessionIdentity;
- sessionIdentity=next;
+ const changed=sessionIdentity.observe(session);
  if(event==='SIGNED_OUT'||changed)gate('Sign in to continue your application.');
 });
-try{const run=epoch,verified=await customer();if(run===epoch){user=verified;if(!user)gate();else{const loaded=await Promise.all([db.from('customer_profiles').select('full_name,phone').eq('user_id',user.id).maybeSingle().then(check),getVehicles(),publicContacts(window.E2_CONFIG).catch(()=>[]),getLoans()]);if(run===epoch){[profile,cars,contacts,applications]=loaded;$('signOut').hidden=false;document.querySelector('.avatar').textContent=(profile?.full_name||'My E2').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();const params=new URLSearchParams(location.search);if(validId(params.get('application')))await open(params.get('application'));else{renderHome();if(validId(params.get('car')))start(params.get('car'))}}}}}catch(e){gate(e.message||'Applications are temporarily unavailable. Please try again later.')}
+try{const run=epoch,verified=await customer();if(run===epoch){if(!sessionIdentity.accepts(verified))throw Error("Account changed. Sign in again to continue.");user=verified;if(!user)gate();else{const loaded=await Promise.all([db.from('customer_profiles').select('full_name,phone').eq('user_id',user.id).maybeSingle().then(check),getVehicles(),publicContacts(window.E2_CONFIG).catch(()=>[]),getLoans()]);if(run===epoch){[profile,cars,contacts,applications]=loaded;$('signOut').hidden=false;document.querySelector('.avatar').textContent=(profile?.full_name||'My E2').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();const params=new URLSearchParams(location.search);if(validId(params.get('application')))await open(params.get('application'));else{renderHome();if(validId(params.get('car')))start(params.get('car'))}}}}}catch(e){gate(e.message||'Applications are temporarily unavailable. Please try again later.')}
