@@ -16,3 +16,8 @@ sitemap.xml
 vendor/pdfjs/
 test-results/
 playwright-report/
+
+# Isolated Pages output; snapshot inputs live outside the published tree.
+_site/
+.vehicle-build-*/
+__pycache__/

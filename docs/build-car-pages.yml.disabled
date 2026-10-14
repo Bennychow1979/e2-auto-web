@@ -1,0 +1,44 @@
+# LOCAL DESIGN ONLY: deliberately outside .github/workflows, disabled job.
+# The image extension is deployed. The existing Pages workflow now builds _site.
+# This separate inventory event/daily design remains disabled until separately approved.
+# Design is approved: authoritative committed changes plus daily reconciliation.
+# Notion notifications enter only after successful inventory synchronization.
+name: Proposed E2 static inventory rebuild
+on:
+  workflow_dispatch:
+  # One daily reconciliation after activation approval. Exact wall-clock time
+  # is an activation detail; no cron or event subscription is registered here.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  staged-build-and-deploy:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    environment: github-pages
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npm run build:pdf-preview
+      - run: npm run test:vehicle-pages
+      - name: Activation prerequisites
+        run: |
+          echo 'Disabled proposal: requires approved image endpoint deployment, publication and trigger activation. Event-plus-daily design is approved; no new roles, RLS or Notion write is authorized.'
+          exit 1
+      # First activation alone: explicitly review adding --bootstrap to acquisition.
+      - name: Acquire public projection and previous deployed slug registry
+        run: node scripts/fetch-vehicle-build-input.mjs public-inventory-snapshot.json
+      - name: Build and gate isolated release candidate
+        run: node scripts/build-car-pages.mjs public-inventory-snapshot.json _site --release
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Explicit Pages deployment, never inferred from an automated commit
+        uses: actions/deploy-pages@v4

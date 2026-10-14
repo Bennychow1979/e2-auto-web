@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {folderId,matchesPlate,checkFolder,uniquePhotos,signTicket,readTicket,MAX_BYTES} from '../functions/e2-drive-photos/core.mjs';
 import {googleDrive} from '../functions/e2-drive-photos/google.mjs';
+import {validUploadPath} from '../functions/e2-drive-photos/public-image.mjs';
 import {resolvePhotoURLs} from '../../photo-urls.mjs';
 
 const folder='folder_1234567890',file='file_1234567890',root='root_1234567890';
@@ -65,18 +66,30 @@ grant select,insert,update,delete on storage.objects to anon,authenticated;
 grant execute on function auth.uid() to anon,authenticated;`);
 for(const migration of ['202609120001_inventory.sql','202609130002_photo_order.sql','202609130003_photo_limit_30.sql','202609130004_super_admin.sql'])
   await db.exec(readFileSync('supabase/migrations/'+migration,'utf8'));
-const admin='00000000-0000-4000-8000-000000000001',sales='00000000-0000-4000-8000-000000000002',car='10000000-0000-4000-8000-000000000001',uploaded='20000000-0000-4000-8000-000000000001';
+const admin='00000000-0000-4000-8000-000000000001',sales='00000000-0000-4000-8000-000000000002',car='10000000-0000-4000-8000-000000000001',uploadObject='20000000-0000-4000-8000-000000000001';
 async function as(role,id=''){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role '+role)}
 async function scalar(sql,args=[]){return (await db.query(sql,args)).rows[0]}
 await db.exec(`insert into auth.users(id) values('${admin}'),('${sales}');
 insert into public.staff_memberships(user_id,role) values('${admin}','admin'),('${sales}','sales');`);
 await as('authenticated',admin);
 await db.exec(`insert into public.vehicles(id,plate,brand,model,variant,year,engine_litres,transmission,fuel_type,price) values('${car}','VBH4735','Honda','Civic','S',2011,1.8,'Auto','PETROL',29990);
-insert into storage.objects(bucket_id,name) values('vehicle-photos','${car}/${uploaded}.webp');
-insert into public.vehicle_photos(id,vehicle_id,path,position) values('${uploaded}','${car}','${car}/${uploaded}.webp',0);`);
+insert into storage.objects(bucket_id,name) values('vehicle-photos','${car}/${uploadObject}.webp');
+insert into public.vehicle_photos(vehicle_id,path,position) values('${car}','${car}/${uploadObject}.webp',0);`);
+const uploaded=(await scalar('select id from public.vehicle_photos')).id;
+assert.notEqual(uploaded,uploadObject,'Actual schema defaults generate photo IDs independently of object names');
 await as('postgres');
 await db.exec(readFileSync('supabase/migrations/202609180001_drive_photos.sql','utf8'));
 assert.deepEqual(await scalar('select source,position from public.vehicle_photos'),{source:'upload',position:0});
+await as('authenticated',admin);
+await db.query("update public.vehicles set publication='published' where id=$1",[car]);
+await as('anon');
+const publicUpload=await scalar('select id,vehicle_id,path from public.vehicle_photos');
+assert.equal(publicUpload.id,uploaded);assert(validUploadPath(publicUpload.path,publicUpload.vehicle_id));
+assert.equal((await scalar('select count(*)::int n from storage.objects')).n,1,'Existing anonymous storage RLS reads the linked upload');
+await as('authenticated',admin);
+await db.query("update public.vehicles set publication='draft' where id=$1",[car]);
+await as('anon');
+assert.equal((await scalar('select count(*)::int n from storage.objects')).n,0,'Draft withdrawal revokes anonymous upload storage access');
 const item={folder_id:folder,file_id:file,checksum:'a'.repeat(32),mime_type:'image/jpeg',size_bytes:100};
 async function attach(items=[item],actor=admin,plate='VBH4735'){return db.query('select public.e2_attach_drive_photos($1,$2,$3,$4) added',[actor,car,plate,JSON.stringify(items)])}
 await as('authenticated',admin);

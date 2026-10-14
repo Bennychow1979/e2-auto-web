@@ -1,4 +1,5 @@
 import {translations} from './translations.mjs';
+import {staticVehiclePattern} from './vehicle-routes.mjs';
 export const LANGUAGES = ['en','ms','zh'];
 export const languageTags = {en:'en-MY',ms:'ms-MY',zh:'zh-Hans-MY'};
 export const languageFromPath = path => /^\/(ms|zh)(?:\/|$)/.exec(path || '')?.[1] || 'en';
@@ -9,7 +10,7 @@ export function t(source, values = {}, lang = language) {
   let result = lang === 'en' ? raw : translations[raw]?.[lang === 'ms' ? 0 : 1];
   if(result === undefined) {
     const decorated = /^(←\s*|♡\s*|♥\s*)?(.+?)(\s*[↗↓])?$/.exec(raw);
-    const translated = decorated && translations[decorated[2]]?.[lang === 'ms' ? 0 : 1];
+    const translated = decorated ? translations[decorated[2]]?.[lang === 'ms' ? 0 : 1] : undefined;
     result = translated === undefined ? raw : (decorated[1] || '') + translated + (decorated[3] || '');
     const years = /^(\d+) years$/.exec(raw);
     if(years && lang !== 'en') result = translations['{count} years'][lang === 'ms' ? 0 : 1].replace('{count}',years[1]);
@@ -17,10 +18,13 @@ export function t(source, values = {}, lang = language) {
   return result.replace(/\{(\w+)\}/g,(match,key)=>Object.hasOwn(values,key)?String(values[key]):match);
 }
 export function localizedURL(value, lang = language, base = globalThis.location?.href || 'https://e2auto.my/') {
-  const url = new URL(value,base), origin = new URL(base).origin;
+  const origin = new URL(base).origin;
+  // Public page names must resolve at the language root from nested vehicle pages.
+  const nested=staticVehiclePattern.test(new URL(base).pathname),relative=/^(?:car|booking|showroom|index|customer|saved)\.html(?:[?#]|$)/.test(value);
+  const url = new URL(value,nested&&relative?origin+'/':base);
   if(url.origin !== origin) return url.href;
   const clean = url.pathname.replace(/^\/(ms|zh)(?=\/|$)/,'').replace(/^\//,'');
-  if(publicPageNames.has(clean)) url.pathname = '/' + (lang === 'en' ? '' : lang + '/') + (clean === 'index.html' ? '' : clean);
+  if(publicPageNames.has(clean)||staticVehiclePattern.test('/'+clean)) url.pathname = '/' + (lang === 'en' ? '' : lang + '/') + (clean === 'index.html' ? '' : clean);
   else url.pathname = '/' + clean;
   return url.href;
 }

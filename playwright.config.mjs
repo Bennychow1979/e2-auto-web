@@ -6,6 +6,8 @@ const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.spec.mjs',
+  // Static pages need their generated-site fixture, run by test:vehicle-browser.
+  testIgnore: '**/vehicle-pages.spec.mjs',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,

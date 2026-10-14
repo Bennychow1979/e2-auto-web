@@ -6,21 +6,23 @@ import {LANGUAGES,languageTags} from '../i18n.mjs';
 
 const escapeXML = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 
-export function renderSitemap(rows) {
+export function renderSitemap(rows,{staticPages=false,slugs,includeSold=true}={}) {
   const seen = new Set();
   const alternatives = urls => [...LANGUAGES.map(lang=>'<xhtml:link rel="alternate" hreflang="'+languageTags[lang]+'" href="'+escapeXML(urls[lang])+'"/>'),'<xhtml:link rel="alternate" hreflang="x-default" href="'+escapeXML(urls.en)+'"/>'].join('');
   const homes=Object.fromEntries(LANGUAGES.map(lang=>[lang,SITE_URL+(lang==='en'?'':lang+'/')]));
   const entries=LANGUAGES.map(lang=>'  <url><loc>'+homes[lang]+'</loc>'+alternatives(homes)+'</url>');
   const bookings=Object.fromEntries(LANGUAGES.map(lang=>[lang,SITE_URL+(lang==='en'?'':lang+'/')+'booking.html']));
   entries.push(...LANGUAGES.map(lang=>'  <url><loc>'+bookings[lang]+'</loc>'+alternatives(bookings)+'</url>'));
+  if(staticPages)entries.push('  <url><loc>'+SITE_URL+'privacy/</loc></url>');
   for (const row of rows) {
     if (row?.publication !== 'published' || !validVehicleId(row.id)) continue;
+    if(!includeSold&&row.stock_status==='Sold')continue;
     const location = canonicalVehicleURL(row.id);
     if (seen.has(location)) continue;
     seen.add(location);
     const date = row.updated_at ? new Date(row.updated_at) : null;
     const lastmod = date && Number.isFinite(date.getTime()) ? '<lastmod>' + date.toISOString() + '</lastmod>' : '';
-    const urls=Object.fromEntries(LANGUAGES.map(lang=>[lang,canonicalVehicleURL(row.id,lang)]));
+    const urls=Object.fromEntries(LANGUAGES.map(lang=>[lang,canonicalVehicleURL(row.id,lang,{staticPages,slugs})]));
     for(const lang of LANGUAGES)entries.push('  <url><loc>'+escapeXML(urls[lang])+'</loc>'+lastmod+alternatives(urls)+'</url>');
   }
   if (entries.length > 50000) throw new Error('Inventory needs a sitemap index before deployment.');

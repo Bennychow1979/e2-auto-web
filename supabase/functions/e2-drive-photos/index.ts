@@ -1,3 +1,4 @@
+import {publicVehicleImage} from './public-image.mjs';
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 import {folderId,checkFolder,validPhoto,uniquePhotos,signTicket,readTicket,UUID,FILE_ID} from './core.mjs';
 import {googleDrive} from './google.mjs';
@@ -33,11 +34,17 @@ async function folderFor(car,id) {
 
 Deno.serve(async req=>{
   const origin=req.headers.get('Origin')||'';
-  const headers={'Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, GET, OPTIONS',...(origins.has(origin)?{'Access-Control-Allow-Origin':origin}:{})};
+  const headers={'Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, GET, HEAD, OPTIONS',...(origins.has(origin)?{'Access-Control-Allow-Origin':origin}:{})};
   const reply=(status,body)=>new Response(JSON.stringify(body),{status,headers});
   if(origin&&!origins.has(origin))return reply(403,{error:'Origin not allowed'});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers});
   try {
+    if((req.method==='GET'||req.method==='HEAD')&&new URL(req.url).searchParams.has('public_vehicle')){
+      // A caller's staff Authorization header never enters this anonymous client.
+      const publicClient=createClient(url,anon,{auth:{persistSession:false,autoRefreshToken:false}});
+      return await publicVehicleImage(req,{publicClient,admin,drive,driveReady:ready,root,headers});
+    }
+    if(req.method==='HEAD')return reply(405,{error:'HEAD is available for public vehicle images only.'});
     if(req.method==='GET') {
       if(!ready())return reply(503,{error:'Google Drive is not connected.'});
       const ticket=await readTicket(new URL(req.url).searchParams.get('ticket'),signing);
@@ -133,6 +140,7 @@ Deno.serve(async req=>{
     }))}));
     return reply(200,{added});
   }catch(error) {
+    if((req.method==='GET'||req.method==='HEAD')&&new URL(req.url).searchParams.has('public_vehicle'))return reply(404,{error:'Public vehicle image is unavailable.'});
     // Do not include credentials, Google error payloads or signed URLs in logs.
     return reply(400,{error:error instanceof Error?error.message:'Drive photo request failed. Refresh before retrying.'});
   }
