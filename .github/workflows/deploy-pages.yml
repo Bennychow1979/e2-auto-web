@@ -5,6 +5,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      bootstrap_registry:
+        description: 'First static release only: use reviewed slug seed if the deployed registry is 404'
+        type: boolean
+        default: false
+      restore_previous:
+        description: 'Restore the verified Pages files from main 905b410; leave Edge Functions unchanged'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -17,6 +26,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -36,22 +46,68 @@ jobs:
           node-version: '22'
 
       - name: Build self-hosted document preview
+        if: ${{ !inputs.restore_previous }}
         run: |
           npm ci --ignore-scripts
           npm run build:pdf-preview
-          rm -rf node_modules
 
-      - name: Validate and build multilingual public pages
+      - name: Validate release mode
+        env:
+          BOOTSTRAP: ${{ inputs.bootstrap_registry || false }}
+          RESTORE: ${{ inputs.restore_previous || false }}
+        run: |
+          if [ "$BOOTSTRAP" = true ] && [ "$RESTORE" = true ]; then
+            echo 'Choose a new release or restoration, not both.' >&2
+            exit 1
+          fi
+
+      - name: Validate public templates
+        if: ${{ !inputs.restore_previous }}
         run: |
           node supabase/tests/seo.mjs
           node supabase/tests/languages.mjs
-          node scripts/build-languages.mjs
-          node scripts/build-sitemap.mjs
+          node --test supabase/tests/pages-artifact.mjs
+          python3 supabase/tests/pages-restore.py
+
+      - name: Acquire fresh public inventory and deployed slug registry
+        if: ${{ !inputs.restore_previous }}
+        env:
+          BOOTSTRAP: ${{ inputs.bootstrap_registry || false }}
+        run: |
+          args=()
+          if [ "$BOOTSTRAP" = true ]; then args+=(--bootstrap); fi
+          node scripts/fetch-vehicle-build-input.mjs "$RUNNER_TEMP/e2-public-inventory.json" "${args[@]}"
+
+      - name: Generate complete static site and require the deployed v2 image gateway
+        if: ${{ !inputs.restore_previous }}
+        run: |
+          node scripts/build-car-pages.mjs "$RUNNER_TEMP/e2-public-inventory.json" _site --release
+          node scripts/verify-pages-artifact.mjs "$RUNNER_TEMP/e2-public-inventory.json" _site
+
+      - name: Preserve the current slug registry before restoration
+        if: ${{ inputs.restore_previous }}
+        continue-on-error: true
+        run: node scripts/save-rollback-registry.mjs "$RUNNER_TEMP/e2-slug-registry-before-rollback.json"
+
+      - name: Keep the registry for any later static release recovery
+        if: ${{ inputs.restore_previous }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2-slug-registry-before-rollback
+          path: ${{ runner.temp }}/e2-slug-registry-before-rollback.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: Restore the verified previous Pages artifact locally
+        if: ${{ inputs.restore_previous }}
+        run: python3 scripts/restore-pages-artifact.py _site
 
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: '.'
+          path: _site
+          # Both branches produce one checked artifact directory.
 
       - name: Deploy to GitHub Pages
         id: deployment

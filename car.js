@@ -10,6 +10,8 @@ import {validVehicleId,applyVehicleMetadata,excludeVehicleFromSearch} from './ve
 import {vehicleIdentity,usesStaticVehiclePages} from './vehicle-routes.mjs';
 import {withDeadline} from './vehicle-loading.mjs';
 import {vehicleCopy} from './vehicle-page-copy.mjs';
+import {applyStockRequestDisplay} from './vehicle-stock-display.mjs';
+import {publicVehicleImageURL} from './vehicle-public-image.mjs';
 const $=id=>document.getElementById(id),staticSnapshot=Boolean(document.documentElement.dataset.vehicleSnapshot);
 let unavailable=false,verified=false;
 (async()=>{
@@ -26,7 +28,9 @@ if(preview) {
 const rows=await getVehicles({id,staff:preview});
 if(!rows.length||rows[0].id.toLowerCase()!==id.toLowerCase()||(!preview&&rows[0].publication!=='published')) { unavailable=true;excludeVehicleFromSearch(); throw new Error('This vehicle is not currently published or is no longer accessible. Please ask E2 about availability.'); }
 const car=rows[0]; car.name=car.brand+' '+car.model;car.priceValue=Number(car.price);
-applyVehicleMetadata(car,{preview,lang:language,staticPages:usesStaticVehiclePages()});
+const imageOrigin=document.documentElement.dataset.publicImageOrigin;
+const publicImage=staticSnapshot&&imageOrigin&&car.photos?.length?publicVehicleImageURL(imageOrigin,car.id):null;
+applyVehicleMetadata(car,{preview,lang:language,staticPages:usesStaticVehiclePages(),imageURL:publicImage});
 $('make').textContent=car.brand;$('model').textContent=car.model;$('heroEyebrow').textContent=[car.year,t(car.body_type),t(car.stock_status)].filter(Boolean).join(' · ');
 $('heroLine').textContent=car.variant;$('heroLine').hidden=!car.variant;$('heroPrice').textContent=rm(car.price);$('heroPlate').textContent=t('PLATE · {plate}',{plate:car.plate});
 if($('vehicleHeadingVariant'))$('vehicleHeadingVariant').textContent=' '+(car.variant||'');
@@ -58,6 +62,7 @@ async function paintContact(){
   $('contactWhatsApp').href=wa(intro+t('Please confirm availability, price and vehicle details.'));
   $('enquire').textContent=person?'WhatsApp ↗':t('Ask E2 on WhatsApp ↗');
   $('enquire').setAttribute('aria-label',person?t('Contact {name} on WhatsApp',{name:person.display_name}):t('Ask E2 on WhatsApp'));
+  applyStockRequestDisplay(car,{lang:language,contact:person,link:pageLink()});
   if(person?.photo_path){try{const result=await db.storage.from('staff-photos').createSignedUrl(person.photo_path,300);if(contact===person&&!result.error)$('contactPhoto').src=result.data.signedUrl}catch{}}
 }
 paintContact();
@@ -82,7 +87,10 @@ setInterval(()=>{if(!document.hidden)refreshContact()},60000);
 $('enquire').href=wa(intro+t('Please confirm availability, price and vehicle details.'));
 $('tradeLink').href=wa(intro+t('I would like to discuss a trade-in and the information you need for an inspection.'));
 $('loanLink').href=wa(intro+t('Please explain loan application documents and available terms. I understand approval is subject to assessment.'));
-let photos=[],photoIndex=0,photoRun=0;
+applyStockRequestDisplay(car,{lang:language,contact,link:pageLink()});
+const savedPhoto=publicImage?{url:publicImage}:null;
+if(staticSnapshot&&!savedPhoto)$('heroImage').removeAttribute('src');
+let photos=savedPhoto?[savedPhoto]:[],photoIndex=0,photoRun=0;
 function choosePhoto(index){
   if(!photos.length)return;
   photoIndex=(index+photos.length)%photos.length;const p=photos[photoIndex];
@@ -94,16 +102,17 @@ function choosePhoto(index){
 async function refreshPhotos(){
   const run=++photoRun;$('photoCount').textContent=vehicleCopy('photosLoading',language);
   let loaded;try{loaded=await withDeadline(photoURLs(car.photos));}catch{if(run===photoRun){$('photoCount').textContent=vehicleCopy('photosUnavailable',language);$('openPhoto').hidden=!photos.length;}return;}
-  if(run!==photoRun)return;photos=loaded.filter(p=>p.url);
+  if(run!==photoRun)return;photos=loaded.filter(p=>p.url);const albumUnavailable=!photos.length;if(albumUnavailable&&savedPhoto)photos=[savedPhoto];
   $('openPhoto').hidden=!photos.length;
-  $('photoCount').textContent=photos.length?t('{count} vehicle photos · Select a photo to take a closer look.',{count:photos.length}):vehicleCopy('photosUnavailable',language);
+  $('photoCount').textContent=!albumUnavailable?t('{count} vehicle photos · Select a photo to take a closer look.',{count:photos.length}):vehicleCopy('photosUnavailable',language);
   $('photoThumbs').innerHTML=photos.map((p,i)=>'<button aria-label="'+esc(t('View photo {count}',{count:i+1}))+'" aria-pressed="false"><img src="'+esc(p.url)+'" alt="" loading="lazy"></button>').join('');
   document.querySelectorAll('#photoThumbs button').forEach((b,i)=>b.onclick=()=>choosePhoto(i));choosePhoto(Math.min(photoIndex,photos.length-1));
 }
 $('prevPhoto').onclick=()=>choosePhoto(photoIndex-1);$('nextPhoto').onclick=()=>choosePhoto(photoIndex+1);
 $('reloadPhotos').onclick=()=>refreshPhotos().catch(error=>$('photoCount').textContent=t(friendlyError(error)));
 // Photo URL resolution runs separately from text and interactive controls.
-$('openPhoto').hidden=true;
+$('openPhoto').hidden=!photos.length;choosePhoto(0);
+$('heroImage').addEventListener('error',()=>{$('photoCount').textContent=vehicleCopy('photosUnavailable',language)});
 let refreshedAt=Date.now();
 window.addEventListener('focus',()=>{if(Date.now()-refreshedAt>240000){refreshedAt=Date.now();refreshPhotos().catch(error=>$('photoCount').textContent=t(friendlyError(error)))}});
 setInterval(()=>{if(!document.hidden){refreshedAt=Date.now();refreshPhotos().catch(error=>$('photoCount').textContent=t(friendlyError(error)))}},240000);

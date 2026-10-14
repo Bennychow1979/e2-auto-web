@@ -10,7 +10,11 @@
   }
   const link = document.createElement('link');
   link.setAttribute('rel', 'canonical');
-  link.setAttribute('href', 'https://e2auto.my/' + (/^\/(ms|zh)\//.exec(location.pathname || '')?.[1] ? /^\/(ms|zh)\//.exec(location.pathname)[1] + '/' : '') + 'car.html?id=' + id.toLowerCase());
+  const language = /^\/(ms|zh)\//.exec(location.pathname || '')?.[1];
+  let slug;
+  if(document.documentElement?.dataset?.vehiclePages === 'static-v1')try{slug=JSON.parse(document.getElementById('vehicleRoutes')?.textContent||'{}')[id.toLowerCase()]}catch{}
+  const path = slug ? 'cars/' + slug + '/' : 'car.html?id=' + id.toLowerCase();
+  link.setAttribute('href', 'https://e2auto.my/' + (language ? language + '/' : '') + path);
   document.head.append(link);
 })();
 </script><link rel="icon" href="assets/e2-logo.png"><link rel="stylesheet" href="car-detail-demo.css"><link rel="stylesheet" href="production.css"><link rel="stylesheet" href="referral.css?v=car-share-1"><script src="e2-config.js?v=partner-live-1"></script><script type="module" src="car.js?v=vehicle-content-20261012"></script><style>.galleryNav nav .navLogin,.nav nav .navLogin{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 10px;border:0;border-radius:0;background:transparent;color:#111214;white-space:nowrap}.navLogin svg{flex:0 0 16px}.navLogin:focus-visible{outline:2px solid #9c7b2e;outline-offset:3px}</style><style>.carSaveActions{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.carTopActions{flex-wrap:wrap;gap:12px}#saveCarStatus{font-size:.8rem;color:#656963}#saveCar[aria-pressed=true]{color:#8b6a20;border-color:#aa8626}</style><link rel="stylesheet" href="customer-nav.css?v=account-1"><script type="module" src="customer-nav.js?v=languages-1"></script><script type="module" src="intake-entry.js?v=languages-1"></script><link rel="stylesheet" href="advertising.css?v=1"><script type="module" src="advertising.js?v=languages-1"></script><link rel="stylesheet" href="partner-enquiry.css"><link rel="stylesheet" href="languages.css?v=1"><script type="module" src="language-switcher.js?v=1"></script></head><body id="top">

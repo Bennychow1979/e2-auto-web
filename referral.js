@@ -1,3 +1,4 @@
+import {vehiclePath,usesStaticVehiclePages,staticVehiclePattern} from './vehicle-routes.mjs';
 export const COMPANY_PHONE = '60122785126';
 export const validId = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value || '');
 export function vehicleShareURL(base, vehicleId, staffId) {
@@ -6,8 +7,10 @@ export function vehicleShareURL(base, vehicleId, staffId) {
 }
 export function vehiclePageURL(base, vehicleId, staffId) {
   if (!validId(vehicleId)) throw Error('Choose a vehicle.');
-  const url = new URL('car.html', base);
-  url.searchParams.set('id', vehicleId);
+  const baseURL=new URL(base),lang=/^\/(ms|zh)\//.exec(baseURL.pathname)?.[1]||'en';
+  const staticPage=usesStaticVehiclePages()||staticVehiclePattern.test(baseURL.pathname);
+  const url = new URL(staticPage?vehiclePath(vehicleId,lang):'car.html',base);
+  if(!staticPage)url.searchParams.set('id', vehicleId);
   if (validId(staffId)) url.searchParams.set('sales', staffId);
   return url.href;
 }
