@@ -186,4 +186,5 @@ export const translations = {
   'Prefer to talk it through?':['Lebih suka berbincang terus?','想直接沟通？'],
   'Call E2 Auto':['Hubungi E2 Auto','致电 E2 Auto'],
   'Browse E2 cars':['Lihat kereta E2','浏览 E2 车辆'],
+  'VIP Plates':['Plat VIP','VIP 车牌'],
 };

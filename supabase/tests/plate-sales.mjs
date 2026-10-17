@@ -109,6 +109,18 @@ test('BM and 华语 pages translate copy, enquiry messages, metadata and links',
   }
 });
 
+test('homepage and showroom link to the plate page in navigation and footer, in every language',async()=>{
+  for(const file of ['index.html','showroom.html']){
+    const source=await readFile(new URL('../../'+file,import.meta.url),'utf8');
+    assert.equal((source.match(/href="plates\.html"/g)||[]).length,2,file);
+    for(const lang of ['ms','zh']){
+      const html=localizedPage(source,file,lang);
+      assert(html.includes('<a class="navPlates" href="plates.html">'+t('VIP Plates',{},lang)+'</a>'));
+      assert(html.includes('<a href="plates.html">'+t('VIP number plates for sale',{},lang)+' ↗</a>'));
+    }
+  }
+});
+
 test('release sitemap lists the plate page in every language',()=>{
   const xml=renderSitemap([],{staticPages:true,slugs:{}});
   for(const path of ['plates.html','ms/plates.html','zh/plates.html'])assert(xml.includes('<loc>https://e2auto.my/'+path+'</loc>'));
