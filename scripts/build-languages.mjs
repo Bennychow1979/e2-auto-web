@@ -7,6 +7,10 @@ export const homeMetadata={
  ms:{title:'Kereta Terpakai KL & Selangor | E2 Auto Batu Caves',description:'Cari kereta terpakai untuk KL dan Selangor di E2 Auto. Lihat foto dan spesifikasi, anggarkan ansuran dan lawati bilik pameran Batu Caves.'},
  zh:{title:'吉隆坡／雪兰莪二手车 | E2 Auto Batu Caves',description:'在 E2 Auto 寻找吉隆坡与雪兰莪二手车。浏览实车照片和规格、估算每月供款，预约到访 Batu Caves 展厅。'}
 };
+export const platesMetadata={
+ ms:{title:'Nombor Plat Untuk Dijual | E2 Auto Batu Caves',description:'Nombor plat untuk dijual di E2 Auto Batu Caves, Selangor. Lihat setiap nombor dan harga mintanya, kemudian bertanya melalui WhatsApp.'},
+ zh:{title:'车牌号码出售 | E2 Auto Batu Caves',description:'E2 Auto Batu Caves（雪兰莪）车牌号码出售。查看每个号码及售价，并通过 WhatsApp 询价。'}
+};
 export function homeAlternates(){return [...LANGUAGES.map(lang=>'<link rel="alternate" hreflang="'+languageTags[lang]+'" href="'+origin+(lang==='en'?'':lang+'/')+'">'),'<link rel="alternate" hreflang="x-default" href="'+origin+'">'].join('');}
 export function localizedPage(source,file,lang){
  let html=source;
@@ -19,6 +23,11 @@ export function localizedPage(source,file,lang){
   if(hero)html=html.replace(/<h1 id="galleryHeading" class="e2ShinyTitle">[\s\S]*?<\/h1>/,
    '<h1 id="galleryHeading" class="e2ShinyTitle"><span class="e2ShinyLine">'+escapeHTML(hero[0])+'</span><span class="e2ShinyLine"><em>'+escapeHTML(hero[1])+'<span class="e2ShineWindow" aria-hidden="true"><span class="e2ShineInk">'+escapeHTML(hero[1])+'</span></span></em></span></h1>');
  }
+ // Plate enquiries carry the number and price; translate the whole message per language.
+ if(file==='plates.html')html=html.replace(/<a class="primary plateEnquiry" data-plate="([^"]*)" data-price="([^"]*)" href="[^"]*"/g,(_,plate,price)=>{
+  const text=t('Hi E2 Auto, I am interested in number plate {plate} ({price}).',{plate:plate.replace(/&amp;/g,'&'),price:price.replace(/&amp;/g,'&')},lang);
+  return '<a class="primary plateEnquiry" data-plate="'+plate+'" data-price="'+price+'" href="'+escapeHTML('https://wa.me/60122785126?text='+encodeURIComponent(text))+'"';
+ });
  // Localized pages live one directory below the existing assets and private workspaces.
  html=html.replace(/\b(href|src)="([^"#?][^"]*)"/g,(whole,attr,value)=>{
   if(value.startsWith('https://wa.me/')){
@@ -44,6 +53,13 @@ export function localizedPage(source,file,lang){
     .replace(/(<link rel="canonical" href=")[^"]*"/,'$1'+origin+lang+'/booking.html"')
     .replace(/(<meta property="og:url" content=")[^"]*"/,'$1'+origin+lang+'/booking.html"')
     .replace(/(<meta property="og:title" content=")[^"]*"/,'$1'+escapeHTML(t('Book a viewing | E2 Auto Batu Caves',{},lang))+'"');
+ }else if(file==='plates.html'){
+  const meta=platesMetadata[lang],url=origin+lang+'/plates.html';
+  html=html.replace(/<title>[^<]*<\/title>/,'<title>'+escapeHTML(meta.title)+'</title>')
+   .replace(/(<meta (?:name="description"|property="og:description") content=")[^"]*"/g,'$1'+escapeHTML(meta.description)+'"')
+   .replace(/(<meta property="og:title" content=")[^"]*"/,'$1'+escapeHTML(meta.title)+'"')
+   .replace(/(<link rel="canonical" href=")[^"]*"/,'$1'+url+'"')
+   .replace(/(<meta property="og:url" content=")[^"]*"/,'$1'+url+'"');
  }else if(file!=='car.html'){
   const meta=homeMetadata[lang];
   html=html.replace(/<title>[^<]*<\/title>/,'<title>'+escapeHTML(meta.title)+'</title>')
@@ -61,10 +77,10 @@ export async function buildLanguages(){
  const root=new URL('../',import.meta.url);
  for(const lang of ['ms','zh']){
   await mkdir(new URL(lang+'/',root),{recursive:true});
-  for(const file of ['index.html','showroom.html','car.html','booking.html']){
+  for(const file of ['index.html','showroom.html','car.html','booking.html','plates.html']){
    await writeFile(new URL(lang+'/'+file,root),localizedPage(await readFile(new URL(file,root),'utf8'),file,lang));
   }
  }
- console.log('Built BM and 华语 homepages, showroom aliases vehicle pages and booking pages.');
+ console.log('Built BM and 华语 homepages, showroom aliases vehicle pages, booking and number plate pages.');
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)await buildLanguages();

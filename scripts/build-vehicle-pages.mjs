@@ -139,6 +139,8 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
   let html=await readFile(join(root,file),'utf8');if(lang!=='en')html=localizedPage(html,file,lang);html=html.replace('<html ','<html data-vehicle-pages="static-v1" ').replace('<head>',()=>'<head>'+routeScript(publicSlugs));
   const destination=join(stage,lang==='en'?'':lang,file);await mkdir(dirname(destination),{recursive:true});await writeFile(destination,html);
  }
+ // The number plate page needs no vehicle routes; it only gets its language copies.
+ for(const lang of LANGUAGES)if(lang!=='en')await writeFile(join(stage,lang,'plates.html'),localizedPage(await readFile(join(root,'plates.html'),'utf8'),'plates.html',lang));
  for(const page of pages){const file=join(stage,page.file);await mkdir(dirname(file),{recursive:true});await writeFile(file,page.html);}
  for(const file of previous.files||[])if(!files.includes(file))await unlink(join(stage,file)).catch(e=>{if(e.code!=='ENOENT')throw e;});
  await writeFile(join(stage,'sitemap.xml'),renderSitemap(rows,{staticPages:true,slugs,includeSold}));

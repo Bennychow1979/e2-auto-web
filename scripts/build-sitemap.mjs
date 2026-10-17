@@ -13,7 +13,11 @@ export function renderSitemap(rows,{staticPages=false,slugs,includeSold=true}={}
   const entries=LANGUAGES.map(lang=>'  <url><loc>'+homes[lang]+'</loc>'+alternatives(homes)+'</url>');
   const bookings=Object.fromEntries(LANGUAGES.map(lang=>[lang,SITE_URL+(lang==='en'?'':lang+'/')+'booking.html']));
   entries.push(...LANGUAGES.map(lang=>'  <url><loc>'+bookings[lang]+'</loc>'+alternatives(bookings)+'</url>'));
-  if(staticPages)entries.push('  <url><loc>'+SITE_URL+'privacy/</loc></url>');
+  if(staticPages){
+    entries.push('  <url><loc>'+SITE_URL+'privacy/</loc></url>');
+    const plates=Object.fromEntries(LANGUAGES.map(lang=>[lang,SITE_URL+(lang==='en'?'':lang+'/')+'plates.html']));
+    entries.push(...LANGUAGES.map(lang=>'  <url><loc>'+plates[lang]+'</loc>'+alternatives(plates)+'</url>'));
+  }
   for (const row of rows) {
     if (row?.publication !== 'published' || !validVehicleId(row.id)) continue;
     if(!includeSold&&row.stock_status==='Sold')continue;

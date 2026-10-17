@@ -30,7 +30,12 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
   if(photoIDs.has(car.id))assert(html.includes(snapshot.publicImageOrigin+'/functions/v1/e2-drive-photos?public_vehicle='+car.id));
   assert(!html.includes('?ticket='));
  }
- const sitemap=await readFile(join(out,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,rows.length*3+7);
+ for(const lang of ['en','ms','zh']){
+  const file=(lang==='en'?'':lang+'/')+'plates.html',html=await readFile(join(out,file),'utf8');
+  assert(html.includes('<link rel="canonical" href="https://e2auto.my/'+file+'">'),'Number plate page canonical: '+file);
+  JSON.parse(/<script id="plateStructuredData" type="application\/ld\+json">([^<]*)<\/script>/.exec(html)[1]);
+ }
+ const sitemap=await readFile(join(out,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,rows.length*3+10);
  return {vehicles:rows.length,pages:manifest.files.length,preservedFiles:preserved.length,publicImageVersion:'v2',photoBytesDownloaded:0,artifactVerified:true};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
