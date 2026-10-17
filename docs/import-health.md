@@ -4,16 +4,17 @@ One shared report per Malaysia day in `public.import_health_reports`, written by
 `public.e2_import_health_check()` at 09:30 (after the 09:00 import). Two readers
 use the same row:
 
-- **Telegram (immediate alert):** sent only for a new problem, a recovery, or the
-  Monday all-clear. An unchanged fault is not repeated; a same-day re-check never
+- **Telegram (immediate alert):** sent only for a new problem, a recovery, new
+  drafts, or the Monday all-clear. An unchanged fault is not repeated; a same-day re-check never
   sends twice. Counts and times are excluded from the fault fingerprint.
 - **Claude follow-up (analysis and email record):** reads the same report later,
   investigates function logs for abnormal days and reports causes and next steps.
 
 Findings: import off, no daily run, still running, failed (with the importer's
 error), newly blocked folders, runs past their lease, duplicate stock plates.
-Metrics: drafts created (plates and prices), open blocked folders, vehicle,
-draft and published counts.
+Metrics: drafts created by the 09:00 run, every draft added since the previous
+check (09:00 import, portal import or manual entry; plate and price), open
+blocked folders, vehicle, draft and published counts. New drafts are listed once.
 
 ## Telegram setup (owner)
 

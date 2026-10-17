@@ -1,7 +1,7 @@
 begin;
 -- Daily import health: one shared report per Malaysia day, read by the owner's
 -- Telegram alert and by the Claude follow-up. Telegram is sent only for a new
--- problem, a recovery or the Monday all-clear, so one fault is reported once.
+-- problem, a recovery, new drafts or the Monday all-clear; one fault is reported once.
 -- The bot token and chat ID live in Vault as e2_telegram_bot_token and
 -- e2_telegram_chat_id; they are never stored in tables, logs or cron commands.
 create table public.import_health_reports (
@@ -11,7 +11,7 @@ create table public.import_health_reports (
   fingerprint text not null,
   findings jsonb not null default '[]'::jsonb,
   metrics jsonb not null default '{}'::jsonb,
-  notify_reason text check (notify_reason in ('new_issue','recovered','weekly_ok')),
+  notify_reason text check (notify_reason in ('new_issue','recovered','new_drafts','weekly_ok')),
   telegram_request bigint,
   telegram_error text
 );
@@ -35,15 +35,18 @@ begin
     update public.import_health_reports set telegram_error='Telegram is not configured in Vault.' where report_day=day;
     return;
   end if;
-  lines:=lines||((case report.notify_reason when 'new_issue' then '⚠️ E2 导入异常 · ' when 'recovered' then '✅ E2 导入已恢复正常 · ' else '✅ E2 导入本周正常 · ' end)||to_char(day,'DD/MM/YYYY'));
+  lines:=lines||((case report.notify_reason when 'new_issue' then '⚠️ E2 导入异常 · ' when 'recovered' then '✅ E2 导入已恢复正常 · ' when 'new_drafts' then '🆕 E2 新草稿 · ' else '✅ E2 导入本周正常 · ' end)||to_char(day,'DD/MM/YYYY'));
   for item in select value from jsonb_array_elements(report.findings) with ordinality t(value,n) where n<=10 loop
     lines:=lines||('• '||(item->>'message'));
   end loop;
   if jsonb_array_length(report.findings)>10 then lines:=lines||('…另有 '||(jsonb_array_length(report.findings)-10)||' 项'); end if;
   lines:=lines||('今日新建草稿 '||coalesce(report.metrics->>'created','0')||' · 待核对文件夹 '||coalesce(report.metrics->>'blocked_open','0')
     ||' · 车辆 '||coalesce(report.metrics->>'vehicles','0')||'（草稿 '||coalesce(report.metrics->>'drafts','0')||'）');
-  if jsonb_array_length(coalesce(report.metrics->'created_list','[]'::jsonb))>0 then
-    lines:=lines||('新建草稿: '||(select string_agg((c->>'plate')||' RM'||to_char((c->>'price')::numeric,'FM999,999,990'),', ') from (select c from jsonb_array_elements(report.metrics->'created_list') with ordinality t(c,n) where n<=10) x));
+  -- Every draft added since the previous check: 09:00 import, portal import or manual entry.
+  if jsonb_array_length(coalesce(report.metrics->'new_drafts','[]'::jsonb))>0 then
+    lines:=lines||('新草稿 '||jsonb_array_length(report.metrics->'new_drafts')||' 台: '||(select string_agg((c->>'plate')||coalesce(' RM'||to_char((c->>'price')::numeric,'FM999,999,990'),''),', ') from (select c from jsonb_array_elements(report.metrics->'new_drafts') with ordinality t(c,n) where n<=15) x)
+      ||case when jsonb_array_length(report.metrics->'new_drafts')>15 then ' …' else '' end);
+    lines:=lines||'发布前请核对燃油、规格、照片和封面。'::text;
   end if;
   lines:=lines||'门户: https://e2auto.my/portal.html'::text;
   body:=array_to_string(lines,E'\n');
@@ -88,6 +91,7 @@ begin
   if dupes is not null then
     v_findings:=v_findings||jsonb_build_object('severity','warning','code','duplicate_plates','message','库存有重复车牌: '||dupes);
   end if;
+  select * into previous from public.import_health_reports h where h.report_day<day order by h.report_day desc limit 1;
   v_metrics:=jsonb_build_object(
     'run_status',run.status,'batches',run.batches,
     'created',coalesce(jsonb_array_length(run.summary->'created'),0),
@@ -95,15 +99,17 @@ begin
     'blocked_open',(select count(*) from public.vehicle_import_jobs j where j.status='blocked'),
     'vehicles',(select count(*) from public.vehicles),
     'drafts',(select count(*) from public.vehicles v where v.publication='draft'),
-    'published',(select count(*) from public.vehicles v where v.publication='published'));
+    'published',(select count(*) from public.vehicles v where v.publication='published'),
+    'new_drafts',coalesce((select jsonb_agg(jsonb_build_object('plate',v.plate,'price',v.price) order by v.created_at) from public.vehicles v
+      where v.publication='draft' and v.created_at>coalesce(previous.checked_at,at-interval '24 hours') and v.created_at<=at),'[]'::jsonb));
   v_status:=case when v_findings @> '[{"severity":"failed"}]' then 'failed' when jsonb_array_length(v_findings)>0 then 'warning' else 'ok' end;
   -- Counts and times are excluded so an unchanged fault keeps the same fingerprint.
   v_fingerprint:=encode(sha256(convert_to(coalesce((select string_agg(f->>'code'||'|'||(f->>'message'),E'\n' order by f->>'code',f->>'message') from jsonb_array_elements(v_findings) f),''),'UTF8')),'hex');
-  select * into previous from public.import_health_reports h where h.report_day<day order by h.report_day desc limit 1;
   select * into existing from public.import_health_reports h where h.report_day=day;
   v_reason:=case
     when v_status<>'ok' and (previous.report_day is null or previous.fingerprint<>v_fingerprint) then 'new_issue'
     when v_status='ok' and previous.report_day is not null and previous.status<>'ok' then 'recovered'
+    when jsonb_array_length(v_metrics->'new_drafts')>0 then 'new_drafts'
     when v_status='ok' and extract(isodow from day)=1 then 'weekly_ok' end;
   -- A same-day re-check with an unchanged result never sends a second message.
   if existing.report_day is not null and existing.fingerprint=v_fingerprint then v_reason:=null; end if;
