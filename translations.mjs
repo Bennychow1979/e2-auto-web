@@ -173,4 +173,18 @@ export const translations = {
   'Unable to complete this action. Please try again.':['Tindakan tidak dapat diselesaikan. Sila cuba lagi.','无法完成操作，请重试。'],
   'The E2 inventory connection is being prepared. Please contact E2 for current availability.':['Sambungan stok E2 sedang disediakan. Hubungi E2 untuk stok terkini.','E2 库存连接正在准备中，请联系 E2 确认当前库存。'],
   'Language':['Bahasa','语言'],
+  // VIP number plates for sale page.
+  'VIP NUMBER PLATES FOR SALE':['NOMBOR PLAT VIP UNTUK DIJUAL','VIP 车牌号码出售'],
+  'VIP number plates for sale.':['Nombor plat VIP untuk dijual.','VIP 车牌号码出售。'],
+  'VIP number plates for sale':['Nombor plat VIP untuk dijual','VIP 车牌号码出售'],
+  'Asking prices from E2 Auto. Message us on WhatsApp to enquire about any number.':['Harga minta daripada E2 Auto. Hantar mesej WhatsApp kepada kami untuk bertanya tentang mana-mana nombor.','以下为 E2 Auto 的售价。如对任何号码有兴趣，欢迎通过 WhatsApp 询价。'],
+  'Prices are in Malaysian ringgit. E2 confirms availability and the transfer steps with you before any sale.':['Harga dalam ringgit Malaysia. E2 akan mengesahkan ketersediaan dan langkah pindah milik bersama anda sebelum sebarang jualan.','价格以马币计算。成交前，E2 会与您确认号码是否仍可出售及过户步骤。'],
+  'Asking price':['Harga minta','售价'],
+  'Enquire on WhatsApp':['Tanya melalui WhatsApp','WhatsApp 询价'],
+  'Hi E2 Auto, I am interested in number plate {plate} ({price}).':['Hai E2 Auto, saya berminat dengan nombor plat {plate} ({price}).','您好 E2 Auto，我对车牌号码 {plate}（{price}）有兴趣。'],
+  'No number plates are listed right now.':['Tiada nombor plat disenaraikan buat masa ini.','目前没有出售中的车牌号码。'],
+  'Prefer to talk it through?':['Lebih suka berbincang terus?','想直接沟通？'],
+  'Call E2 Auto':['Hubungi E2 Auto','致电 E2 Auto'],
+  'Browse E2 cars':['Lihat kereta E2','浏览 E2 车辆'],
+  'VIP Plates':['Plat VIP','VIP 车牌'],
 };

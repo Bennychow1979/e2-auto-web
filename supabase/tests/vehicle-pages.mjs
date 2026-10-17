@@ -83,7 +83,7 @@ test('same-model vehicles keep distinct pages and canonical identities without i
 });
 test('Sold sitemap policy is explicit; excluding Sold never removes its public page',async()=>{
  const out=join(await mkdtemp(join(tmpdir(),'e2-vehicle-sold-')),'site'),rows=[{...vehicleA,stock_status:'Sold'}, {...vehicleB,stock_status:'Reserved'}];
- const result=await buildVehicleSite(snapshot(rows),out,{includeSold:false});assert.equal(result.files.length,6);const xml=await readFile(join(out,'sitemap.xml'),'utf8');assert(!xml.includes(testSlugs[vehicleA.id]));assert(xml.includes(testSlugs[vehicleB.id]));assert.equal((xml.match(/<loc>/g)||[]).length,10);await access(join(out,vehiclePath(vehicleA.id),'index.html'));
+ const result=await buildVehicleSite(snapshot(rows),out,{includeSold:false});assert.equal(result.files.length,6);const xml=await readFile(join(out,'sitemap.xml'),'utf8');assert(!xml.includes(testSlugs[vehicleA.id]));assert(xml.includes(testSlugs[vehicleB.id]));assert.equal((xml.match(/<loc>/g)||[]).length,13,'Homes, bookings, privacy, number plates and one vehicle');await access(join(out,vehiclePath(vehicleA.id),'index.html'));
 });
 test('photo deadlines terminate waiting and pass completed values',async()=>{
  await assert.rejects(withDeadline(new Promise(()=>{}),20));assert.equal(await withDeadline(Promise.resolve('ready'),20),'ready');

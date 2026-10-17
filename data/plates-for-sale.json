@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "checked_at": "2026-10-17T09:27:48.211Z",
+  "source": {
+    "sheet": "OCT",
+    "block": "C122",
+    "sha256": "36d1d0c2b353d496b62c57955105433babc085c9323deb838ff8a5cee505cf49"
+  },
+  "plates": [
+    {
+      "plate": "ALN56",
+      "price": 18888
+    },
+    {
+      "plate": "BQU2828",
+      "price": 8888
+    },
+    {
+      "plate": "VBR1888",
+      "price": 8888
+    },
+    {
+      "plate": "VRH321",
+      "price": 1888
+    }
+  ]
+}
