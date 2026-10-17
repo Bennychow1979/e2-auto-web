@@ -100,7 +100,7 @@ test('BM and 华语 pages translate copy, enquiry messages, metadata and links',
   for(const lang of ['ms','zh']) {
     const html=localizedPage(source,'plates.html',lang);
     assert(html.includes('lang="'+(lang==='zh'?'zh-Hans':'ms')+'"'));
-    assert(html.includes(t('Number plates for sale.',{},lang))&&html.includes(t('Asking price',{},lang)));
+    assert(html.includes(t('VIP number plates for sale.',{},lang))&&html.includes(t('Asking price',{},lang)));
     assert(html.includes('<link rel="canonical" href="https://e2auto.my/'+lang+'/plates.html">'));
     assert(html.includes('href="../plates.css?v=1"')&&html.includes('aria-current="page">'+(lang==='ms'?'BM':'华语')+'</a>'));
     const link=/class="primary plateEnquiry"[^>]*href="([^"]*)"/.exec(html)[1].replace(/&amp;/g,'&');

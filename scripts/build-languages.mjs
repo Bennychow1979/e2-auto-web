@@ -8,8 +8,8 @@ export const homeMetadata={
  zh:{title:'吉隆坡／雪兰莪二手车 | E2 Auto Batu Caves',description:'在 E2 Auto 寻找吉隆坡与雪兰莪二手车。浏览实车照片和规格、估算每月供款，预约到访 Batu Caves 展厅。'}
 };
 export const platesMetadata={
- ms:{title:'Nombor Plat Untuk Dijual | E2 Auto Batu Caves',description:'Nombor plat untuk dijual di E2 Auto Batu Caves, Selangor. Lihat setiap nombor dan harga mintanya, kemudian bertanya melalui WhatsApp.'},
- zh:{title:'车牌号码出售 | E2 Auto Batu Caves',description:'E2 Auto Batu Caves（雪兰莪）车牌号码出售。查看每个号码及售价，并通过 WhatsApp 询价。'}
+ ms:{title:'Nombor Plat VIP Untuk Dijual | E2 Auto Batu Caves',description:'Nombor plat VIP untuk dijual di E2 Auto Batu Caves, Selangor. Lihat setiap nombor dan harga mintanya, kemudian bertanya melalui WhatsApp.'},
+ zh:{title:'VIP 车牌号码出售 | E2 Auto Batu Caves',description:'E2 Auto Batu Caves（雪兰莪）VIP 车牌号码出售。查看每个号码及售价，并通过 WhatsApp 询价。'}
 };
 export function homeAlternates(){return [...LANGUAGES.map(lang=>'<link rel="alternate" hreflang="'+languageTags[lang]+'" href="'+origin+(lang==='en'?'':lang+'/')+'">'),'<link rel="alternate" hreflang="x-default" href="'+origin+'">'].join('');}
 export function localizedPage(source,file,lang){

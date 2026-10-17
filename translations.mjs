@@ -173,10 +173,10 @@ export const translations = {
   'Unable to complete this action. Please try again.':['Tindakan tidak dapat diselesaikan. Sila cuba lagi.','无法完成操作，请重试。'],
   'The E2 inventory connection is being prepared. Please contact E2 for current availability.':['Sambungan stok E2 sedang disediakan. Hubungi E2 untuk stok terkini.','E2 库存连接正在准备中，请联系 E2 确认当前库存。'],
   'Language':['Bahasa','语言'],
-  // Number plates for sale page.
-  'NUMBER PLATES FOR SALE':['NOMBOR PLAT UNTUK DIJUAL','车牌号码出售'],
-  'Number plates for sale.':['Nombor plat untuk dijual.','车牌号码出售。'],
-  'Number plates for sale':['Nombor plat untuk dijual','车牌号码出售'],
+  // VIP number plates for sale page.
+  'VIP NUMBER PLATES FOR SALE':['NOMBOR PLAT VIP UNTUK DIJUAL','VIP 车牌号码出售'],
+  'VIP number plates for sale.':['Nombor plat VIP untuk dijual.','VIP 车牌号码出售。'],
+  'VIP number plates for sale':['Nombor plat VIP untuk dijual','VIP 车牌号码出售'],
   'Asking prices from E2 Auto. Message us on WhatsApp to enquire about any number.':['Harga minta daripada E2 Auto. Hantar mesej WhatsApp kepada kami untuk bertanya tentang mana-mana nombor.','以下为 E2 Auto 的售价。如对任何号码有兴趣，欢迎通过 WhatsApp 询价。'],
   'Prices are in Malaysian ringgit. E2 confirms availability and the transfer steps with you before any sale.':['Harga dalam ringgit Malaysia. E2 akan mengesahkan ketersediaan dan langkah pindah milik bersama anda sebelum sebarang jualan.','价格以马币计算。成交前，E2 会与您确认号码是否仍可出售及过户步骤。'],
   'Asking price':['Harga minta','售价'],

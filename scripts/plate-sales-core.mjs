@@ -89,7 +89,7 @@ export function plateItem(plate,price) {
     '<a class="primary plateEnquiry" data-plate="'+escapeHTML(plate)+'" data-price="'+escapeHTML(label)+'" href="'+escapeHTML(enquiryURL(ENQUIRY.replace('{plate}',plate).replace('{price}',label)))+'" target="_blank" rel="noopener noreferrer">Enquire on WhatsApp ↗</a></li>';
 }
 export function structuredData(plates) {
-  return JSON.stringify({'@context':'https://schema.org','@type':'ItemList',name:'Number plates for sale at E2 Auto',
+  return JSON.stringify({'@context':'https://schema.org','@type':'ItemList',name:'VIP number plates for sale at E2 Auto',
     itemListElement:plates.map((p,i)=>({'@type':'ListItem',position:i+1,item:{'@type':'Product',name:'Number plate '+p.plate,
       offers:{'@type':'Offer',price:String(p.price),priceCurrency:'MYR',url:'https://e2auto.my/plates.html',seller:{'@type':'AutoDealer',name:'E2 Auto'}}}}))}).replace(/</g,'\\u003c');
 }
