@@ -62,7 +62,10 @@ assert.equal((await (await post({action:'urls',ids:[photo]})).json()).photos.len
 assert.equal((await (await post({action:'urls',ids:[photo]},'Bearer forged-admin')).json()).photos.length,0);
 const staffURLs=await (await post({action:'urls',ids:[photo]},'Bearer valid-admin')).json();
 assert.equal(staffURLs.photos.length,1);
-assert.equal((await handler(new Request(staffURLs.photos[0].url))).status,200);
+const image=await handler(new Request(staffURLs.photos[0].url));
+assert.equal(image.status,200);assert.equal(image.headers.get('Cache-Control'),'private, max-age=3600','Photo bytes are cached by this browser only');
+assert.equal((await handler(new Request(staffURLs.photos[0].url+'x'))).headers.get('Cache-Control'),'no-store','Errors are never cached');
+assert.equal((await post({action:'urls',ids:[photo]},'Bearer valid-admin')).headers.get('Cache-Control'),'no-store','Link lists are never cached');
 rows.staff_memberships[0].active=false;
 assert.equal((await handler(new Request(staffURLs.photos[0].url))).status,403,'Revoked staff cannot reuse a draft ticket');
 rows.staff_memberships[0].active=true;

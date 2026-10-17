@@ -1,4 +1,4 @@
-import {drivePhotoRequest,esc} from './e2-data.js?v=drive-1';
+import {drivePhotoRequest,esc} from './e2-data.js?v=drive-2';
 
 export function setupDrivePhotoPicker({getCurrent,canEdit,setBusy,onSaved,request=drivePhotoRequest}) {
   const panel=document.getElementById('drivePhotoPanel');

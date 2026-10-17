@@ -5,7 +5,7 @@ import {PGlite} from '@electric-sql/pglite';
 import {folderId,matchesPlate,checkFolder,uniquePhotos,signTicket,readTicket,MAX_BYTES} from '../functions/e2-drive-photos/core.mjs';
 import {googleDrive} from '../functions/e2-drive-photos/google.mjs';
 import {validUploadPath} from '../functions/e2-drive-photos/public-image.mjs';
-import {resolvePhotoURLs} from '../../photo-urls.mjs';
+import {resolvePhotoURLs,photoURLCache} from '../../photo-urls.mjs';
 
 const folder='folder_1234567890',file='file_1234567890',root='root_1234567890';
 assert.equal(folderId('https://drive.google.com/drive/folders/'+folder+'?usp=sharing'),folder);
@@ -35,6 +35,27 @@ const resolved=await resolvePhotoURLs(album,{
 assert.deepEqual(resolved.map(p=>p.url),['upload-1','drive-1','upload-2']);
 const outage=await resolvePhotoURLs(album,{uploaded:async()=>[{signedUrl:'upload-1'},{signedUrl:'upload-2'}],drive:async()=>{throw Error('offline')}});
 assert.deepEqual(outage.map(p=>p.url),['upload-1',null,'upload-2']);
+
+// Links are reused for the page's life: one request per new photo, renewed only after a failure.
+{
+  let clock=0,issued=0,calls=[],offline=false;
+  const links=photoURLCache(async photos=>{calls.push(photos.map(p=>p.id));if(offline)throw Error('offline');return photos.map(p=>({...p,url:p.id+'#'+(++issued)}))},{now:()=>clock});
+  const a={id:'a',source:'drive',path:'a.drive'},b={id:'b',path:'b.webp'};
+  const [first,again]=await Promise.all([links.urls([a,b]),links.urls([b,a])]);
+  assert.deepEqual(first.map(p=>p.url),['a#1','b#2']);assert.deepEqual(again.map(p=>p.url),['b#2','a#1']);
+  assert.deepEqual(calls,[['a','b']],'Concurrent renders share one request');
+  clock=10*60000;assert.deepEqual((await links.urls([a])).map(p=>p.url),['a#1'],'Timed refreshes reuse the link');assert.equal(calls.length,1);
+  const [renewedA,renewedB]=await Promise.all([links.renew('a#1'),links.renew('a#1')]);
+  assert.equal(renewedA,'a#3');assert.equal(renewedB,'a#3');assert.equal(calls.length,2,'Simultaneous failures renew once');
+  assert.equal(links.current('a#1'),'a#3');assert.equal(await links.renew('a#1'),'a#3','An old link maps to the renewed one');
+  assert.equal(await links.renew('a#3'),null,'A link that fails again within a minute is not retried');
+  clock+=60001;assert.equal(await links.renew('a#3'),'a#4');
+  assert.equal(await links.renew('unknown'),null);assert.equal(links.current('unknown'),'unknown');
+  offline=true;assert.deepEqual((await links.urls([{id:'c'}])).map(p=>p.url),[null]);
+  offline=false;assert.deepEqual((await links.urls([{id:'c'}])).map(p=>p.url),['c#5'],'A failed lookup is retried on the next render');
+  links.clear();assert.equal((await links.urls([a]))[0].url,'a#6','Signing out forgets earlier links');
+  assert.equal(await links.renew('a#4'),null);
+}
 
 // Exercise the real Google adapter: token caching, size, MIME and checksum checks.
 const keys=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);

@@ -1,7 +1,7 @@
 import {t,localizedMileage as mileageText} from './i18n.mjs';
 import {showroomVehicleLinks,showroomContactAction} from './showroom-referral.mjs?v=contact-1';
 import {createShowroomFlow} from './showroom-flow.js?v=languages-1';
-import {esc,rm,getVehicles,photoURLs,friendlyError} from './e2-data.js?v=drive-1';
+import {esc,rm,getVehicles,photoURLs,friendlyError} from './e2-data.js?v=drive-2';
 import {emptyFilters,readPreferences,savePreferences,sortedCars} from './showroom-preferences.mjs';
 const $=id=>document.getElementById(id), blank=emptyFilters;
 let preferenceStorage;try{preferenceStorage=window.sessionStorage}catch{}
@@ -68,6 +68,6 @@ async function load(){
   }catch(error){$('publicState').hidden=false;$('publicState').textContent=t(friendlyError(error));$('resultCount').textContent=t('Inventory temporarily unavailable');$('emptyResults').hidden=true;document.querySelector('.galleryControls').hidden=true;}
 }
 await load();
-// Renew short-lived photo links and stock visibility when the visitor returns.
+// Refresh stock visibility; photo links are reused, so unchanged photos are not downloaded again.
 let loadedAt=Date.now();window.addEventListener('focus',()=>{if(Date.now()-loadedAt>60000){loadedAt=Date.now();load()}});
 setInterval(()=>{if(!document.hidden){loadedAt=Date.now();load()}},240000);

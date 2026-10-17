@@ -5,7 +5,7 @@ import {setupPartnerReferral} from './partner-referral.js?v=languages-1';
 import {viewVehicle} from './advertising.js?v=languages-1';
 import {publicContact,enquiryURL,vehicleShareURL,vehiclePageURL,withVehicleLink} from './referral.js?v=car-share-1';
 import {setupCarSharing} from './car-share.js?v=languages-1';
-import {db,check,esc,rm,getVehicles,photoURLs,coverURL,friendlyError} from './e2-data.js?v=drive-1';
+import {db,check,esc,rm,getVehicles,photoURLs,coverURL,currentPhotoURL,renewPhoto,friendlyError} from './e2-data.js?v=drive-2';
 import {validVehicleId,applyVehicleMetadata,excludeVehicleFromSearch} from './vehicle-seo.mjs?v=languages-1';
 import {vehicleIdentity,usesStaticVehiclePages} from './vehicle-routes.mjs';
 import {withDeadline} from './vehicle-loading.mjs';
@@ -94,7 +94,7 @@ let photos=savedPhoto?[savedPhoto]:[],photoIndex=0,photoRun=0;
 function choosePhoto(index){
   if(!photos.length)return;
   photoIndex=(index+photos.length)%photos.length;const p=photos[photoIndex];
-  for(const key of ['heroImage','largePhoto']){$(key).src=p.url;$(key).alt=[car.year,car.name,car.variant].filter(Boolean).join(' ')+' · '+t('photo {count}',{count:photoIndex+1})}
+  for(const key of ['heroImage','largePhoto']){$(key).src=currentPhotoURL(p.url);$(key).alt=[car.year,car.name,car.variant].filter(Boolean).join(' ')+' · '+t('photo {count}',{count:photoIndex+1})}
   $('photoPosition').textContent=(photoIndex+1)+' / '+photos.length;
   document.querySelector('.photoCaption>span').textContent=t('PHOTO {count} / {total}',{count:photoIndex+1,total:photos.length});
   document.querySelectorAll('#photoThumbs button').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===photoIndex)));
@@ -112,10 +112,8 @@ $('prevPhoto').onclick=()=>choosePhoto(photoIndex-1);$('nextPhoto').onclick=()=>
 $('reloadPhotos').onclick=()=>refreshPhotos().catch(error=>$('photoCount').textContent=t(friendlyError(error)));
 // Photo URL resolution runs separately from text and interactive controls.
 $('openPhoto').hidden=!photos.length;choosePhoto(0);
-$('heroImage').addEventListener('error',()=>{$('photoCount').textContent=vehicleCopy('photosUnavailable',language)});
-let refreshedAt=Date.now();
-window.addEventListener('focus',()=>{if(Date.now()-refreshedAt>240000){refreshedAt=Date.now();refreshPhotos().catch(error=>$('photoCount').textContent=t(friendlyError(error)))}});
-setInterval(()=>{if(!document.hidden){refreshedAt=Date.now();refreshPhotos().catch(error=>$('photoCount').textContent=t(friendlyError(error)))}},240000);
+$('heroImage').addEventListener('error',async event=>{if(!await renewPhoto(event.target))$('photoCount').textContent=vehicleCopy('photosUnavailable',language)});
+// Photo links are kept for the visit; one that expires before loading is renewed on error.
 if(!preview)setupPartnerReferral(car,()=>contact).catch(()=>{});
 $('carState').hidden=true;$('carMain').hidden=false;$('carDock').hidden=false;
 if(!preview)viewVehicle(car);

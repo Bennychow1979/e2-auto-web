@@ -1,5 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm';
-import {resolvePhotoURLs} from './photo-urls.mjs?v=drive-1';
+import {resolvePhotoURLs,photoURLCache} from './photo-urls.mjs?v=drive-2';
 
 export const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const rm = (n, digits = 0) => 'RM' + Number(n).toLocaleString('en-MY', {minimumFractionDigits:digits,maximumFractionDigits:digits});
@@ -31,12 +31,21 @@ export async function getVehicles({staff = false, id = null} = {}) {
   for (const row of rows) row.photos=(row.vehicle_photos || []).sort((a,b)=>a.position-b.position);
   return rows;
 }
-export async function photoURLs(photos) {
-  return resolvePhotoURLs(photos,{
-    uploaded:async items=>check(await db.storage.from('vehicle-photos').createSignedUrls(items.map(p=>p.path),300)),
-    drive:async ids=>(await drivePhotoRequest({action:'urls',ids})).photos
-  });
+const photoLinks=photoURLCache(photos=>resolvePhotoURLs(photos,{
+  uploaded:async items=>check(await db.storage.from('vehicle-photos').createSignedUrls(items.map(p=>p.path),300)),
+  drive:async ids=>(await drivePhotoRequest({action:'urls',ids})).photos
+}));
+export const photoURLs=photos=>photoLinks.urls(photos);
+export const currentPhotoURL=url=>photoLinks.current(url);
+// Give an image whose link failed (usually expired before it loaded) one renewed link.
+export async function renewPhoto(img) {
+  const failed=img.getAttribute('src'),fresh=failed&&await photoLinks.renew(failed);
+  if(!fresh)return false;
+  for(const node of document.querySelectorAll('img'))if(node.getAttribute('src')===failed)node.src=fresh;
+  return true;
 }
+if(typeof document!=='undefined')document.addEventListener('error',event=>{if(event.target instanceof HTMLImageElement)renewPhoto(event.target)},true);
+db?.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT')photoLinks.clear()});
 export async function drivePhotoRequest(body) {
   const result=await db.functions.invoke('e2-drive-photos',{body});
   if(result.error) {
