@@ -35,6 +35,19 @@ assert.equal(translateHTML('<script>const label="Finance";</script><p>Finance</p
 assert.equal(descriptionFor('FULL SERVICE RECORD','zh'),'完整保养记录');
 assert.equal(descriptionFor('New vehicle description','zh'),'New vehicle description','Never reuse stale translated inventory copy.');
 const root=new URL('../../',import.meta.url);
+// Keep every directions link pinned to the owner-provided E2 AUTO business listing.
+const directionsHref='https://www.google.com/maps/place/E2+AUTO+SDN+BHD/@3.2365766,101.6930779,17z/data=!3m1!4b1!4m6!3m5!1s0x31cc47352a9afe51:0xf04b4acb2b131b55!8m2!3d3.2365712!4d101.6956528!16s%2Fg%2F11z9vpq198?entry=ttu&amp;g_ep=EgoyMDI2MTAxMy4wIKXMDSoASAFQAw%3D%3D';
+for(const file of ['index.html','showroom.html','plates.html']){
+ const source=readFileSync(new URL(file,root),'utf8');
+ for(const lang of ['en','ms','zh']){
+  const html=lang==='en'?source:localizedPage(source,file,lang);
+  const links=[...html.matchAll(/<a\b[^>]*href="(https:\/\/www\.google\.com\/maps[^\"]*)"[^>]*>/g)];
+  assert.equal(links.length,1,`${lang}/${file}: one Google Maps directions link`);
+  assert.equal(links[0][1],directionsHref,`${lang}/${file}: exact E2 AUTO business target`);
+  assert.match(links[0][0],/target="_blank"/);
+  assert.match(links[0][0],/rel="noopener noreferrer"/);
+ }
+}
 for(const lang of ['ms','zh']){
  for(const file of ['index.html','showroom.html','car.html']){
   const html=localizedPage(readFileSync(new URL(file,root),'utf8'),file,lang);
