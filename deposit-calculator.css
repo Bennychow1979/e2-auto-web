@@ -1,0 +1,2 @@
+/* Deposit amount and slider share one estimate. */
+.depositEntry{display:flex;align-items:center;gap:8px;min-width:0}.depositCurrency{color:#6b6f76}#depositAmount{width:142px;max-width:34vw;min-height:44px;padding:10px 12px;border:1px solid #d7dacf;border-radius:12px;background:#fff;color:#111214;font-size:1rem}.depositEntry #depositPercent{min-width:42px;text-align:right;padding-left:0}.depositError{font-size:.75rem;line-height:1.5;color:#a32920;margin-top:8px}
