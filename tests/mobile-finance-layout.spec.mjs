@@ -43,7 +43,8 @@ for(const width of [320,375,390,430])for(const lang of ['en','ms','zh'])for(cons
   for(const [name,r]of Object.entries(b)){if(!r)continue;expect(r.x,name+' left edge').toBeGreaterThanOrEqual(b.panel.x-1);expect(r.right,name+' right edge').toBeLessThanOrEqual(b.panel.right+1);if(['monthly','application','price'].includes(name))expect(r.scrollWidth,name+' content width').toBeLessThanOrEqual(r.clientWidth+1);}
   const r=await page.locator('#monthlyLink').getAttribute('href');expect(r).toBe('#finance');expect(await page.locator('#applyLoan').getAttribute('href')).toContain('my-e2.html?car='+car.id);
   expect(await page.locator('#heroPrice').textContent()).toBe('RM'+price.toLocaleString('en-MY'));
-  const monthly=price*.9*(1+.035*5)/60;expect((await page.locator('#monthly').textContent()).replace(/\s/g,'')).toContain('RM'+monthly.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}));
+  await expect(page.locator('#tenure')).toHaveValue('9');
+  const monthly=price*.9*(1+.035*9)/108;expect((await page.locator('#monthly').textContent()).replace(/\s/g,'')).toContain('RM'+monthly.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}));
   const related=page.locator('.relatedCard').first();await expect(related).toBeVisible();
   const relatedSize=await related.evaluate(node=>({width:node.clientWidth,scroll:node.scrollWidth}));expect(relatedSize.scroll).toBeLessThanOrEqual(relatedSize.width+1);
   if(width===320&&textScale===2&&price===9999999){await page.setViewportSize({width,height:1800});await info.attach('layout.json',{body:JSON.stringify(b,null,2),contentType:'application/json'});await page.locator('.heroPrice').screenshot({path:info.outputPath('price-and-finance-'+lang+'-320-large.png')});await page.setViewportSize({width,height:900});}

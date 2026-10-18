@@ -60,6 +60,8 @@ export function localizedPage(source,file,lang){
    .replace(/(<meta property="og:title" content=")[^"]*"/,'$1'+escapeHTML(meta.title)+'"')
    .replace(/(<link rel="canonical" href=")[^"]*"/,'$1'+url+'"')
    .replace(/(<meta property="og:url" content=")[^"]*"/,'$1'+url+'"');
+ }else if(file==='sales-team.html'){
+  // Team has its own metadata, not the vehicle homepage title.
  }else if(file!=='car.html'){
   const meta=homeMetadata[lang];
   html=html.replace(/<title>[^<]*<\/title>/,'<title>'+escapeHTML(meta.title)+'</title>')
@@ -77,7 +79,7 @@ export async function buildLanguages(){
  const root=new URL('../',import.meta.url);
  for(const lang of ['ms','zh']){
   await mkdir(new URL(lang+'/',root),{recursive:true});
-  for(const file of ['index.html','showroom.html','car.html','booking.html','plates.html']){
+  for(const file of ['index.html','showroom.html','car.html','booking.html','plates.html','sales-team.html']){
    await writeFile(new URL(lang+'/'+file,root),localizedPage(await readFile(new URL(file,root),'utf8'),file,lang));
   }
  }
