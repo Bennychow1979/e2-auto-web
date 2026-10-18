@@ -188,3 +188,86 @@ export const translations = {
   'Browse E2 cars':['Lihat kereta E2','浏览 E2 车辆'],
   'VIP Plates':['Plat VIP','VIP 车牌'],
 };
+
+Object.assign(translations,{
+  "Factory Warranty": [
+    "Waranti Pengilang",
+    "原厂保修"
+  ],
+  "Warranty Included": [
+    "Waranti Disertakan",
+    "附送保修"
+  ],
+  "Warranty Available": [
+    "Waranti Pilihan",
+    "可加购保修"
+  ],
+  "Full Service Record": [
+    "Rekod Servis Lengkap",
+    "完整保养记录"
+  ],
+  "Warranty & service records": [
+    "Waranti & rekod servis",
+    "保修与保养记录"
+  ],
+  "Third-party warranty": [
+    "Waranti pihak ketiga",
+    "第三方保修"
+  ],
+  "Expiry date": [
+    "Tarikh tamat",
+    "到期日期"
+  ],
+  "Odometer limit": [
+    "Had bacaan odometer",
+    "里程表上限"
+  ],
+  "Unlimited mileage": [
+    "Perbatuan tanpa had",
+    "不限里程"
+  ],
+  "Provider": [
+    "Penyedia",
+    "供应商"
+  ],
+  "Package": [
+    "Pakej",
+    "配套"
+  ],
+  "Duration": [
+    "Tempoh",
+    "保障期限"
+  ],
+  "{count} months": [
+    "{count} bulan",
+    "{count} 个月"
+  ],
+  "Package mileage allowance": [
+    "Had perbatuan pakej",
+    "配套保障里程"
+  ],
+  "Package price": [
+    "Harga pakej",
+    "配套价格"
+  ],
+  "Included in vehicle price": [
+    "Termasuk dalam harga kenderaan",
+    "已包含在车价内"
+  ],
+  "Ask for a quote": [
+    "Minta sebut harga",
+    "询问报价"
+  ],
+  "Ends on the expiry date or at the odometer limit, whichever comes first. Subject to manufacturer terms and transfer eligibility.": [
+    "Tamat pada tarikh luput atau had odometer, yang mana terdahulu. Tertakluk pada syarat pengilang dan kelayakan pindah milik.",
+    "以到期日期或里程上限先到者为准，并须符合厂家条款及保修转让资格。"
+  ],
+  "Package availability or inclusion does not mean cover is active. Start date, eligibility, exclusions and claim limits are subject to the provider’s policy.": [
+    "Pakej tersedia atau disertakan tidak bermaksud perlindungan telah aktif. Tarikh mula, kelayakan, pengecualian dan had tuntutan tertakluk pada polisi penyedia.",
+    "可加购或附送配套不代表保单已生效。生效日期、资格、除外项目及索赔上限以供应商保单为准。"
+  ],
+  "Complete maintenance records checked by E2. This does not mean every service was performed by an authorised service centre.": [
+    "Rekod penyelenggaraan lengkap telah disemak oleh E2. Ini tidak bermaksud semua servis dilakukan di pusat servis yang sah.",
+    "E2 已核实完整保养记录，不代表全程均在原厂授权服务中心保养。"
+  ]
+});

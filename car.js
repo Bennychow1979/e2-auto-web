@@ -1,3 +1,4 @@
+import {benefitsHTML,benefitDetailsHTML} from './vehicle-benefits.mjs?v=1';
 import {t,language,localizedURL,localizedMileage as mileageText} from './i18n.mjs';
 import {descriptionFor} from './vehicle-translations.mjs';
 import {loadVehicleDescription} from './vehicle-description.mjs?v=auto-translation-1';
@@ -27,7 +28,12 @@ if(preview) {
 }
 const rows=await getVehicles({id,staff:preview});
 if(!rows.length||rows[0].id.toLowerCase()!==id.toLowerCase()||(!preview&&rows[0].publication!=='published')) { unavailable=true;excludeVehicleFromSearch(); throw new Error('This vehicle is not currently published or is no longer accessible. Please ask E2 about availability.'); }
-const car=rows[0]; car.name=car.brand+' '+car.model;car.priceValue=Number(car.price);
+function paintBenefits(record){
+  $('heroBenefits').innerHTML=benefitsHTML(record);
+  $('benefitDetails').innerHTML=benefitDetailsHTML(record);
+  $('benefitDetails').hidden=!$('benefitDetails').innerHTML;
+}
+const car=rows[0];paintBenefits(car); car.name=car.brand+' '+car.model;car.priceValue=Number(car.price);
 const imageOrigin=document.documentElement.dataset.publicImageOrigin;
 const publicImage=staticSnapshot&&imageOrigin&&car.photos?.length?publicVehicleImageURL(imageOrigin,car.id):null;
 applyVehicleMetadata(car,{preview,lang:language,staticPages:usesStaticVehiclePages(),imageURL:publicImage});
@@ -123,8 +129,9 @@ $('heroImage').addEventListener('error',async event=>{if(!await renewPhoto(event
 // it) and the check reaches the database: an offline page keeps what it shows until a
 // check succeeds.
 async function recheckVehicle(){
-  const latest=await getVehicles({id,staff:preview}).catch(()=>null);if(!latest)return;
+  const latest=await getVehicles({id,staff:preview}).catch(()=>null);if(!latest){paintBenefits({});return;}
   const live=latest[0]?.id.toLowerCase()===id.toLowerCase()&&(preview||latest[0].publication==='published');
+  paintBenefits(live?latest[0]:{});
   const next=live?latest[0].photos:[];
   if(next.map(p=>p.id).join()===car.photos.map(p=>p.id).join())return;
   car.photos=next;
@@ -166,7 +173,7 @@ document.querySelectorAll('[data-requires-live]').forEach(node=>node.disabled=fa
 refreshPhotos();
 (async()=>{
 const related=(await getVehicles().catch(()=>[])).filter(c=>c.id!==car.id).slice(0,3);
-$('relatedCars').innerHTML=related.map(c=>'<a class="relatedCard" href="'+esc(vehiclePageURL(location.href,c.id,contact?.user_id))+'"><div class="noPhoto" data-related="'+c.id+'">'+esc(t('Loading photo…'))+'</div><small>'+c.year+' · '+esc(t(c.stock_status))+'</small><h3>'+esc(c.brand+' '+c.model)+'</h3><p>'+rm(c.price)+' <span aria-hidden="true">↗</span></p></a>').join('');
+$('relatedCars').innerHTML=related.map(c=>'<a class="relatedCard" href="'+esc(vehiclePageURL(location.href,c.id,contact?.user_id))+'"><div class="noPhoto" data-related="'+c.id+'">'+esc(t('Loading photo…'))+'</div><small>'+c.year+' · '+esc(t(c.stock_status))+'</small><h3>'+esc(c.brand+' '+c.model)+'</h3>'+benefitsHTML(c)+'<p>'+rm(c.price)+' <span aria-hidden="true">↗</span></p></a>').join('');
 document.querySelector('.moreCars').hidden=!related.length;
 for(const c of related)coverURL(c).then(url=>{const node=document.querySelector('[data-related="'+c.id+'"]');if(url&&node)node.innerHTML='<img src="'+esc(url)+'" alt="'+esc(c.brand+' '+c.model)+'" loading="lazy">'}).catch(()=>{});
 })().catch(()=>{});

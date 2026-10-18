@@ -5,8 +5,10 @@ import {setupDrivePhotoPicker} from './drive-photo-picker.mjs?v=drive-1';
 import {setupYearSpecSelect} from './year-spec-select.mjs?v=verified-spec-batch-2';
 import {setupYearReference} from './model-year-reference.mjs?v=verified-spec-batch-2';
 import {db,configured,check,esc,rm,mileageText,getVehicles,photoURLs,retryPhotos,compressPhoto,friendlyError} from './e2-data.js?v=drive-2';
+import {setupBenefitsEditor} from './vehicle-benefits-editor.mjs?v=1';
 const MAX_PHOTOS=30;
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');
+const benefitsEditor=setupBenefitsEditor(form);
 const canManageStock=()=>['super_admin','admin'].includes(role);
 const roleLabels={super_admin:'Super Admin',admin:'Admin',office_admin:'Office Admin',sales:'Salesman · view only',account:'Account · public stock only',customer:'Customer · public stock only'};
 let cars=[], current=null, role=null, busy=false, dirty=false, recovery=false, authEpoch=0;
@@ -98,6 +100,7 @@ function populate(car){
   for(const name of ['plate','year','engine_litres','transmission','fuel_type','mileage','price','body_type','stock_status','description'])if(car)form.elements.namedItem(name).value=car[name]??'';
   if(car)form.elements.namedItem('engine_litres').value=Number(car.engine_litres).toFixed(1);
   form.elements.namedItem('mileage_confirmed').checked=car?.mileage_confirmed||false;
+  benefitsEditor.populate(car);
   $('editorTitle').textContent=car?car.brand+' '+car.model:'Add vehicle';$('editorStatus').textContent=car?.publication==='published'?'PUBLISHED ON WEBSITE':'DRAFT · PRIVATE';
   $('saveHint').textContent=car?.publication==='published'?'Move this vehicle to draft to edit its details or photos.':car?'Details saved. You can add photos and preview this draft.':'Save vehicle details before adding photos.';
   $('publishVehicle').textContent=car?.publication==='published'?'Move to draft':'Publish to website';
@@ -114,7 +117,8 @@ form.onsubmit=async event=>{
   const mileage=value('mileage')===''?null:Number(value('mileage'));
   const confirmed=form.elements.namedItem('mileage_confirmed').checked;
   if(confirmed&&mileage===null){editorError(new Error('Enter the mileage before marking it confirmed.'));return}
-  const data={plate:value('plate').toUpperCase().replace(/\s/g,''),brand:identity('brand'),model:identity('model'),variant:identity('variant'),year:Number(value('year')),engine_litres:Number(identity('engine_litres')),transmission:value('transmission'),fuel_type:value('fuel_type'),mileage,mileage_confirmed:confirmed,price:Number(value('price')),body_type:value('body_type'),stock_status:value('stock_status'),description:value('description').trim()};
+  let benefitData;try{benefitData=benefitsEditor.read()}catch(error){editorError(error);return}
+  const data={...benefitData,plate:value('plate').toUpperCase().replace(/\s/g,''),brand:identity('brand'),model:identity('model'),variant:identity('variant'),year:Number(value('year')),engine_litres:Number(identity('engine_litres')),transmission:value('transmission'),fuel_type:value('fuel_type'),mileage,mileage_confirmed:confirmed,price:Number(value('price')),body_type:value('body_type'),stock_status:value('stock_status'),description:value('description').trim()};
   setBusy(true);message('editorMessage','Saving vehicle details…');
   try{
     const saved=check(await (current?db.from('vehicles').update(data).eq('id',current.id).eq('updated_at',current.updated_at):db.from('vehicles').insert({...data,id:crypto.randomUUID()})).select().maybeSingle());

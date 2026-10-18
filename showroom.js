@@ -1,3 +1,4 @@
+import {benefitsHTML,malaysiaDay} from './vehicle-benefits.mjs?v=1';
 import {t,localizedMileage as mileageText} from './i18n.mjs';
 import {showroomVehicleLinks,showroomContactAction} from './showroom-referral.mjs?v=contact-1';
 import {createShowroomFlow} from './showroom-flow.js?v=languages-1';
@@ -32,7 +33,7 @@ function chipText(k,v){return ({q:t('Search: {value}',{value:v}),budget:t('Under
 function render(){
   const found=sortedCars(cars.filter(c=>matches(c,state)),sort);
   savePreferences(preferenceStorage,state,sort);
-  $('filterResults').innerHTML=found.map(c=>'<a class="sampleRow" href="'+esc(vehicleHref(c.id))+'">'+(c.cover?'<img src="'+esc(c.cover)+'" alt="'+esc(c.brand+' '+c.model)+'" loading="lazy">':'<span class="noPhoto">'+esc(t('Photo unavailable'))+'</span>')+'<span><span class="sampleLabel">'+esc(c.plate+' · '+t(c.stock_status))+'</span><h3>'+esc(c.brand+' '+c.model)+'</h3><span class="sampleMeta">'+esc([c.year,c.variant,t(c.transmission)].filter(Boolean).join(' · '))+'<br>'+esc(mileageText(c))+'</span></span><span class="rowMoney">'+rm(c.price)+'<small>'+esc(t('Selling price'))+'</small></span><span class="rowGo" aria-hidden="true">↗</span></a>').join('');
+  $('filterResults').innerHTML=found.map(c=>'<a class="sampleRow" href="'+esc(vehicleHref(c.id))+'">'+(c.cover?'<img src="'+esc(c.cover)+'" alt="'+esc(c.brand+' '+c.model)+'" loading="lazy">':'<span class="noPhoto">'+esc(t('Photo unavailable'))+'</span>')+'<span><span class="sampleLabel">'+esc(c.plate+' · '+t(c.stock_status))+'</span><h3>'+esc(c.brand+' '+c.model)+'</h3><span class="sampleMeta">'+esc([c.year,c.variant,t(c.transmission)].filter(Boolean).join(' · '))+'</span>'+benefitsHTML(c)+'<span class="sampleMeta">'+esc(mileageText(c))+'</span></span><span class="rowMoney">'+rm(c.price)+'<small>'+esc(t('Selling price'))+'</small></span><span class="rowGo" aria-hidden="true">↗</span></a>').join('');
   $('resultCount').textContent=t('{count} cars to explore',{count:found.length});$('emptyResults').hidden=found.length>0||!cars.length;
   $('activeFilters').replaceChildren();
   Object.entries(state).filter(([,v])=>v).forEach(([key,val])=>{const b=document.createElement('button');b.type='button';b.className='filterChip';b.textContent=chipText(key,val)+' ×';b.setAttribute('aria-label',t('Remove {value}',{value:chipText(key,val)}));b.onclick=()=>{state[key]='';clearDependents(state,key);sync();render()};$('activeFilters').append(b)});
@@ -61,17 +62,17 @@ const galleryFlow=createShowroomFlow();
 let shownSignature='';
 async function load(){
   try{
-    const rows=await getVehicles(),signature=JSON.stringify(rows);
+    const rows=await getVehicles(),signature=malaysiaDay()+JSON.stringify(rows);
     if(signature===shownSignature)return;
     cars=rows;
     const covers=cars.map(c=>c.photos[0]).filter(Boolean), signed=covers.length?await photoURLs(covers):[], byPath=new Map(signed.map(p=>[p.path,p.url]));
     cars.forEach(c=>c.cover=byPath.get(c.photos[0]?.path));
     document.querySelector('.galleryControls').hidden=false;
     $('publicState').hidden=!!cars.length;$('publicState').textContent=cars.length?'':t('New vehicles are being prepared. Contact E2 for current availability.');
-    $('galleryTrack').innerHTML=cars.slice(0,8).map((c,i)=>'<a class="galleryCard" href="'+esc(vehicleHref(c.id))+'"><span class="cardTop"><span>'+String(i+1).padStart(2,'0')+' / '+esc(c.brand)+'</span><span class="sampleTag">'+esc(t(c.stock_status))+'</span></span><span class="photo">'+(c.cover?'<img src="'+esc(c.cover)+'" alt="'+esc(c.brand+' '+c.model)+'" '+(i?'loading="lazy"':'fetchpriority="high"')+'>':'<span class="noPhoto">'+esc(t('Photo unavailable'))+'</span>')+'</span><span class="cardCaption"><span><span class="cardYear">'+esc([c.year,c.variant].filter(Boolean).join(' · '))+'</span><strong>'+esc(c.brand+' '+c.model)+'</strong></span><span class="samplePrice">'+rm(c.price)+'<small>'+esc(t('View this car ↗'))+'</small></span></span></a>').join('');
+    $('galleryTrack').innerHTML=cars.slice(0,8).map((c,i)=>'<a class="galleryCard" href="'+esc(vehicleHref(c.id))+'"><span class="cardTop"><span>'+String(i+1).padStart(2,'0')+' / '+esc(c.brand)+'</span><span class="sampleTag">'+esc(t(c.stock_status))+'</span></span><span class="photo">'+(c.cover?'<img src="'+esc(c.cover)+'" alt="'+esc(c.brand+' '+c.model)+'" '+(i?'loading="lazy"':'fetchpriority="high"')+'>':'<span class="noPhoto">'+esc(t('Photo unavailable'))+'</span>')+'</span><span class="cardCaption"><span><span class="cardYear">'+esc([c.year,c.variant].filter(Boolean).join(' · '))+'</span><strong>'+esc(c.brand+' '+c.model)+'</strong>'+benefitsHTML(c)+'</span><span class="samplePrice">'+rm(c.price)+'<small>'+esc(t('View this car ↗'))+'</small></span></span></a>').join('');
     galleryFlow.refresh();
     options('brandFilter',cars.map(c=>c.brand),'All brands');options('bodyFilter',cars.map(c=>c.body_type),'All types');options('yearFrom',cars.map(c=>c.year),'Any year');options('yearTo',cars.map(c=>c.year),'Any year');options('transmissionFilter',cars.map(c=>c.transmission),'Any transmission');options('engineFilter',cars.map(c=>c.engine_litres===null||c.engine_litres===undefined?'':Number(c.engine_litres).toFixed(1)),'Any engine size');draft={...state};loadDraft();sync();render();shownSignature=cars.every(c=>!c.photos.length||c.cover)?signature:'';
-  }catch(error){shownSignature='';$('publicState').hidden=false;$('publicState').textContent=t(friendlyError(error));$('resultCount').textContent=t('Inventory temporarily unavailable');$('emptyResults').hidden=true;document.querySelector('.galleryControls').hidden=true;}
+  }catch(error){shownSignature='';document.querySelectorAll('.vehicleBenefits').forEach(node=>node.remove());$('publicState').hidden=false;$('publicState').textContent=t(friendlyError(error));$('resultCount').textContent=t('Inventory temporarily unavailable');$('emptyResults').hidden=true;document.querySelector('.galleryControls').hidden=true;}
 }
 await load();
 // Refresh stock visibility; photo links are reused, so unchanged photos are not downloaded again.
