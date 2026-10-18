@@ -12,6 +12,7 @@
     "test:browser": "npm run build:pdf-preview && playwright test && npm run test:vehicle-browser",
     "test:vehicle-pages": "node --test supabase/tests/vehicle-pages.mjs supabase/tests/vehicle-public-images.mjs supabase/tests/public-vehicle-images.mjs supabase/tests/vehicle-registry.mjs supabase/tests/inventory-refresh-policy.mjs",
     "test:vehicle-browser": "playwright test -c playwright.vehicle.config.mjs",
+    "test:photo-browser": "node tests/photo-recovery-browser.mjs",
     "build:vehicle-pages": "node scripts/build-car-pages.mjs",
     "test:pages-release": "npm run build:pdf-preview && node --test supabase/tests/pages-artifact.mjs"
   },

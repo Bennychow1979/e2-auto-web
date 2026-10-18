@@ -1,5 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm';
-import {resolvePhotoURLs} from './photo-urls.mjs?v=drive-1';
+import {resolvePhotoURLs,photoURLCache,watchPhotoErrors} from './photo-urls.mjs?v=drive-3';
 
 export const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const rm = (n, digits = 0) => 'RM' + Number(n).toLocaleString('en-MY', {minimumFractionDigits:digits,maximumFractionDigits:digits});
@@ -31,12 +31,18 @@ export async function getVehicles({staff = false, id = null} = {}) {
   for (const row of rows) row.photos=(row.vehicle_photos || []).sort((a,b)=>a.position-b.position);
   return rows;
 }
-export async function photoURLs(photos) {
-  return resolvePhotoURLs(photos,{
-    uploaded:async items=>check(await db.storage.from('vehicle-photos').createSignedUrls(items.map(p=>p.path),300)),
-    drive:async ids=>(await drivePhotoRequest({action:'urls',ids})).photos
-  });
-}
+const photoLinks=photoURLCache(photos=>resolvePhotoURLs(photos,{
+  uploaded:async items=>check(await db.storage.from('vehicle-photos').createSignedUrls(items.map(p=>p.path),300)),
+  drive:async ids=>(await drivePhotoRequest({action:'urls',ids})).photos
+}));
+export const photoURLs=photos=>photoLinks.urls(photos);
+export const currentPhotoURL=url=>photoLinks.current(url);
+// Failed photos get renewed links on a limited schedule, when the connection
+// returns, or on a manual refresh (retryPhotos).
+const photoRecovery=typeof document!=='undefined'?watchPhotoErrors(photoLinks):null;
+export const renewPhoto=img=>photoRecovery?photoRecovery.recover(img):Promise.resolve(false);
+export const retryPhotos=()=>photoRecovery?photoRecovery.retryAll():Promise.resolve(false);
+db?.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT')photoLinks.clear()});
 export async function drivePhotoRequest(body) {
   const result=await db.functions.invoke('e2-drive-photos',{body});
   if(result.error) {

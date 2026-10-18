@@ -5,7 +5,7 @@ import {PGlite} from '@electric-sql/pglite';
 import {folderId,matchesPlate,checkFolder,uniquePhotos,signTicket,readTicket,MAX_BYTES} from '../functions/e2-drive-photos/core.mjs';
 import {googleDrive} from '../functions/e2-drive-photos/google.mjs';
 import {validUploadPath} from '../functions/e2-drive-photos/public-image.mjs';
-import {resolvePhotoURLs} from '../../photo-urls.mjs';
+import {resolvePhotoURLs,photoURLCache} from '../../photo-urls.mjs';
 
 const folder='folder_1234567890',file='file_1234567890',root='root_1234567890';
 assert.equal(folderId('https://drive.google.com/drive/folders/'+folder+'?usp=sharing'),folder);
@@ -35,6 +35,52 @@ const resolved=await resolvePhotoURLs(album,{
 assert.deepEqual(resolved.map(p=>p.url),['upload-1','drive-1','upload-2']);
 const outage=await resolvePhotoURLs(album,{uploaded:async()=>[{signedUrl:'upload-1'},{signedUrl:'upload-2'}],drive:async()=>{throw Error('offline')}});
 assert.deepEqual(outage.map(p=>p.url),['upload-1',null,'upload-2']);
+
+// Links are reused for the page's life: one request per new photo, renewed only after a failure.
+{
+  let clock=0,issued=0,calls=[],offline=false;
+  const links=photoURLCache(async photos=>{calls.push(photos.map(p=>p.id));if(offline)throw Error('offline');return photos.map(p=>({...p,url:p.id+'#'+(++issued)}))},{now:()=>clock});
+  const a={id:'a',source:'drive',path:'a.drive'},b={id:'b',path:'b.webp'};
+  const [first,again]=await Promise.all([links.urls([a,b]),links.urls([b,a])]);
+  assert.deepEqual(first.map(p=>p.url),['a#1','b#2']);assert.deepEqual(again.map(p=>p.url),['b#2','a#1']);
+  assert.deepEqual(calls,[['a','b']],'Concurrent renders share one request');
+  clock=10*60000;assert.deepEqual((await links.urls([a])).map(p=>p.url),['a#1'],'Timed refreshes reuse the link');assert.equal(calls.length,1);
+  const [renewedA,renewedB]=await Promise.all([links.renew('a#1'),links.renew('a#1')]);
+  assert.equal(renewedA,'a#3');assert.equal(renewedB,'a#3');assert.equal(calls.length,2,'Simultaneous failures renew once');
+  assert.equal(links.current('a#1'),'a#3');assert.equal(await links.renew('a#1'),'a#3','An old link maps to the renewed one');
+  // A renewed link that fails again waits 5 s, then 30 s; after three tries only a forced retry runs.
+  assert.equal(links.retryIn('a#3'),5000);assert.equal(await links.renew('a#3'),null,'No retry before the delay');
+  clock+=5000;offline=true;assert.equal(await links.renew('a#3'),null,'Offline: the try fails');assert.equal(links.retryIn('a#3'),30000);
+  clock+=30000;assert.equal(await links.renew('a#3'),null);assert.equal(links.retryIn('a#3'),null,'Three tries used');
+  clock+=600000;assert.equal(await links.renew('a#3'),null,'No automatic try after three');assert.equal(calls.length,4);
+  offline=false;assert.equal(await links.renew('a#3',{force:true}),'a#4','Back online or a manual refresh forces a renewal');
+  links.loaded('a#4');assert.equal(links.retryIn('a#4'),0,'A photo that loads resets its tries');
+  assert.equal(links.known('a#1'),true);assert.equal(links.known('unknown'),false);
+  assert.equal(await links.renew('unknown'),null);assert.equal(links.current('unknown'),'unknown');
+  offline=true;assert.deepEqual((await links.urls([{id:'c'}])).map(p=>p.url),[null]);
+  offline=false;assert.deepEqual((await links.urls([{id:'c'}])).map(p=>p.url),['c#5'],'A failed lookup is retried on the next render');
+  links.clear();assert.equal((await links.urls([a]))[0].url,'a#6','Signing out forgets earlier links');
+  // A renewal that never answers ends as a failed try after 8 s; a forced retry starts a
+  // fresh request at once, and the stuck request's late answer never replaces it.
+  {
+    const timers=[],late=[];let mode='ok',n=0;
+    const hung=photoURLCache(ps=>{n++;const answer=ps.map(p=>({...p,url:p.id+'@'+n}));return mode==='ok'?Promise.resolve(answer):new Promise(r=>late.push(()=>r(answer)))},{now:()=>clock,wait:fn=>timers.push(fn)});
+    const [x]=await hung.urls([{id:'x'}]);assert.equal(x.url,'x@1');
+    mode='hang';const scheduled=hung.renew('x@1');
+    timers.splice(0).forEach(fire=>fire());assert.equal(await scheduled,null,'A renewal that never answers ends as a failed try');
+    assert.equal(hung.retryIn('x@1'),5000,'and the next automatic try is scheduled');
+    const first=hung.renew('x@1',{force:true});mode='ok';
+    assert.equal(await hung.renew('x@1',{force:true}),'x@4','A manual refresh does not wait on a stuck renewal');
+    late.forEach(answer=>answer());timers.splice(0).forEach(fire=>fire());assert.equal(await first,null);
+    assert.equal(hung.current('x@1'),'x@4','Late answers never replace the newer link');
+  }
+  // A stuck request does not hold later callers past 8 s; its late answer is ignored.
+  let release;const stuck=photoURLCache(ps=>release?Promise.resolve(ps.map(p=>({...p,url:'fresh'}))):new Promise(r=>{release=()=>r(ps.map(p=>({...p,url:'late'})))}),{now:()=>clock});
+  const held=stuck.urls([a]);clock+=8000;
+  assert.equal((await stuck.urls([a]))[0].url,'fresh','A retry after 8 s starts a new request');
+  release();assert.equal((await held)[0].url,'fresh');assert.equal((await stuck.urls([a]))[0].url,'fresh','The stuck answer never replaces the newer link');
+  assert.equal(await links.renew('a#4'),null);
+}
 
 // Exercise the real Google adapter: token caching, size, MIME and checksum checks.
 const keys=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);

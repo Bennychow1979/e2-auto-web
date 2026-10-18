@@ -34,7 +34,7 @@ async function folderFor(car,id) {
 
 Deno.serve(async req=>{
   const origin=req.headers.get('Origin')||'';
-  const headers={'Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, GET, HEAD, OPTIONS',...(origins.has(origin)?{'Access-Control-Allow-Origin':origin}:{})};
+  const headers={'Content-Type':'application/json','Cache-Control':'no-store','Vary':'Origin','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, GET, HEAD, OPTIONS','Access-Control-Max-Age':'7200',...(origins.has(origin)?{'Access-Control-Allow-Origin':origin}:{})};
   const reply=(status,body)=>new Response(JSON.stringify(body),{status,headers});
   if(origin&&!origins.has(origin))return reply(403,{error:'Origin not allowed'});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers});
@@ -69,7 +69,12 @@ Deno.serve(async req=>{
       if(latest.publication!=='published'&&!await membership(ticket.actor))return reply(403,{error:'This photo is private.'});
       if(ticket.kind==='preview'&&(latest.publication!=='draft'||!await membership(ticket.actor,true)))return reply(403,{error:'Preview is no longer available.'});
       if(ticket.kind==='photo'&&!checked(await admin.from('vehicle_drive_photos').select('photo_id').eq('photo_id',ticket.id).maybeSingle()))return reply(404,{error:'Photo was removed.'});
-      return new Response(bytes,{headers:{...headers,'Content-Type':mime,'X-Content-Type-Options':'nosniff','Content-Disposition':'inline','Referrer-Policy':'no-referrer'}});
+      // A link always returns the same checksum-verified bytes. Published photos are public,
+      // so this browser may keep them for five minutes, the most the portal promises a photo
+      // stays visible after its vehicle moves to draft. Draft and preview photos are never
+      // cached: signing out or losing access must stop this browser from showing them again.
+      const cache=latest.publication==='published'&&ticket.kind==='photo'?'private, max-age=300':'no-store';
+      return new Response(bytes,{headers:{...headers,'Cache-Control':cache,'Content-Type':mime,'X-Content-Type-Options':'nosniff','Content-Disposition':'inline','Referrer-Policy':'no-referrer'}});
     }
     if(req.method!=='POST')return reply(405,{error:'Use POST'});
     const raw=await req.text();if(raw.length>16000)return reply(413,{error:'Request too large'});

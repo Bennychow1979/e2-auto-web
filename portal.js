@@ -4,7 +4,7 @@ import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
 import {setupDrivePhotoPicker} from './drive-photo-picker.mjs?v=drive-1';
 import {setupYearSpecSelect} from './year-spec-select.mjs?v=verified-spec-batch-2';
 import {setupYearReference} from './model-year-reference.mjs?v=verified-spec-batch-2';
-import {db,configured,check,esc,rm,mileageText,getVehicles,coverURL,photoURLs,compressPhoto,friendlyError} from './e2-data.js?v=drive-1';
+import {db,configured,check,esc,rm,mileageText,getVehicles,photoURLs,retryPhotos,compressPhoto,friendlyError} from './e2-data.js?v=drive-2';
 const MAX_PHOTOS=30;
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');
 const canManageStock=()=>['super_admin','admin'].includes(role);
@@ -66,7 +66,9 @@ function renderStock(){
   const found=cars.filter(c=>(c.plate+c.brand+c.model+c.variant).toLowerCase().replace(/\s/g,'').includes(query));
   $('stockList').innerHTML=found.map(c=>'<article class="stockItem"><div class="noPhoto" data-cover="'+c.id+'">'+(c.photos.length?'Loading photo…':'No photos yet')+'</div><div><span class="stockState">'+esc(c.publication==='published'?'Published · '+c.stock_status:'Draft · private')+'</span><h2>'+esc(c.brand+' '+c.model)+'</h2><p>'+esc([c.plate,c.year,c.variant].filter(Boolean).join(' · '))+'</p><small>'+esc(mileageText(c))+' · '+Number(c.engine_litres).toFixed(1)+' L</small><p class="stockPrice">'+rm(c.price)+'</p></div>'+(canManageStock()?'<button class="primary" data-edit="'+c.id+'">Manage vehicle ↗</button>':'<span>View only</span>')+'</article>').join('')||'<p>No vehicles found. '+(canManageStock()?'Add your first vehicle to begin.':'')+'</p>';
   const epoch=authEpoch;
-  for(const car of found)coverURL(car).then(url=>{if(!url||epoch!==authEpoch)return;const holder=document.querySelector('[data-cover="'+car.id+'"]');if(holder){const img=document.createElement('img');img.src=url;img.alt=car.brand+' '+car.model;img.loading='lazy';holder.replaceChildren(img)}}).catch(()=>{});
+  // One link request for every cover in the list; searching reuses the links.
+  const covered=found.filter(c=>c.photos.length);
+  if(covered.length)photoURLs(covered.map(c=>c.photos[0])).then(urls=>covered.forEach((car,i)=>{const url=urls[i].url;if(!url||epoch!==authEpoch)return;const holder=document.querySelector('[data-cover="'+car.id+'"]');if(holder){const img=document.createElement('img');img.src=url;img.alt=car.brand+' '+car.model;img.loading='lazy';holder.replaceChildren(img)}})).catch(()=>{});
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEditor(cars.find(c=>c.id===b.dataset.edit)));
 }
 async function renderPhotos(){
@@ -106,7 +108,7 @@ function populate(car){
 async function openEditor(car=null){populate(car);message('editorMessage','');$('vehicleEditor').showModal();try{await showImportReview(db,car);await renderPhotos()}catch(error){editorError(error)}}
 function closeEditor(){if(busy)return;if(dirty&&!confirm('Discard unsaved vehicle details? Uploaded photos are already saved.'))return;vehicleTranslations.stop();$('vehicleEditor').close();current=null;dirty=false}
 $('closeEditor').onclick=closeEditor;$('vehicleEditor').addEventListener('cancel',e=>{e.preventDefault();closeEditor()});
-$('addVehicle').onclick=()=>openEditor();$('stockSearch').oninput=renderStock;$('refreshStock').onclick=refresh;
+$('addVehicle').onclick=()=>openEditor();$('stockSearch').oninput=renderStock;$('refreshStock').onclick=()=>{retryPhotos();refresh()};
 form.onsubmit=async event=>{
   event.preventDefault();if(busy||!canManageStock())return;
   const mileage=value('mileage')===''?null:Number(value('mileage'));
@@ -184,7 +186,7 @@ $('publishVehicle').onclick=async()=>{
     const row=check(await db.from('vehicles').update({publication}).eq('id',current.id).eq('updated_at',current.updated_at).select().maybeSingle());
     if(!row)throw new Error('This vehicle changed in another session. Close and refresh first.');
     row.photos=current.photos;populate(row);await renderPhotos();await refresh();
-    message('editorMessage',publication==='published'?'Published. This vehicle now appears in the showroom.':'Moved to draft. New visitors cannot see this vehicle. Previously opened photos may remain visible for up to five minutes.');
+    message('editorMessage',publication==='published'?'Published. This vehicle now appears in the showroom.':'Moved to draft. New visitors cannot see this vehicle. A page someone already has open drops it at its next check, usually within 5 minutes while that page is online and in view; a page left offline or in the background updates only after it reconnects or is viewed again.');
   }catch(error){editorError(error)}finally{setBusy(false)}
 };
 async function showSession(session){
