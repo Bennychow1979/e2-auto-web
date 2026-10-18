@@ -63,7 +63,7 @@ assert.equal((await (await post({action:'urls',ids:[photo]},'Bearer forged-admin
 const staffURLs=await (await post({action:'urls',ids:[photo]},'Bearer valid-admin')).json();
 assert.equal(staffURLs.photos.length,1);
 const image=await handler(new Request(staffURLs.photos[0].url));
-assert.equal(image.status,200);assert.equal(image.headers.get('Cache-Control'),'private, max-age=3600','Photo bytes are cached by this browser only');
+assert.equal(image.status,200);assert.equal(image.headers.get('Cache-Control'),'no-store','Draft photos are never cached, so revoked staff cannot reopen them');
 assert.equal((await handler(new Request(staffURLs.photos[0].url+'x'))).headers.get('Cache-Control'),'no-store','Errors are never cached');
 assert.equal((await post({action:'urls',ids:[photo]},'Bearer valid-admin')).headers.get('Cache-Control'),'no-store','Link lists are never cached');
 rows.staff_memberships[0].active=false;
@@ -71,7 +71,8 @@ assert.equal((await handler(new Request(staffURLs.photos[0].url))).status,403,'R
 rows.staff_memberships[0].active=true;
 rows.vehicles[0].publication='published';
 const publicURLs=await (await post({action:'urls',ids:[photo]})).json();
-assert.equal((await handler(new Request(publicURLs.photos[0].url))).status,200);
+const published=await handler(new Request(publicURLs.photos[0].url));
+assert.equal(published.status,200);assert.equal(published.headers.get('Cache-Control'),'private, max-age=3600','Published photos are cached by this browser only');
 assert.equal((await post({action:'attach',vehicle,folder,files:[]},'Bearer valid-admin')).status,409);
 rows.vehicles[0].publication='draft';
 assert.equal((await handler(new Request(publicURLs.photos[0].url))).status,403,'Moving to draft revokes public image tickets');

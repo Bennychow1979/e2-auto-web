@@ -69,9 +69,12 @@ Deno.serve(async req=>{
       if(latest.publication!=='published'&&!await membership(ticket.actor))return reply(403,{error:'This photo is private.'});
       if(ticket.kind==='preview'&&(latest.publication!=='draft'||!await membership(ticket.actor,true)))return reply(403,{error:'Preview is no longer available.'});
       if(ticket.kind==='photo'&&!checked(await admin.from('vehicle_drive_photos').select('photo_id').eq('photo_id',ticket.id).maybeSingle()))return reply(404,{error:'Photo was removed.'});
-      // A link always returns the same checksum-verified bytes, so this browser may keep
-      // them for an hour instead of downloading the photo again on every page refresh.
-      return new Response(bytes,{headers:{...headers,'Cache-Control':'private, max-age=3600','Content-Type':mime,'X-Content-Type-Options':'nosniff','Content-Disposition':'inline','Referrer-Policy':'no-referrer'}});
+      // A link always returns the same checksum-verified bytes. Published photos are public,
+      // so this browser may keep them for an hour instead of downloading them on every
+      // refresh. Draft and preview photos are never cached: signing out or losing access
+      // must stop this browser from showing them again.
+      const cache=latest.publication==='published'&&ticket.kind==='photo'?'private, max-age=3600':'no-store';
+      return new Response(bytes,{headers:{...headers,'Cache-Control':cache,'Content-Type':mime,'X-Content-Type-Options':'nosniff','Content-Disposition':'inline','Referrer-Policy':'no-referrer'}});
     }
     if(req.method!=='POST')return reply(405,{error:'Use POST'});
     const raw=await req.text();if(raw.length>16000)return reply(413,{error:'Request too large'});
