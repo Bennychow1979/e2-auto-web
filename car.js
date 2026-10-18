@@ -118,8 +118,10 @@ $('heroImage').addEventListener('load',()=>{if(albumShown)$('photoCount').textCo
 $('heroImage').addEventListener('error',async event=>{if(!await renewPhoto(event.target))$('photoCount').textContent=vehicleCopy('photosUnavailable',language)});
 // Photo links are kept for the visit; one that expires before loading is renewed on error.
 // Every 4 minutes re-read this vehicle so an open page drops the photos of a car moved to
-// draft within the five minutes the portal promises (the browser can keep showing an
-// image it already loaded on this page, whatever its cache headers say).
+// draft (the browser can keep showing an image it already loaded on this page, whatever
+// its cache headers say). This only happens while the page is visible (or on return to
+// it) and the check reaches the database: an offline page keeps what it shows until a
+// check succeeds.
 async function recheckVehicle(){
   const latest=await getVehicles({id,staff:preview}).catch(()=>null);if(!latest)return;
   const live=latest[0]?.id.toLowerCase()===id.toLowerCase()&&(preview||latest[0].publication==='published');

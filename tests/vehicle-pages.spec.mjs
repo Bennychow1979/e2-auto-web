@@ -52,6 +52,16 @@ test('live price and Sold override saved source, schema and application controls
  await fixture({vehicles:[{...vehicleA,price:29990,stock_status:'Sold'}]});await page.goto(vehiclePath(vehicleA.id));await ready(page);await expect(page.locator('#heroPrice')).toHaveText('RM29,990');await expect(page.locator('#publicationNote')).toHaveText('Sold');await expect(page.locator('#applyLoan')).toBeHidden();
  const schema=JSON.parse(await page.locator('#vehicleStructuredData').textContent());expect(schema.offers.price).toBe(29990);expect(schema.offers.availability).toBe('https://schema.org/SoldOut');await expect(page.locator('#inventoryNotice')).toContainText('checked just now');
 });
+test('showroom recovers after a failed stock refresh even when the stock has not changed',async({page,fixture})=>{
+ await page.clock.install();await fixture();await page.goto('/showroom.html');
+ const cards=page.locator('#galleryTrack .galleryCard'),controls=page.locator('.galleryControls'),state=page.locator('#publicState');
+ await expect(cards).toHaveCount(2);await expect(cards.first().locator('img')).toHaveAttribute('src',/test-photo/);await expect(controls).toBeVisible();await expect(state).toBeHidden();
+ await page.evaluate(()=>{window.__vehicleFixture.state.inventoryMode='fail'});await page.clock.fastForward(241000);
+ await expect(page.locator('#resultCount')).toHaveText('Inventory temporarily unavailable');await expect(state).toBeVisible();await expect(controls).toBeHidden();
+ await page.evaluate(()=>{window.__vehicleFixture.state.inventoryMode='ready'});await page.clock.fastForward(241000);
+ await expect(state).toBeHidden();await expect(controls).toBeVisible();await expect(page.locator('#resultCount')).not.toHaveText('Inventory temporarily unavailable');
+ await expect(cards).toHaveCount(2);await expect(cards.first().locator('img')).toHaveAttribute('src',/test-photo/);
+});
 test('an open page drops the photos of a vehicle moved to draft at its next 4-minute check',async({page,fixture})=>{
  await page.clock.install();await fixture();await page.goto(vehiclePath(vehicleA.id));await ready(page);await expect(page.locator('#photoThumbs button')).toHaveCount(3);
  await page.evaluate(()=>{window.__vehicleFixture.state.vehicles.find(v=>v.publication==='published').publication='draft'});

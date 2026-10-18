@@ -60,6 +60,20 @@ assert.deepEqual(outage.map(p=>p.url),['upload-1',null,'upload-2']);
   offline=true;assert.deepEqual((await links.urls([{id:'c'}])).map(p=>p.url),[null]);
   offline=false;assert.deepEqual((await links.urls([{id:'c'}])).map(p=>p.url),['c#5'],'A failed lookup is retried on the next render');
   links.clear();assert.equal((await links.urls([a]))[0].url,'a#6','Signing out forgets earlier links');
+  // A renewal that never answers ends as a failed try after 8 s; a forced retry starts a
+  // fresh request at once, and the stuck request's late answer never replaces it.
+  {
+    const timers=[],late=[];let mode='ok',n=0;
+    const hung=photoURLCache(ps=>{n++;const answer=ps.map(p=>({...p,url:p.id+'@'+n}));return mode==='ok'?Promise.resolve(answer):new Promise(r=>late.push(()=>r(answer)))},{now:()=>clock,wait:fn=>timers.push(fn)});
+    const [x]=await hung.urls([{id:'x'}]);assert.equal(x.url,'x@1');
+    mode='hang';const scheduled=hung.renew('x@1');
+    timers.splice(0).forEach(fire=>fire());assert.equal(await scheduled,null,'A renewal that never answers ends as a failed try');
+    assert.equal(hung.retryIn('x@1'),5000,'and the next automatic try is scheduled');
+    const first=hung.renew('x@1',{force:true});mode='ok';
+    assert.equal(await hung.renew('x@1',{force:true}),'x@4','A manual refresh does not wait on a stuck renewal');
+    late.forEach(answer=>answer());timers.splice(0).forEach(fire=>fire());assert.equal(await first,null);
+    assert.equal(hung.current('x@1'),'x@4','Late answers never replace the newer link');
+  }
   // A stuck request does not hold later callers past 8 s; its late answer is ignored.
   let release;const stuck=photoURLCache(ps=>release?Promise.resolve(ps.map(p=>({...p,url:'fresh'}))):new Promise(r=>{release=()=>r(ps.map(p=>({...p,url:'late'})))}),{now:()=>clock});
   const held=stuck.urls([a]);clock+=8000;

@@ -24,10 +24,12 @@ export async function resolvePhotoURLs(photos,{uploaded,drive}) {
 // (at once, after 5 s, after 30 s), more only when forced (back online, or a
 // manual refresh). A photo that loads again resets its tries.
 const RETRY_DELAYS=[0,5000,30000];
-// A link request still unanswered after this long is not waited on by later calls,
-// so a retry after a page timeout starts a fresh request instead of joining a stuck one.
+// A link request still unanswered after this long is not waited on: a first request
+// is no longer shared with later calls, and a renewal counts as a failed try, so a
+// retry (scheduled, back online or manual) starts a fresh request instead of joining
+// a stuck one. A late answer never replaces a newer link.
 const STUCK_MS=8000;
-export function photoURLCache(resolve,{now=()=>Date.now()}={}) {
+export function photoURLCache(resolve,{now=()=>Date.now(),wait=setTimeout}={}) {
   let byKey=new Map(),byURL=new Map();
   const key=p=>(p.source||'upload')+'|'+p.id+'|'+(p.path||'');
   async function urls(photos) {
@@ -61,15 +63,17 @@ export function photoURLCache(resolve,{now=()=>Date.now()}={}) {
     const entry=entryFor(url);
     if(!entry?.url)return null;
     if(entry.url!==url)return entry.url;
-    if(entry.renewing)return entry.renewing;
+    if(entry.renewing&&!force)return entry.renewing;
     if(force)entry.tries=0;
     else if(retryIn(url)!==0)return null;
     entry.tries++;entry.triedAt=now();
-    entry.renewing=resolve([entry.photo]).then(([fresh])=>{
-      if(!fresh?.url||byKey.get(key(entry.photo))!==entry)return null;
+    const attempt=entry.attempt=(entry.attempt||0)+1;
+    const stuck=new Promise((_,reject)=>wait(()=>reject(Error('stuck')),STUCK_MS));
+    const renewing=entry.renewing=Promise.race([resolve([entry.photo]),stuck]).then(([fresh])=>{
+      if(!fresh?.url||byKey.get(key(entry.photo))!==entry||entry.attempt!==attempt||entry.url!==url)return null;
       entry.url=fresh.url;byURL.set(fresh.url,key(entry.photo));return fresh.url;
-    }).catch(()=>null).finally(()=>{delete entry.renewing});
-    return entry.renewing;
+    }).catch(()=>null).finally(()=>{if(entry.renewing===renewing)delete entry.renewing});
+    return renewing;
   }
   // Signing out forgets links issued for the previous account.
   const clear=()=>{byKey=new Map();byURL=new Map()};
@@ -84,13 +88,15 @@ export function watchPhotoErrors(links,{doc=document,win=window,wait=setTimeout}
   async function recover(img,force=false) {
     const failed=img.getAttribute('src');
     if(!failed||!links.known(failed))return false;
+    // Listed while its renewal is in flight, so a manual refresh or coming back online
+    // also reaches a photo whose renewal is stuck. A successful load removes it.
+    broken.add(img);
     const fresh=await links.renew(failed,{force});
     if(fresh) {
-      broken.delete(img);
       for(const node of doc.querySelectorAll('img'))if(node.getAttribute('src')===failed)node.src=fresh;
       return true;
     }
-    broken.add(img);
+    if(img.getAttribute('src')!==failed)return false;   // already recovered another way
     const delay=links.retryIn(failed);
     if(delay!==null)wait(()=>{if(broken.has(img)&&img.isConnected&&img.getAttribute('src')===failed)recover(img)},delay+50);
     return false;
