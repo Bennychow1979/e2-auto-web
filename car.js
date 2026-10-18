@@ -148,18 +148,25 @@ if(!preview)setupPartnerReferral(car,()=>contact).catch(()=>{});
 $('carState').hidden=true;$('carMain').hidden=false;$('carDock').hidden=false;
 if(!preview)viewVehicle(car);
 function calculate(){
-const depositPct=Number($('deposit').value),years=Number($('tenure').value),rate=Number($('rate').value);
+const deposit=Number($('depositAmount').value),years=Number($('tenure').value),rate=Number($('rate').value);
+const validDeposit=$('depositAmount').value.trim()!==''&&$('depositAmount').validity.valid&&deposit>=0&&deposit<=car.priceValue;
+const depositPct=car.priceValue>0?deposit/car.priceValue*100:0,percent=Number(depositPct.toFixed(2));
 const valid=$('rate').value.trim()!==''&&$('rate').validity.valid&&rate>=0&&rate<=15;
 $('calcError').hidden=valid;
-if(!valid){$('monthly').textContent='—';['loan','interest','repayments'].forEach(id=>$(id).textContent='—');$('financeWhatsApp').removeAttribute('href');$('financeWhatsApp').setAttribute('aria-disabled','true');$('monthlyLink').textContent=t('Adjust your monthly estimate ↗');return}
-const deposit=car.priceValue*depositPct/100,loan=car.priceValue-deposit,interest=loan*rate/100*years,total=loan+interest,monthly=total/(years*12);
+$('depositError').hidden=validDeposit;$('depositAmount').setAttribute('aria-invalid',String(!validDeposit));
+if(validDeposit){$('deposit').value=String(depositPct);$('depositPercent').textContent=percent+'%';$('deposit').setAttribute('aria-valuetext',percent+' percent, '+rm(deposit,2))}
+else $('depositPercent').textContent='—';
+if(!valid||!validDeposit){$('monthly').textContent='—';$('loan').textContent='—';$('financeWhatsApp').removeAttribute('href');$('financeWhatsApp').setAttribute('aria-disabled','true');$('monthlyLink').textContent=t('Adjust your monthly estimate ↗');return}
+const loan=car.priceValue-deposit,interest=loan*rate/100*years,total=loan+interest,monthly=total/(years*12);
 $('monthly').innerHTML=rm(monthly,2)+'<em>'+esc(t('/ month'))+'</em>';
-$('depositAmount').textContent=rm(deposit);$('depositPercent').textContent=depositPct+'%';$('deposit').setAttribute('aria-valuetext',depositPct+' percent, '+rm(deposit));
-$('calcPrice').textContent=rm(car.price);$('loan').textContent=rm(loan,2);$('interest').textContent=rm(interest,2);$('repayments').textContent=rm(total,2);
+$('calcPrice').textContent=rm(car.price);$('loan').textContent=rm(loan,2);
 $('monthlyLink').textContent=t('Est. {amount}/mo · adjust estimate',{amount:rm(monthly)})+' ↗';
-$('financeWhatsApp').removeAttribute('aria-disabled');$('financeWhatsApp').href=wa(intro+t('Illustrative calculation: price {price}, deposit {deposit} ({percent}%), loan {loan}, {years} years at {rate}% p.a. flat, estimated {monthly}/month. Please discuss available terms for this vehicle. I understand this is not an offer and approval is not guaranteed.',{price:rm(car.price),deposit:rm(deposit),percent:depositPct,loan:rm(loan,2),years,rate,monthly:rm(monthly,2)}));
+$('financeWhatsApp').removeAttribute('aria-disabled');$('financeWhatsApp').href=wa(intro+t('Illustrative calculation: price {price}, deposit {deposit} ({percent}%), loan {loan}, {years} years at {rate}% p.a. flat, estimated {monthly}/month. Please discuss available terms for this vehicle. I understand this is not an offer and approval is not guaranteed.',{price:rm(car.price),deposit:rm(deposit,2),percent,loan:rm(loan,2),years,rate,monthly:rm(monthly,2)}));
 }
-$('calculator').onsubmit=e=>e.preventDefault();['deposit','tenure','rate'].forEach(id=>$(id).addEventListener('input',calculate));calculate();
+$('depositAmount').max=String(car.priceValue);$('depositAmount').value=(car.priceValue*Number($('deposit').value)/100).toFixed(2);
+$('calculator').onsubmit=e=>e.preventDefault();
+$('deposit').addEventListener('input',()=>{$('depositAmount').value=(car.priceValue*Number($('deposit').value)/100).toFixed(2);calculate()});
+['depositAmount','tenure','rate'].forEach(id=>$(id).addEventListener('input',calculate));calculate();
 $('openPhoto').onclick=()=>$('photoDialog').showModal();$('closePhoto').onclick=()=>$('photoDialog').close();
 function malaysiaDate(){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const part=k=>parts.find(p=>p.type===k).value;return part('year')+'-'+part('month')+'-'+part('day')}
 document.querySelectorAll('[data-book]').forEach(b=>b.onclick=()=>{const url=new URL(localizedURL('booking.html'));url.searchParams.set('id',car.id);for(const key of ['ref','sales'])if(params.get(key))url.searchParams.set(key,params.get(key));location.href=url.href});

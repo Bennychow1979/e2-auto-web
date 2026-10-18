@@ -101,6 +101,8 @@ export const translations = {
   'FOR PLANNING ONLY':['UNTUK PERANCANGAN SAHAJA','仅供规划参考'],
   'This is an illustrative flat-rate calculation. Actual rate, tenure, fees and eligibility depend on the vehicle, applicant and bank / financier. Approval is not guaranteed.':['Ini ialah contoh pengiraan kadar rata. Kadar sebenar, tempoh, fi dan kelayakan bergantung pada kereta, pemohon dan bank / pembiaya. Kelulusan tidak dijamin.','这是平息供款示例。实际利率、年限、费用及资格取决于车辆、申请人和银行／融资机构，不保证获批。'],
   'ESTIMATED MONTHLY':['ANGGARAN BULANAN','预计每月供款'], 'Illustrative estimate · not a financing offer':['Anggaran contoh · bukan tawaran pembiayaan','参考估算 · 非融资要约'],
+  'Deposit percentage':['Peratus deposit','首付比例'],
+  'Enter a deposit between RM0 and the vehicle price.':['Masukkan deposit antara RM0 dan harga kereta.','请输入介于 RM0 和车价之间的首付金额。'],
   'Deposit':['Deposit','首付'], 'Tenure':['Tempoh','贷款年限'], 'Flat rate / year (%)':['Kadar rata / tahun (%)','年平息利率（%）'],
   'Enter a rate between 0% and 15%.':['Masukkan kadar antara 0% hingga 15%.','请输入 0% 至 15% 的利率。'],
   'Vehicle price':['Harga kereta','车辆价格'], 'Estimated loan amount':['Anggaran jumlah pinjaman','预计贷款金额'], 'Total flat interest':['Jumlah faedah kadar rata','平息利息总额'], 'Total loan repayments':['Jumlah bayaran balik pinjaman','贷款还款总额'],
