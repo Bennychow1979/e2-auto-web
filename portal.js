@@ -186,7 +186,7 @@ $('publishVehicle').onclick=async()=>{
     const row=check(await db.from('vehicles').update({publication}).eq('id',current.id).eq('updated_at',current.updated_at).select().maybeSingle());
     if(!row)throw new Error('This vehicle changed in another session. Close and refresh first.');
     row.photos=current.photos;populate(row);await renderPhotos();await refresh();
-    message('editorMessage',publication==='published'?'Published. This vehicle now appears in the showroom.':'Moved to draft. New visitors cannot see this vehicle. Previously opened photos may remain visible for up to five minutes.');
+    message('editorMessage',publication==='published'?'Published. This vehicle now appears in the showroom.':'Moved to draft. New visitors cannot see this vehicle. A page someone already has open drops it at its next check, usually within 5 minutes while that page is online and in view; a page left offline or in the background updates only after it reconnects or is viewed again.');
   }catch(error){editorError(error)}finally{setBusy(false)}
 };
 async function showSession(session){
