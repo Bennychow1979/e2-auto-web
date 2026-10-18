@@ -70,10 +70,10 @@ Deno.serve(async req=>{
       if(ticket.kind==='preview'&&(latest.publication!=='draft'||!await membership(ticket.actor,true)))return reply(403,{error:'Preview is no longer available.'});
       if(ticket.kind==='photo'&&!checked(await admin.from('vehicle_drive_photos').select('photo_id').eq('photo_id',ticket.id).maybeSingle()))return reply(404,{error:'Photo was removed.'});
       // A link always returns the same checksum-verified bytes. Published photos are public,
-      // so this browser may keep them for an hour instead of downloading them on every
-      // refresh. Draft and preview photos are never cached: signing out or losing access
-      // must stop this browser from showing them again.
-      const cache=latest.publication==='published'&&ticket.kind==='photo'?'private, max-age=3600':'no-store';
+      // so this browser may keep them for five minutes, the most the portal promises a photo
+      // stays visible after its vehicle moves to draft. Draft and preview photos are never
+      // cached: signing out or losing access must stop this browser from showing them again.
+      const cache=latest.publication==='published'&&ticket.kind==='photo'?'private, max-age=300':'no-store';
       return new Response(bytes,{headers:{...headers,'Cache-Control':cache,'Content-Type':mime,'X-Content-Type-Options':'nosniff','Content-Disposition':'inline','Referrer-Policy':'no-referrer'}});
     }
     if(req.method!=='POST')return reply(405,{error:'Use POST'});

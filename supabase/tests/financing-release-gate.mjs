@@ -27,7 +27,7 @@ try {
   globalThis.window = {E2_CONFIG: {supabaseUrl: 'https://synthetic-release-test.supabase.co', publishableKey: 'sb_publishable_synthetic'}};
   const dataSource = (await read('e2-data.js'))
     .replace(/import\s*\{\s*createClient\s*\}\s*from\s*['"]https:[^'"]+['"];?/, 'const {createClient}=globalThis.__releaseGateTest;')
-    .replace(/import\s*\{\s*resolvePhotoURLs\s*,\s*photoURLCache\s*\}\s*from\s*['"][^'"]+['"];?/, 'const resolvePhotoURLs=()=>{throw Error("Photos are outside this isolated auth test.")};const photoURLCache=()=>({});');
+    .replace(/import\s*\{\s*resolvePhotoURLs\s*,\s*photoURLCache\s*,\s*watchPhotoErrors\s*\}\s*from\s*['"][^'"]+['"];?/, 'const resolvePhotoURLs=()=>{throw Error("Photos are outside this isolated auth test.")};const photoURLCache=()=>({});const watchPhotoErrors=()=>null;');
   assert(!/\bimport\s*(?:\{|\*)/.test(dataSource), 'The SDK and helper imports must be replaced before evaluation'); assertions++;
   for (const [path, persistent] of [
     ['/financing-case.html?source=intake&id=synthetic', true],

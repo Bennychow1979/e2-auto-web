@@ -48,12 +48,23 @@ assert.deepEqual(outage.map(p=>p.url),['upload-1',null,'upload-2']);
   const [renewedA,renewedB]=await Promise.all([links.renew('a#1'),links.renew('a#1')]);
   assert.equal(renewedA,'a#3');assert.equal(renewedB,'a#3');assert.equal(calls.length,2,'Simultaneous failures renew once');
   assert.equal(links.current('a#1'),'a#3');assert.equal(await links.renew('a#1'),'a#3','An old link maps to the renewed one');
-  assert.equal(await links.renew('a#3'),null,'A link that fails again within a minute is not retried');
-  clock+=60001;assert.equal(await links.renew('a#3'),'a#4');
+  // A renewed link that fails again waits 5 s, then 30 s; after three tries only a forced retry runs.
+  assert.equal(links.retryIn('a#3'),5000);assert.equal(await links.renew('a#3'),null,'No retry before the delay');
+  clock+=5000;offline=true;assert.equal(await links.renew('a#3'),null,'Offline: the try fails');assert.equal(links.retryIn('a#3'),30000);
+  clock+=30000;assert.equal(await links.renew('a#3'),null);assert.equal(links.retryIn('a#3'),null,'Three tries used');
+  clock+=600000;assert.equal(await links.renew('a#3'),null,'No automatic try after three');assert.equal(calls.length,4);
+  offline=false;assert.equal(await links.renew('a#3',{force:true}),'a#4','Back online or a manual refresh forces a renewal');
+  links.loaded('a#4');assert.equal(links.retryIn('a#4'),0,'A photo that loads resets its tries');
+  assert.equal(links.known('a#1'),true);assert.equal(links.known('unknown'),false);
   assert.equal(await links.renew('unknown'),null);assert.equal(links.current('unknown'),'unknown');
   offline=true;assert.deepEqual((await links.urls([{id:'c'}])).map(p=>p.url),[null]);
   offline=false;assert.deepEqual((await links.urls([{id:'c'}])).map(p=>p.url),['c#5'],'A failed lookup is retried on the next render');
   links.clear();assert.equal((await links.urls([a]))[0].url,'a#6','Signing out forgets earlier links');
+  // A stuck request does not hold later callers past 8 s; its late answer is ignored.
+  let release;const stuck=photoURLCache(ps=>release?Promise.resolve(ps.map(p=>({...p,url:'fresh'}))):new Promise(r=>{release=()=>r(ps.map(p=>({...p,url:'late'})))}),{now:()=>clock});
+  const held=stuck.urls([a]);clock+=8000;
+  assert.equal((await stuck.urls([a]))[0].url,'fresh','A retry after 8 s starts a new request');
+  release();assert.equal((await held)[0].url,'fresh');assert.equal((await stuck.urls([a]))[0].url,'fresh','The stuck answer never replaces the newer link');
   assert.equal(await links.renew('a#4'),null);
 }
 

@@ -1,5 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm';
-import {resolvePhotoURLs,photoURLCache} from './photo-urls.mjs?v=drive-2';
+import {resolvePhotoURLs,photoURLCache,watchPhotoErrors} from './photo-urls.mjs?v=drive-3';
 
 export const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const rm = (n, digits = 0) => 'RM' + Number(n).toLocaleString('en-MY', {minimumFractionDigits:digits,maximumFractionDigits:digits});
@@ -37,14 +37,11 @@ const photoLinks=photoURLCache(photos=>resolvePhotoURLs(photos,{
 }));
 export const photoURLs=photos=>photoLinks.urls(photos);
 export const currentPhotoURL=url=>photoLinks.current(url);
-// Give an image whose link failed (usually expired before it loaded) one renewed link.
-export async function renewPhoto(img) {
-  const failed=img.getAttribute('src'),fresh=failed&&await photoLinks.renew(failed);
-  if(!fresh)return false;
-  for(const node of document.querySelectorAll('img'))if(node.getAttribute('src')===failed)node.src=fresh;
-  return true;
-}
-if(typeof document!=='undefined')document.addEventListener('error',event=>{if(event.target instanceof HTMLImageElement)renewPhoto(event.target)},true);
+// Failed photos get renewed links on a limited schedule, when the connection
+// returns, or on a manual refresh (retryPhotos).
+const photoRecovery=typeof document!=='undefined'?watchPhotoErrors(photoLinks):null;
+export const renewPhoto=img=>photoRecovery?photoRecovery.recover(img):Promise.resolve(false);
+export const retryPhotos=()=>photoRecovery?photoRecovery.retryAll():Promise.resolve(false);
 db?.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT')photoLinks.clear()});
 export async function drivePhotoRequest(body) {
   const result=await db.functions.invoke('e2-drive-photos',{body});

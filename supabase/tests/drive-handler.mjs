@@ -72,7 +72,7 @@ rows.staff_memberships[0].active=true;
 rows.vehicles[0].publication='published';
 const publicURLs=await (await post({action:'urls',ids:[photo]})).json();
 const published=await handler(new Request(publicURLs.photos[0].url));
-assert.equal(published.status,200);assert.equal(published.headers.get('Cache-Control'),'private, max-age=3600','Published photos are cached by this browser only');
+assert.equal(published.status,200);assert.equal(published.headers.get('Cache-Control'),'private, max-age=300','Published photos are cached by this browser only, within the five-minute draft promise');
 assert.equal((await post({action:'attach',vehicle,folder,files:[]},'Bearer valid-admin')).status,409);
 rows.vehicles[0].publication='draft';
 assert.equal((await handler(new Request(publicURLs.photos[0].url))).status,403,'Moving to draft revokes public image tickets');

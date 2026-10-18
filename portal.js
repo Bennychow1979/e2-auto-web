@@ -4,7 +4,7 @@ import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
 import {setupDrivePhotoPicker} from './drive-photo-picker.mjs?v=drive-1';
 import {setupYearSpecSelect} from './year-spec-select.mjs?v=verified-spec-batch-2';
 import {setupYearReference} from './model-year-reference.mjs?v=verified-spec-batch-2';
-import {db,configured,check,esc,rm,mileageText,getVehicles,photoURLs,compressPhoto,friendlyError} from './e2-data.js?v=drive-2';
+import {db,configured,check,esc,rm,mileageText,getVehicles,photoURLs,retryPhotos,compressPhoto,friendlyError} from './e2-data.js?v=drive-2';
 const MAX_PHOTOS=30;
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');
 const canManageStock=()=>['super_admin','admin'].includes(role);
@@ -108,7 +108,7 @@ function populate(car){
 async function openEditor(car=null){populate(car);message('editorMessage','');$('vehicleEditor').showModal();try{await showImportReview(db,car);await renderPhotos()}catch(error){editorError(error)}}
 function closeEditor(){if(busy)return;if(dirty&&!confirm('Discard unsaved vehicle details? Uploaded photos are already saved.'))return;vehicleTranslations.stop();$('vehicleEditor').close();current=null;dirty=false}
 $('closeEditor').onclick=closeEditor;$('vehicleEditor').addEventListener('cancel',e=>{e.preventDefault();closeEditor()});
-$('addVehicle').onclick=()=>openEditor();$('stockSearch').oninput=renderStock;$('refreshStock').onclick=refresh;
+$('addVehicle').onclick=()=>openEditor();$('stockSearch').oninput=renderStock;$('refreshStock').onclick=()=>{retryPhotos();refresh()};
 form.onsubmit=async event=>{
   event.preventDefault();if(busy||!canManageStock())return;
   const mileage=value('mileage')===''?null:Number(value('mileage'));

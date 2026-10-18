@@ -56,15 +56,19 @@ function loadDraft(){identityOptions();advanced.forEach(k=>$('advancedForm').ele
 $('moreFilters').onclick=()=>{draft={...state};loadDraft();$('filterDialog').showModal()};$('closeFilters').onclick=()=>$('filterDialog').close();$('advancedForm').onchange=e=>{if(advanced.includes(e.target.name)){draft[e.target.name]=e.target.value;clearDependents(draft,e.target.name);loadDraft()}};$('resetAdvanced').onclick=()=>{advanced.forEach(k=>draft[k]='');loadDraft()};$('advancedForm').onsubmit=e=>{e.preventDefault();if($('applyFilters').disabled)return;state={...draft};$('filterDialog').close();sync();render()};
 function options(id,values,label){const el=$(id),selected=el.value;el.innerHTML='<option value="">'+esc(t(label))+'</option>'+[...new Set(values.filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true})).map(v=>'<option value="'+esc(v)+'">'+esc(t(v))+'</option>').join('');el.value=[...el.options].some(o=>o.value===selected)?selected:''}
 const galleryFlow=createShowroomFlow();
+// Re-rendering recreates every image, so skip it when the stock has not changed.
+let shownSignature='';
 async function load(){
   try{
-    cars=await getVehicles();
+    const rows=await getVehicles(),signature=JSON.stringify(rows);
+    if(signature===shownSignature)return;
+    cars=rows;
     const covers=cars.map(c=>c.photos[0]).filter(Boolean), signed=covers.length?await photoURLs(covers):[], byPath=new Map(signed.map(p=>[p.path,p.url]));
     cars.forEach(c=>c.cover=byPath.get(c.photos[0]?.path));
     $('publicState').hidden=!!cars.length;$('publicState').textContent=cars.length?'':t('New vehicles are being prepared. Contact E2 for current availability.');
     $('galleryTrack').innerHTML=cars.slice(0,8).map((c,i)=>'<a class="galleryCard" href="'+esc(vehicleHref(c.id))+'"><span class="cardTop"><span>'+String(i+1).padStart(2,'0')+' / '+esc(c.brand)+'</span><span class="sampleTag">'+esc(t(c.stock_status))+'</span></span><span class="photo">'+(c.cover?'<img src="'+esc(c.cover)+'" alt="'+esc(c.brand+' '+c.model)+'" '+(i?'loading="lazy"':'fetchpriority="high"')+'>':'<span class="noPhoto">'+esc(t('Photo unavailable'))+'</span>')+'</span><span class="cardCaption"><span><span class="cardYear">'+esc([c.year,c.variant].filter(Boolean).join(' · '))+'</span><strong>'+esc(c.brand+' '+c.model)+'</strong></span><span class="samplePrice">'+rm(c.price)+'<small>'+esc(t('View this car ↗'))+'</small></span></span></a>').join('');
     galleryFlow.refresh();
-    options('brandFilter',cars.map(c=>c.brand),'All brands');options('bodyFilter',cars.map(c=>c.body_type),'All types');options('yearFrom',cars.map(c=>c.year),'Any year');options('yearTo',cars.map(c=>c.year),'Any year');options('transmissionFilter',cars.map(c=>c.transmission),'Any transmission');options('engineFilter',cars.map(c=>c.engine_litres===null||c.engine_litres===undefined?'':Number(c.engine_litres).toFixed(1)),'Any engine size');draft={...state};loadDraft();sync();render();
+    options('brandFilter',cars.map(c=>c.brand),'All brands');options('bodyFilter',cars.map(c=>c.body_type),'All types');options('yearFrom',cars.map(c=>c.year),'Any year');options('yearTo',cars.map(c=>c.year),'Any year');options('transmissionFilter',cars.map(c=>c.transmission),'Any transmission');options('engineFilter',cars.map(c=>c.engine_litres===null||c.engine_litres===undefined?'':Number(c.engine_litres).toFixed(1)),'Any engine size');draft={...state};loadDraft();sync();render();shownSignature=cars.every(c=>!c.photos.length||c.cover)?signature:'';
   }catch(error){$('publicState').hidden=false;$('publicState').textContent=t(friendlyError(error));$('resultCount').textContent=t('Inventory temporarily unavailable');$('emptyResults').hidden=true;document.querySelector('.galleryControls').hidden=true;}
 }
 await load();
