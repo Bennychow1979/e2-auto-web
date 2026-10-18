@@ -4,7 +4,7 @@ export const LANGUAGES = ['en','ms','zh'];
 export const languageTags = {en:'en-MY',ms:'ms-MY',zh:'zh-Hans-MY'};
 export const languageFromPath = path => /^\/(ms|zh)(?:\/|$)/.exec(path || '')?.[1] || 'en';
 export const language = languageFromPath(globalThis.location?.pathname);
-export const publicPageNames = new Set(['','index.html','showroom.html','car.html','booking.html','plates.html']);
+export const publicPageNames = new Set(['','index.html','showroom.html','car.html','booking.html','plates.html','sales-team.html']);
 export function t(source, values = {}, lang = language) {
   const raw = String(source ?? '');
   let result = lang === 'en' ? raw : translations[raw]?.[lang === 'ms' ? 0 : 1];
@@ -20,7 +20,7 @@ export function t(source, values = {}, lang = language) {
 export function localizedURL(value, lang = language, base = globalThis.location?.href || 'https://e2auto.my/') {
   const origin = new URL(base).origin;
   // Public page names must resolve at the language root from nested vehicle pages.
-  const nested=staticVehiclePattern.test(new URL(base).pathname),relative=/^(?:car|booking|showroom|index|customer|saved)\.html(?:[?#]|$)/.test(value);
+  const nested=staticVehiclePattern.test(new URL(base).pathname),relative=/^(?:car|booking|showroom|index|customer|saved|sales-team)\.html(?:[?#]|$)/.test(value);
   const url = new URL(value,nested&&relative?origin+'/':base);
   if(url.origin !== origin) return url.href;
   const clean = url.pathname.replace(/^\/(ms|zh)(?=\/|$)/,'').replace(/^\//,'');

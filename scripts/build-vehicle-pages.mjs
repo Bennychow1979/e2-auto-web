@@ -135,7 +135,7 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  // Existing staff catalogue aid fetches this public asset at runtime.
  await cp(join(root,'verified-model-years.json'),join(stage,'verified-model-years.json'));
  try{await cp(join(root,'vendor'),join(stage,'vendor'),{recursive:true});}catch(error){if(error.code!=='ENOENT')throw error;}
- for(const lang of LANGUAGES)for(const file of ['index.html','showroom.html','car.html','booking.html']){
+ for(const lang of LANGUAGES)for(const file of ['index.html','showroom.html','car.html','booking.html','sales-team.html']){
   let html=await readFile(join(root,file),'utf8');if(lang!=='en')html=localizedPage(html,file,lang);html=html.replace('<html ','<html data-vehicle-pages="static-v1" ').replace('<head>',()=>'<head>'+routeScript(publicSlugs));
   const destination=join(stage,lang==='en'?'':lang,file);await mkdir(dirname(destination),{recursive:true});await writeFile(destination,html);
  }
