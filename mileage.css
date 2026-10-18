@@ -2,3 +2,7 @@
 
 .badge.blocked{background:#fff0d2;color:#69430d}aside>section+section{margin-top:28px}dialog{max-width:640px;width:calc(100% - 32px);border:1px solid #d6d6d0;border-radius:20px;padding:24px;color:#171917;background:#fafaf7}dialog::backdrop{background:#13161399}dialog img{max-width:100%}
 fieldset{border:0;padding:0;margin:0;min-width:0}.topbar>a.quiet{text-decoration:none;color:inherit}.formSection h2{margin-bottom:20px;font-size:1.3rem}.uploadButton{margin-top:16px}.publicValue{font-size:1.45rem;font-weight:650;margin:24px 0 8px}#identity{font-size:1.25rem;font-weight:650}#moreHistory{margin-top:18px}
+
+
+.topbar{flex-wrap:wrap;gap:12px}.languagePicker{display:flex;align-items:center;gap:10px;font-size:.85rem}.languagePicker select{width:auto;min-width:150px}.vehicleSearch{margin:24px 0 0}#searchHelp{margin:4px 0 12px}#searchStatus{margin:0 0 12px}.historyTop{flex-wrap:wrap}.badge{white-space:normal}.topbar .quiet{text-decoration:none;color:inherit}
+@media(max-width:760px){.languagePicker{width:100%;justify-content:space-between}.languagePicker select{max-width:70%}.heading h1{font-size:clamp(2rem,8vw,2.7rem)}.topbar>.quiet{margin-left:auto}}
