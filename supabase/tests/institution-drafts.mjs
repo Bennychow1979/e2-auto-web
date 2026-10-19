@@ -50,4 +50,36 @@ await fail(save,['AEON Credit',3,{...revised,blacklist_policy:'guaranteed'}],/ch
 for(const [reg,cap,age,expected] of [[2018,9,15,7],[2020,9,15,9],[2026,9,15,9],[2011,9,15,0],[2000,9,15,0],[2027,9,15,null],[2018,null,17,null],[2018,9,17,9]])ok(maximumLoanYears(reg,2026,cap,age)===expected,`Registration year ${reg}, cap ${cap}/${age} gives ${expected}`);
 await as(ids[1]);await fail(save,['AEON Credit',3,revised],/Active Super Admin/,'Extended rule RPC retains Super Admin boundary');
 
+await as(ids[0]);await db.query(save,['AEON Credit',3,{...revised,required_documents:['guarantor','ic_front']}]);
+await db.exec('reset role');await db.exec(await readFile('supabase/migrations/202610200003_institution_guarantor_policy.sql','utf8'));
+ok(await scalar("select count(*)=12 from e2_finance_institution_drafts where guarantor_policy='pending'"),'Guarantor defaults pending for unconfirmed institutions');
+ok(await scalar("select guarantor_policy='required' and required_documents=array['ic_front']::text[] from e2_finance_institution_drafts where name='AEON Credit'"),'Migration preserves explicit legacy guarantor requirement separately');
+await as(ids[0]);const conditional={...revised,guarantor_policy:'case_by_case'};
+const conditionalSaved=(await db.query(save,['AEON Credit',5,conditional])).rows[0];ok(conditionalSaved.guarantor_policy==='case_by_case'&&!conditionalSaved.active&&!conditionalSaved.required_documents.includes('guarantor'),'Conditional guarantor saves without a universal document requirement');
+const noGuarantor=(await db.query(save,['AEON Credit',6,{...conditional,guarantor_policy:'not_required'}])).rows[0];ok(noGuarantor.guarantor_policy==='not_required'&&!noGuarantor.active,'No-guarantor policy persists while inactive');
+await fail(save,['AEON Credit',7,{...conditional,guarantor_policy:'anything'}],/check constraint/,'Unknown guarantor policy denied');
+await fail(save,['AEON Credit',7,{...conditional,required_documents:['guarantor']}],/institution_guarantor_separate/,'Legacy checkbox cannot contradict separate guarantor policy');
+await as(ids[1]);await fail(save,['AEON Credit',7,conditional],/Active Super Admin/,'Conditional guarantor RPC retains permissions');
+const conditionalForm=new FormData();conditionalForm.set('guarantorPolicy','case_by_case');ok(draftPayload(conditionalForm).guarantor_policy==='case_by_case'&&draftPayload(conditionalForm).required_documents.length===0,'Conditional form does not add guarantor documents');
+
+await db.exec('reset role');await db.exec(await readFile('supabase/migrations/202610200004_institution_applicant_defaults.sql','utf8'));
+ok(await scalar("select required_documents=array['ic_front','ic_back','driving_licence','payslips','personal_bank','epf']::text[] and salary_payslip_months=3 and salary_bank_months=3 from e2_finance_institution_drafts where name='CIMB Bank'"),'Salary defaults include IC DL 3-month payslips/bank and EPF');
+ok(await scalar("select bool_and(company_documents=array['ssm','ic_front','ic_back','driving_licence','company_bank']::text[] and company_bank_months=6 and not checklist_confirmed and not active) from e2_finance_institution_drafts"),'Company defaults include SSM IC DL six-month bank; all still unconfirmed inactive');
+ok(await scalar("select cardinality(required_documents)=2 from e2_finance_institution_drafts where name='AEON Credit'"),'Applicant migration preserves an edited salary checklist');
+await as(ids[0]);const applicantPayload={...conditional,required_documents:['ic_front','epf'],company_documents:['ssm','company_bank'],salary_payslip_months:3,salary_bank_months:3,company_bank_months:6};
+const applicantSaved=(await db.query(save,['AEON Credit',8,applicantPayload])).rows[0];ok(applicantSaved.required_documents.includes('epf')&&!applicantSaved.company_documents.includes('epf')&&applicantSaved.company_bank_months===6,'Salary and company requirements save independently');
+await fail(save,['AEON Credit',9,{...applicantPayload,company_documents:['guarantor']}],/institution_company_document_keys/,'Company cannot encode a universal guarantor checkbox');
+await fail(save,['AEON Credit',9,{...applicantPayload,company_bank_months:0}],/check constraint/,'Invalid statement month count denied');
+await as(ids[1]);await fail(save,['AEON Credit',9,applicantPayload],/Active Super Admin/,'Applicant defaults RPC retains permissions');
+const applicantForm=new FormData();applicantForm.append('document','epf');applicantForm.append('companyDocument','ssm');applicantForm.set('salaryPayslipMonths','3');applicantForm.set('salaryBankMonths','3');applicantForm.set('companyBankMonths','6');const parsedApplicant=draftPayload(applicantForm);ok(parsedApplicant.required_documents[0]==='epf'&&parsedApplicant.company_documents[0]==='ssm'&&parsedApplicant.company_bank_months===6,'Applicant form serializes separate checklists and months');
+
+await db.exec('reset role');await db.exec(await readFile('supabase/migrations/202610200005_institution_commission_defaults.sql','utf8'));
+ok(await scalar("select bool_and(commission_documents=array['ic_front','ic_back','driving_licence','payslips','personal_bank']::text[] and commission_payslip_months=6 and commission_bank_months=6 and not active and not checklist_confirmed) from e2_finance_institution_drafts"),'Commission defaults use IC DL 6-month payslips/bank without EPF');
+await as(ids[0]);const threeTypes={...applicantPayload,commission_documents:['ic_front','payslips','personal_bank'],commission_payslip_months:6,commission_bank_months:6};
+const threeSaved=(await db.query(save,['AEON Credit',10,threeTypes])).rows[0];ok(threeSaved.salary_bank_months===3&&threeSaved.commission_bank_months===6&&threeSaved.company_bank_months===6&&threeSaved.required_documents.includes('epf')&&!threeSaved.commission_documents.includes('epf')&&!threeSaved.company_documents.includes('epf'),'Three applicant lists and month periods remain independent');
+await fail(save,['AEON Credit',11,{...threeTypes,commission_documents:['guarantor']}],/institution_commission_document_keys/,'Commission checklist cannot add universal guarantor');
+await fail(save,['AEON Credit',11,{...threeTypes,commission_bank_months:0}],/check constraint/,'Invalid commission month count denied');
+await as(ids[1]);await fail(save,['AEON Credit',11,threeTypes],/Active Super Admin/,'Three-applicant RPC retains permissions');
+const commissionForm=new FormData();commissionForm.append('commissionDocument','payslips');commissionForm.set('commissionPayslipMonths','6');commissionForm.set('commissionBankMonths','6');const parsedCommission=draftPayload(commissionForm);ok(parsedCommission.commission_documents[0]==='payslips'&&parsedCommission.commission_bank_months===6&&parsedCommission.required_documents.length===0&&parsedCommission.company_documents.length===0,'Commission form serialization does not mix applicant lists');
+
 await db.close();console.log(`${passed} institution draft checks passed`);
