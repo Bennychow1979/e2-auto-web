@@ -1,0 +1,38 @@
+import {chromium} from '@playwright/test';
+import {createServer} from 'node:http';
+import {readFile,mkdir} from 'node:fs/promises';
+import {resolve,extname,sep} from 'node:path';
+import assert from 'node:assert/strict';
+const root=process.cwd();
+const mock=`
+export const configured=true,esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),friendlyError=e=>e.message;
+export const check=r=>{if(r.error)throw r.error;return r.data;};
+const actor='11111111-1111-4111-8111-111111111111',car='22222222-2222-4222-8222-222222222222';
+let loggedIn=true,callback;
+const rows={staff:[{id:actor,name:'HING',role:'inspector'}],vehicles:[{id:car,plate:'TEST218',label:'BMW 218i — Synthetic vehicle',year:2020,stock_status:'Available'}],jobs:[]};
+const events=[];
+export const db={auth:{getSession:async()=>({data:{session:loggedIn?{user:{id:actor,email:'inspector@example.test'}}:null}}),onAuthStateChange:cb=>callback=cb,signOut:async()=>{loggedIn=false;callback?.('SIGNED_OUT');return {data:null}}},
+from:()=>{const q={select:()=>q,eq:()=>q,order:async()=>({data:events})};return q;},
+rpc:async(name,args)=>{
+ if(new URLSearchParams(location.search).has('denied'))return {error:{message:'Active Inspector or Admin access required.'}};
+ if(name==='e2_inspection_workspace')return {data:structuredClone(rows)};
+ if(name==='e2_start_inspection'){let j={id:args.request_id,vehicle_id:args.car,assigned_to:args.assignee,status:'Pending inspection',checklist:Object.fromEntries(['engine','transmission','brakes','tyres','body','electrical','road_test'].map(k=>[k,'unchecked'])),findings:'',workshop:'',repair_date:null,repair_time:null,repair_notes:'',completion_notes:'',revision:1};rows.jobs.push(j);return {data:structuredClone(j)}};
+ if(name==='e2_save_inspection'){let j=rows.jobs.find(j=>j.id===args.target);Object.assign(j,args.changes,{revision:j.revision+1});events.push({action:j.status,snapshot:structuredClone(j),created_at:'2026-10-20T03:00:00Z'});return {data:structuredClone(j)}};
+ throw Error(name);
+}};`;
+const server=createServer(async(req,res)=>{const u=new URL(req.url,'http://localhost');if(u.pathname==='/e2-data.js'){res.setHeader('Content-Type','text/javascript');res.end(mock);return}const path=resolve(root,'.'+decodeURIComponent(u.pathname));if(!path.startsWith(root+sep)){res.writeHead(403).end();return}try{res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png'})[extname(path)]||'application/octet-stream');res.end(await readFile(path))}catch{res.writeHead(404).end()}});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser;
+try{
+ browser=await chromium.launch(process.platform==='win32'?{channel:'msedge'}:{});const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));const base='http://127.0.0.1:'+server.address().port;
+ await page.goto(base+'/inspections.html');await page.locator('#workspace').waitFor({state:'visible'});assert.equal(await page.locator('#vehiclesLink').isVisible(),false);
+ await page.getByRole('button',{name:'Start inspection +',exact:true}).click();await page.locator('#newVehicle').selectOption('22222222-2222-4222-8222-222222222222');await page.getByRole('button',{name:'Create record',exact:true}).click();await page.locator('#editor').waitFor({state:'visible'});
+ assert.equal(await page.locator('[data-check]').count(),7);assert.equal(await page.locator('#assignee').inputValue(),'11111111-1111-4111-8111-111111111111');
+ await page.locator('#status').selectOption('Repair booked');await page.locator('#findings').fill('Brake vibration. <script>alert(1)</script>');await page.locator('#workshop').fill('TEST workshop');await page.locator('#repairDate').fill('2026-10-21');await page.locator('#repairTime').fill('10:00');await page.locator('#repairNotes').fill('Parts ordered; check again after fitting.');await page.getByRole('button',{name:'Save inspection',exact:true}).click();await page.getByText('Saved.',{exact:true}).waitFor();assert.equal(await page.locator('#status').inputValue(),'Repair booked');
+ const dir=process.env.INSPECTION_SCREENSHOTS;if(dir){await mkdir(dir,{recursive:true});await page.screenshot({path:resolve(dir,'inspector-desktop.png'),fullPage:true});}
+ await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile has no horizontal overflow');if(dir)await page.screenshot({path:resolve(dir,'inspector-mobile.png'),fullPage:true});
+ for(const select of await page.locator('[data-check]').all())await select.selectOption('pass');await page.locator('#status').selectOption('Ready');await page.locator('#completionNotes').fill('Repair checked and road test completed.');await page.getByRole('button',{name:'Save inspection',exact:true}).click();await page.getByText('Saved. This record is now closed.',{exact:true}).waitFor();assert.equal(await page.locator('#saveJob').isDisabled(),true);
+ await page.getByRole('button',{name:'Close inspection',exact:true}).click();await page.locator('#filter').selectOption('all');await page.getByRole('button',{name:'View record ↗',exact:true}).click();assert.equal(await page.locator('#findings').inputValue(),'Brake vibration. <script>alert(1)</script>');
+ await page.getByRole('button',{name:'Close inspection',exact:true}).click();await page.getByRole('button',{name:'Sign out',exact:true}).click();await page.getByText('Signed out.',{exact:true}).waitFor();assert.equal(await page.locator('#jobs').textContent(),'');assert.equal(await page.locator('#findings').inputValue(),'');
+ await page.goto(base+'/inspections.html?denied=1');await page.getByText('Active Inspector or Admin access required.',{exact:true}).waitFor();assert.equal(await page.locator('#workspace').isVisible(),false);assert.deepEqual(errors,[]);
+ console.log('Inspector desktop/mobile browser checks passed: create, arrange repair, save, complete, history, sign-out and denied access.');
+}finally{await browser?.close();await new Promise(r=>server.close(r))}
