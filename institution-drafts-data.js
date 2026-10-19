@@ -7,6 +7,6 @@ export async function who(){
  if(!member.active||member.role!=='super_admin')throw Error('Active Super Admin access is required.');
  return user.id;
 }
-export async function load(){await who();return check(await db.from('e2_finance_institution_drafts').select('name,blacklist_policy,max_loan_years,max_vehicle_age_at_end,portal_url,email_to,required_documents,document_notes,other_documents,checklist_confirmed,active,revision,updated_at').order('name'));}
+export async function load(){await who();return check(await db.from('e2_finance_institution_drafts').select('name,guarantor_policy,blacklist_policy,max_loan_years,max_vehicle_age_at_end,portal_url,email_to,required_documents,document_notes,other_documents,checklist_confirmed,active,revision,updated_at').order('name'));}
 export async function save(name,revision,payload){await who();return check(await db.rpc('e2_save_institution_draft',{institution_name:name,expected_revision:revision,payload}));}
 export function watch(callback){return db?.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'||event==='USER_UPDATED')callback();});}

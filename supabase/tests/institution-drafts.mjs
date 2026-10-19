@@ -50,4 +50,16 @@ await fail(save,['AEON Credit',3,{...revised,blacklist_policy:'guaranteed'}],/ch
 for(const [reg,cap,age,expected] of [[2018,9,15,7],[2020,9,15,9],[2026,9,15,9],[2011,9,15,0],[2000,9,15,0],[2027,9,15,null],[2018,null,17,null],[2018,9,17,9]])ok(maximumLoanYears(reg,2026,cap,age)===expected,`Registration year ${reg}, cap ${cap}/${age} gives ${expected}`);
 await as(ids[1]);await fail(save,['AEON Credit',3,revised],/Active Super Admin/,'Extended rule RPC retains Super Admin boundary');
 
+await as(ids[0]);await db.query(save,['AEON Credit',3,{...revised,required_documents:['guarantor','ic_front']}]);
+await db.exec('reset role');await db.exec(await readFile('supabase/migrations/202610200003_institution_guarantor_policy.sql','utf8'));
+ok(await scalar("select count(*)=12 from e2_finance_institution_drafts where guarantor_policy='pending'"),'Guarantor defaults pending for unconfirmed institutions');
+ok(await scalar("select guarantor_policy='required' and required_documents=array['ic_front']::text[] from e2_finance_institution_drafts where name='AEON Credit'"),'Migration preserves explicit legacy guarantor requirement separately');
+await as(ids[0]);const conditional={...revised,guarantor_policy:'case_by_case'};
+const conditionalSaved=(await db.query(save,['AEON Credit',5,conditional])).rows[0];ok(conditionalSaved.guarantor_policy==='case_by_case'&&!conditionalSaved.active&&!conditionalSaved.required_documents.includes('guarantor'),'Conditional guarantor saves without a universal document requirement');
+const noGuarantor=(await db.query(save,['AEON Credit',6,{...conditional,guarantor_policy:'not_required'}])).rows[0];ok(noGuarantor.guarantor_policy==='not_required'&&!noGuarantor.active,'No-guarantor policy persists while inactive');
+await fail(save,['AEON Credit',7,{...conditional,guarantor_policy:'anything'}],/check constraint/,'Unknown guarantor policy denied');
+await fail(save,['AEON Credit',7,{...conditional,required_documents:['guarantor']}],/institution_guarantor_separate/,'Legacy checkbox cannot contradict separate guarantor policy');
+await as(ids[1]);await fail(save,['AEON Credit',7,conditional],/Active Super Admin/,'Conditional guarantor RPC retains permissions');
+const conditionalForm=new FormData();conditionalForm.set('guarantorPolicy','case_by_case');ok(draftPayload(conditionalForm).guarantor_policy==='case_by_case'&&draftPayload(conditionalForm).required_documents.length===0,'Conditional form does not add guarantor documents');
+
 await db.close();console.log(`${passed} institution draft checks passed`);
