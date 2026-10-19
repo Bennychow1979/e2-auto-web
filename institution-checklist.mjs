@@ -9,13 +9,13 @@ export const documentOptions = [
   ['vehicle','Vehicle documents / 车辆资料']
 ];
 export function draftPayload(form) {
-  const selected=[...new Set(form.getAll('document'))];
-  if(selected.some(key=>!documentOptions.some(([id])=>id===key))) throw Error('Unknown document option.');
+  const selected=[...new Set(form.getAll('document'))],companySelected=[...new Set(form.getAll('companyDocument'))];
+  if([...selected,...companySelected].some(key=>!documentOptions.some(([id])=>id===key))) throw Error('Unknown document option.');
   const portal=String(form.get('portal')||'').trim(), email=String(form.get('email')||'').trim();
   if(portal){let url;try{url=new URL(portal)}catch{}if(!url||url.protocol!=='https:'||url.username||url.password||url.hash)throw Error('Portal must be an HTTPS URL without credentials or a fragment.');}
   if(email&&!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email))throw Error('Enter one email recipient.');
-  const number=name=>{const raw=String(form.get(name)||'').trim();if(!raw)return null;const value=Number(raw);if(!Number.isInteger(value)||value<1||value>50)throw Error('Use a whole number of years from 1 to 50.');return value;};
-  return {portal_url:portal||null,email_to:email||null,required_documents:selected,
+  const number=(name,max=50)=>{const raw=String(form.get(name)||'').trim();if(!raw)return null;const value=Number(raw);if(!Number.isInteger(value)||value<1||value>max)throw Error(`Use a whole number from 1 to ${max}.`);return value;};
+  return {portal_url:portal||null,email_to:email||null,required_documents:selected,company_documents:companySelected,salary_payslip_months:number('salaryPayslipMonths',60),salary_bank_months:number('salaryBankMonths',60),company_bank_months:number('companyBankMonths',60),
     document_notes:String(form.get('notes')||'').trim(),other_documents:String(form.get('other')||'').trim(),
     checklist_confirmed:form.has('confirmed'),blacklist_policy:String(form.get('blacklist')||'pending'),guarantor_policy:String(form.get('guarantorPolicy')||'pending'),
     max_loan_years:number('maxYears'),max_vehicle_age_at_end:number('maxAge')};
