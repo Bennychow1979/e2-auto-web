@@ -16,3 +16,7 @@ verify_jwt = false
 # Database-only one-use capabilities are verified atomically inside the handler.
 [functions.e2-translate-vehicle]
 verify_jwt = false
+
+# Database-created one-use dispatch capabilities are verified in the handler.
+[functions.e2-viewing-notify]
+verify_jwt = false

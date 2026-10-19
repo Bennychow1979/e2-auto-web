@@ -1,7 +1,8 @@
 import {db,check} from './e2-data.js?v=booking-1';
 import {allRows} from './partner-read.js';
 import {malaysiaDate,dateLimit,viewingTimes} from './booking-core.mjs';
-const $=id=>document.getElementById(id);let records=[],staff=[],admin=false,current=null,busy=false;
+const $=id=>document.getElementById(id);let records=[],staff=[],admin=false,current=null,busy=false,notifications=[];
+let linkedViewing=new URLSearchParams(location.search).get('viewing');
 const add=(parent,tag,text,cls)=>{const node=document.createElement(tag);node.textContent=text;if(cls)node.className=cls;parent.append(node);return node};
 function render(){
   const query=$('bookingSearch').value.trim().toLowerCase(),filter=$('statusFilter').value;
@@ -11,6 +12,21 @@ function render(){
     const row=document.createElement('article');row.className='viewingRow';row.dataset.status=r.status;
     const person=document.createElement('div');row.append(person);add(person,'span',r.status,'viewingStatus');add(person,'h2',r.customer_name);const phone=add(person,'a','+'+r.phone);phone.href='tel:+'+r.phone;add(person,'p',r.vehicle_label||'General showroom visit');add(person,'small',r.id);
     const visit=document.createElement('div');row.append(visit);add(visit,'p',(r.confirmed_date?'Agreed: ':'Requested: ')+(r.confirmed_date||r.preferred_date)+' · '+(r.confirmed_time||r.preferred_time).slice(0,5));add(visit,'p','Language: '+({en:'English',ms:'Bahasa Melayu',zh:'华语'}[r.locale]));add(visit,'p','Sales: '+(r.salesperson?(staff.find(s=>s.user_id===r.salesperson)?.display_name||r.salesperson):'Unassigned'));
+    if(admin){
+      const delivery=notifications.find(n=>n.viewing_id===r.id);
+      if(delivery){
+        add(visit,'p','Telegram: '+({pending:'Queued',sending:'Sending',sent:'Sent',failed:'Needs attention',uncertain:'Check channel before retrying',skipped:'Skipped — closed request'}[delivery.status]||delivery.status),'deliveryStatus');
+        if(['failed','uncertain'].includes(delivery.status)){
+          const retry=add(visit,'button','Retry notification','secondary');retry.type='button';
+          retry.onclick=async()=>{
+            if(!confirm('Check the private channel first. If this request is already there, do not retry. Send it again?'))return;
+            retry.disabled=true;
+            try{check(await db.rpc('e2_retry_viewing_notification',{target:r.id}));await load()}
+            catch(error){$('message').textContent=error.message;retry.disabled=false}
+          };
+        }
+      }
+    }
     const button=add(row,'button','Manage');button.type='button';button.onclick=()=>open(r);return row;
   }));
 }
@@ -23,9 +39,34 @@ async function load(){
     admin=['super_admin','admin'].includes(membership.role);
     [records,staff]=await Promise.all([allRows(()=>db.from('e2_viewings').select('id,customer_name,phone,vehicle_label,preferred_date,preferred_time,locale,salesperson,ref_code,referral_request_id,status,confirmed_date,confirmed_time,contact_verified_at,staff_note,revision,created_at').order('created_at',{ascending:false}).order('id')),allRows(()=>db.from('staff_profiles').select('user_id,display_name').order('user_id'))]);
     if(admin)staff=check(await db.rpc('e2_viewing_assignees'));
+    notifications=[];
+    $('rotationPanel').hidden=!admin;
+    if(admin){
+      try{
+        const [settings,deliveries]=await Promise.all([db.rpc('e2_viewing_rotation_settings'),allRows(()=>db.from('e2_viewing_notifications').select('viewing_id,status,created_at').order('created_at',{ascending:false}).order('viewing_id'))]);
+        renderRotation(check(settings));notifications=deliveries;
+      }catch{$('rotationMessage').textContent='Assignment settings or notification status could not load. Refresh to retry.';$('rotationRoster').replaceChildren()}
+    }
     $('workspace').hidden=false;$('message').textContent=admin?'All viewing requests. Unassigned requests need an E2 administrator to follow up.':'Only requests assigned to you are shown.';render();
-  }catch(error){records=[];$('workspace').hidden=true;$('bookingList').replaceChildren();$('message').textContent=error.message}
+    if(linkedViewing){const linked=records.find(r=>r.id===linkedViewing);linkedViewing=null;if(linked)open(linked);else $('message').textContent='This viewing request is unavailable or assigned to another salesperson.'}
+  }catch(error){records=[];notifications=[];$('workspace').hidden=true;$('rotationPanel').hidden=true;$('bookingList').replaceChildren();$('message').textContent=error.message}
   finally{$('refresh').disabled=false}
+}
+function renderRotation(settings){
+  const eligible=settings.roster.filter(s=>s.active&&s.enabled);
+  $('rotationMessage').textContent=(eligible.length?'Next ordinary website request: '+eligible[0].display_name+'. ':'No Salesman is available. New ordinary requests will need Admin assignment. ')+(settings.notifications_enabled?'Telegram delivery enabled.':'Telegram delivery is not enabled yet.');
+  $('rotationRoster').replaceChildren(...settings.roster.map(person=>{
+    const row=document.createElement('div');row.className='rotationPerson';
+    add(row,'span',person.display_name+(person.active?'':' · account inactive'));
+    const button=add(row,'button',person.enabled?'Pause ordinary bookings':'Resume ordinary bookings','secondary');button.type='button';button.disabled=!person.active;
+    button.setAttribute('aria-label',(person.enabled?'Pause':'Resume')+' ordinary bookings for '+person.display_name);
+    button.onclick=async()=>{
+      button.disabled=true;
+      try{check(await db.rpc('e2_set_viewing_rotation',{target:person.user_id,participating:!person.enabled}));renderRotation(check(await db.rpc('e2_viewing_rotation_settings')))}
+      catch(error){$('rotationMessage').textContent=error.message;button.disabled=!person.active}
+    };
+    return row;
+  }));
 }
 function fillTimes(selected=$('confirmedTime').value){
   const values=viewingTimes($('confirmedDate').value);$('confirmedTime').replaceChildren(new Option('Select a time',''),...values.map(v=>new Option(v,v)));
@@ -48,7 +89,7 @@ $('editForm').onsubmit=async e=>{
   e.preventDefault();if(busy||!current||!$('editForm').reportValidity())return;busy=true;$('saveBooking').disabled=true;$('editMessage').textContent='Saving…';
   try{
     check(await db.rpc('e2_update_viewing',{target:current.id,expected_revision:current.revision,next_status:$('editStatus').value,assigned_sales:$('editSales').value||null,confirmed_day:$('confirmedDate').value||null,confirmed_slot:$('confirmedTime').value||null,confirm_contact:$('confirmedContact').checked,note:$('staffNote').value}));
-    $('bookingEditor').close();await load();$('message').textContent='Appointment saved. No message was sent automatically.';
+    $('bookingEditor').close();await load();$('message').textContent='Appointment saved. No message was sent to the customer.';
   }catch(error){$('editMessage').textContent=error.message}
   finally{busy=false;$('saveBooking').disabled=false}
 };
