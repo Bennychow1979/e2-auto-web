@@ -195,12 +195,12 @@ $('publishVehicle').onclick=async()=>{
 };
 async function showSession(session){
   const epoch=++authEpoch;
-  if(!session){if($('manageMileage'))$('manageMileage').hidden=true;vehicleTranslations.stop();$('manageLoans').hidden=true;$('manageCustomers').hidden=true;$('myProfileLink').hidden=true;$('manageUsers').hidden=true;role=null;cars=[];$('stockList').replaceChildren();$('workspace').hidden=true;$('entry').hidden=false;$('vehicleEditor').close();return}
+  if(!session){if($('manageMileage'))$('manageMileage').hidden=true;vehicleTranslations.stop();$('manageLoans').hidden=true;$('manageCustomers').hidden=true;$('myProfileLink').hidden=true;$('manageUsers').hidden=true;if($('manageInstitutions'))$('manageInstitutions').hidden=true;role=null;cars=[];$('stockList').replaceChildren();$('workspace').hidden=true;$('entry').hidden=false;$('vehicleEditor').close();return}
   if(recovery)return;
   try{
     const membership=check(await db.from('staff_memberships').select('role,active').eq('user_id',session.user.id).maybeSingle());if(epoch!==authEpoch)return;
     if(!membership?.active||!Object.hasOwn(roleLabels,membership.role)){$('entry').hidden=false;$('workspace').hidden=true;await db.auth.signOut();throw new Error('This account has no inventory access. Ask the E2 administrator to activate your staff membership.')}
-    role=membership.role;if($('manageMileage'))$('manageMileage').hidden=window.E2_CONFIG?.mileageChecks!==true||!['super_admin','admin','sales'].includes(role);if(role==='office_admin'){location.replace('intake-workspace.html');return}$('manageLoans').hidden=!['super_admin','admin','sales'].includes(role);$('manageCustomers').hidden=!['super_admin','admin'].includes(role);$('myProfileLink').hidden=role==='customer';$('profileName').textContent=session.user.email;$('profileRole').textContent=roleLabels[role];$('manageUsers').hidden=role!=='super_admin';$('addVehicle').hidden=!canManageStock();vehicleImporter.update();$('entry').hidden=true;$('workspace').hidden=false;await refresh();
+    role=membership.role;if($('manageMileage'))$('manageMileage').hidden=window.E2_CONFIG?.mileageChecks!==true||!['super_admin','admin','sales'].includes(role);if(role==='office_admin'){location.replace('intake-workspace.html');return}$('manageLoans').hidden=!['super_admin','admin','sales'].includes(role);$('manageCustomers').hidden=!['super_admin','admin'].includes(role);$('myProfileLink').hidden=role==='customer';$('profileName').textContent=session.user.email;$('profileRole').textContent=roleLabels[role];$('manageUsers').hidden=role!=='super_admin';if($('manageInstitutions'))$('manageInstitutions').hidden=role!=='super_admin';$('addVehicle').hidden=!canManageStock();vehicleImporter.update();$('entry').hidden=true;$('workspace').hidden=false;await refresh();
   }catch(error){message('authMessage',friendlyError(error),true)}
 }
 $('loginForm').onsubmit=async e=>{
