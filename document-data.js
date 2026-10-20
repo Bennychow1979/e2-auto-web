@@ -12,3 +12,7 @@ export const reserve=(id,item,file,mime,months)=>db.rpc('e2_reserve_document',{t
 export const finish=(doc,replaces)=>db.rpc('e2_finish_document',{document_id:doc.id,replaces:replaces||null}).then(unwrap);
 export const remove=doc=>db.rpc('e2_remove_document',{document_id:doc.id}).then(check);
 export const storage=()=>db.storage.from('loan-documents');
+
+export const requirements=id=>db.rpc('e2_loan_document_requirements',{target:id}).then(check);
+export const institutionChoices=id=>db.rpc('e2_loan_institution_choices',{target:id}).then(check);
+export const selectInstitution=(a,name,guarantor)=>db.rpc('e2_set_loan_institution',{target:a.id,institution_name:name,guarantor_needed:guarantor,expected_revision:a.revision}).then(unwrap);

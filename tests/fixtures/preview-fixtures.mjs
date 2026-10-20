@@ -67,6 +67,9 @@ export function documentDataMock(staffView = false) {
       catch (error) { return {data: null, error}; }
     }});
     ${readonly}
+    export const requirements = async () => ({status:'unassigned'});
+    export const institutionChoices = async () => [];
+    export const selectInstitution = forbidden;
     export const setType = forbidden, reserve = forbidden, finish = forbidden, remove = forbidden;
   `;
 }
