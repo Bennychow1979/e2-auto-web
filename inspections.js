@@ -17,7 +17,7 @@ function gate(text){photos.reset();epoch++;data={vehicles:[],staff:[],jobs:[]};c
 async function load(){const ticket=++epoch;try{
  if(!configured)throw Error('Workspace connection is not configured.');
  const auth=check(await db.auth.getSession()).session;if(!auth){gate('Sign in with an Inspector or Admin account.');return;}
- const [workspace,workshops]=await Promise.all([db.rpc('e2_inspection_workspace'),db.rpc('e2_inspection_workshops').catch(error=>({error}))]);const rows=check(workspace);if(ticket!==epoch)return;
+ const [workspace,workshops]=await Promise.all([db.rpc('e2_inspection_workspace'),Promise.resolve(db.rpc('e2_inspection_workshops')).catch(error=>({error}))]);const rows=check(workspace);if(ticket!==epoch)return;
  rows.workshops=workshops.error?[]:check(workshops);rows.workshopListUnavailable=!!workshops.error;
  session=auth;data=rows;$('workspace').hidden=false;$('signIn').hidden=true;$('signOut').hidden=false;
  $('vehiclesLink').hidden=data.staff.find(x=>x.id===auth.user.id)?.role==='inspector';
