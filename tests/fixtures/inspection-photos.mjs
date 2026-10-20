@@ -10,6 +10,7 @@ from:table=>{const filters=[];const q={select:()=>q,eq:(k,v)=>{filters.push([k,v
 storage:{from:()=>({upload:async(path,file)=>{blobs.set(path,file);return {data:{path}}},download:async path=>({data:blobs.get(path)})})},
 rpc:async(name,args)=>{
  if(new URLSearchParams(location.search).has('denied'))return {error:{message:'Active Inspector or Admin access required.'}};
+ if(name==='e2_inspection_workshops')return {data:[...new Set(events.map(e=>e.snapshot.workshop).filter(Boolean))]};
  if(name==='e2_inspection_workspace')return {data:structuredClone(rows)};
  if(name==='e2_start_inspection'){let j={id:args.request_id,vehicle_id:args.car,assigned_to:args.assignee,status:'Pending inspection',checklist:Object.fromEntries(['cushion','windscreen','engine','transmission','brakes','tyres','body','electrical','road_test'].map(k=>[k,'unchecked'])),findings:'',workshop:'',repair_date:null,repair_time:null,repair_notes:'',completion_notes:'',revision:1};rows.jobs.push(j);return {data:structuredClone(j)}};
  if(name==='e2_save_inspection'){let j=rows.jobs.find(j=>j.id===args.target);Object.assign(j,args.changes,{revision:j.revision+1});events.push({action:j.status,snapshot:structuredClone(j),created_at:'2026-10-20T03:00:00Z'});return {data:structuredClone(j)}};

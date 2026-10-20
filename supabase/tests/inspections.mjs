@@ -21,6 +21,7 @@ for(const file of readdirSync('supabase/migrations').filter(f=>f<'202609180001')
 for(const file of ['202609220001_partner_referrals.sql','202610010002_viewing_bookings.sql','202610200006_viewing_rotation_notifications.sql','202610200007_viewing_notification_dispatch.sql'])await db.exec(readFileSync('supabase/migrations/'+file,'utf8'));
 await db.exec(readFileSync('supabase/migrations/202610200008_vehicle_inspections.sql','utf8'));
 await db.exec(readFileSync('supabase/migrations/202610210001_inspection_defect_photos.sql','utf8'));
+await db.exec(readFileSync('supabase/migrations/202610210002_inspection_workshops.sql','utf8'));
 const [owner,inspector,sales,office,customer,inactive,newStaff]=Array.from({length:7},randomUUID);
 for(const [i,id] of [owner,inspector,sales,office,customer,inactive,newStaff].entries())await db.query('insert into auth.users values($1,$2,now())',[id,`inspection${i}@example.test`]);
 for(const [id,role,active] of [[owner,'super_admin',true],[inspector,'sales',true],[sales,'sales',true],[office,'office_admin',true],[customer,'customer',true],[inactive,'inspector',false]])await db.query('insert into public.staff_memberships(user_id,role,active) values($1,$2,$3)',[id,role,active]);
@@ -35,7 +36,7 @@ await no(db.query("select public.e2_update_staff($1,'inspector',true,1)",[owner]
 await db.query("select public.e2_add_staff_by_email('inspection6@example.test','inspector')");
 ok(await scalar("select role from public.e2_list_staff() where user_id=$1",[newStaff]),'inspector','Existing login can be assigned Inspector');
 for(const id of [null,sales,office,customer,inactive]){
- await as(id);await no(db.query('select public.e2_inspection_workspace()'),'Unauthorized role cannot load inspection workspace');await no(start(),'Unauthorized role cannot create records');
+ await as(id);await no(db.query('select public.e2_inspection_workshops()'),'Unauthorized role cannot read workshop names');await no(db.query('select public.e2_inspection_workspace()'),'Unauthorized role cannot load inspection workspace');await no(start(),'Unauthorized role cannot create records');
  if(id)ok(await scalar('select count(*)::int from public.e2_vehicle_inspections'),0,'RLS hides inspection records');
 }
 await as(inspector);
@@ -73,6 +74,7 @@ await no(save(job,{...changes,findings:'x'.repeat(4001)}),'Oversized notes rejec
 const first=job;job=await save(job,changes);await no(save(first,changes),'Concurrent stale edits rejected');
 changes={...changes,status:'Repair booked',workshop:'TEST workshop',repair_date:'2026-10-21',repair_time:'10:00',repair_notes:'Replace worn parts'};job=await save(job,changes);
 ok(job.workshop,'TEST workshop','Workshop arrangement saved');
+ok(await scalar('select public.e2_inspection_workshops()'),['TEST workshop'],'Saved workshop available to another inspection');
 job=await save(job,{...changes,status:'In repair'});ok(job.status,'In repair','Repair progress saved');
 const photoId=randomUUID();
 const reserve=()=>scalar('select to_jsonb(public.e2_reserve_inspection_photo($1,$2,$3,$4,$5,$6,$7))',[photoId,job.id,'windscreen','Synthetic crack detail','test.png','image/png',100]);
@@ -100,5 +102,15 @@ ok(second.status,'Cancelled','Cancellation preserves the record');
 await as(sales);ok(await scalar('select count(*)::int from public.e2_vehicle_inspections'),0,'Sales cannot see saved inspection records');await no(save(job,changes),'Sales cannot change an inspection');
 await as(owner);await db.query("select public.e2_update_staff($1,'inspector',false,2)",[inspector]);await as(inspector);await no(db.query('select public.e2_inspection_workspace()'),'Existing session loses access when deactivated');
 await as(owner);ok((await scalar('select public.e2_inspection_workspace()')).jobs.length,2,'Admin can review retained inspection history');
+await db.exec('reset role');
+await db.query("update public.e2_vehicle_inspections set workshop=' OTHER workshop ' where id=$1",[job.id]);
+await db.query("update public.e2_vehicle_inspections set workshop=' test   WORKSHOP ' where id=$1",[second.id]);
+await as(owner);const names=await scalar('select public.e2_inspection_workshops()');
+ok(names.length,2,'Case and repeated whitespace do not create duplicate workshop options');
+ok(names.some(n=>n.toLowerCase()==='test workshop'),true,'Previously saved name survives when record workshop changes');
+ok(names.includes('OTHER workshop'),true,'Current record name is also included');
+await db.exec('reset role');await db.query("update public.e2_vehicle_inspections set workshop='' where id=$1",[second.id]);await as(owner);
+ok((await scalar('select public.e2_inspection_workshops()')).some(n=>n.toLowerCase()==='test workshop'),true,'History alone retains a saved name after all current records change');
+await as(inspector);await no(db.query('select public.e2_inspection_workshops()'),'Deactivated Inspector cannot read workshop directory');
 console.log(`${passed} inspection permission and workflow checks passed.`);await db.close();
 
