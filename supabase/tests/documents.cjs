@@ -8,6 +8,7 @@ create table storage.objects(id uuid primary key default gen_random_uuid(),bucke
 alter table storage.objects enable row level security;grant usage on schema public,auth,storage to anon,authenticated,service_role;
 grant select,insert,update,delete on storage.objects to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;`);
 for(const f of ['202609120001_inventory.sql','202609130002_photo_order.sql','202609130003_photo_limit_30.sql','202609130004_super_admin.sql','202609130005_staff_profiles.sql','202609130006_customers.sql','202609140006_saved_vehicles.sql','202609140007_customer_workspace.sql','202609140008_loan_validation.sql','202609140009_loan_workflow.sql','202609140010_loan_documents.sql']){if(f==='202609140007_customer_workspace.sql')await db.exec('alter default privileges in schema public grant execute on functions to anon,authenticated');await db.exec(fs.readFileSync('supabase/migrations/'+f,'utf8'));}
+for(const f of ['202609140011_guest_intake.sql','202610200001_institution_drafts.sql','202610200002_institution_draft_rules.sql','202610200003_institution_guarantor_policy.sql','202610200004_institution_applicant_defaults.sql','202610200005_institution_commission_defaults.sql','202610200006_applicant_upload_defaults.sql','202610200007_loan_institution_requirements.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+f,'utf8'));
 await yes("select has_function_privilege('anon','public.e2_save_loan(uuid,jsonb,integer,bigint)','execute') value",false,'Supabase default grants do not expose loan save to anonymous users');
 await yes("select has_function_privilege('authenticated','public.e2_validate_loan_details(jsonb,boolean,numeric)','execute') value",false,'Validator remains internal despite Supabase defaults');
 const ids=Array.from({length:8},(_,i)=>'00000000-0000-4000-8000-00000000000'+(i+1));
@@ -69,7 +70,7 @@ await as(customer);await upload(d,{size:122,mimetype:'application/pdf'});await d
 check((await objectDelete(d)).rows.length,1,'Owner can clean incomplete object');await upload(d);d=await finish(d);check(d.state,'ready','Matching stored object finalizes');check((await finish(d)).id,d.id,'Finalize retry is idempotent');
 check((await objectDelete(d)).rows.length,0,'Ready blob cannot be directly deleted');
 check((await db.query("update storage.objects set metadata='{}' where name=$1 returning name",[d.path])).rows.length,0,'Ready blob cannot be overwritten');
-await denied(()=>upload(d),'Duplicate path upload rejected');await denied(async()=>type('self_employed',(await current()).revision),'Changing checklist cannot discard files');
+await denied(()=>upload(d),'Duplicate path upload rejected');a=await type('self_employed',(await current()).revision);check((await call('select removed_at from public.loan_documents where id=$1',[d.id])).removed_at,null,'Changing checklist preserves files');a=await type('worker',(await current()).revision);
 const cross=await reserve('ic_back');await upload(cross);await denied(()=>finish(cross,d),'Replacement must use the same category');check((await call('select removed_at from public.loan_documents where id=$1',[d.id])).removed_at,null,'Failed replacement preserves original');await remove(cross);await objectDelete(cross);
 const replacement=await reserve();await denied(()=>finish(replacement,d),'Original survives incomplete replacement');check((await call('select removed_at from public.loan_documents where id=$1',[d.id])).removed_at,null,'Original remains available');await upload(replacement);let newDoc=await finish(replacement,d);check(Boolean((await call('select removed_at from public.loan_documents where id=$1',[d.id])).removed_at),true,'Successful replacement hides original atomically');check((await objectDelete(d)).rows.length,1,'Removed original storage can be cleaned');
 const monthly=await reserve('payslip',[months.m,months.prev]);await upload(monthly);await finish(monthly);check(monthly.covered_months.length,2,'Combined PDF can cover multiple months');
@@ -77,6 +78,37 @@ for(const id of [owner,sales]){await as(id);check((await blobs()).n,0,'Staff can
 await as(customer);
 const {sections}=await import('../../loan-fields.js');const details={};for(const [key,,sub,t,required] of sections({guarantor:'Not requested'}).flat()){if(required)details[key]=Array.isArray(t)?t[0]:t==='email'?'test@example.test':t==='tel'?'60123456789':t==='year'?'2020':t==='number'?'2':'Test information'}details.guarantor='Not requested';details.deposit='5000';
 a=await current();a=await call('select * from public.e2_save_loan($1,$2,6,$3)',[a.id,JSON.stringify(details),a.revision]);a=await call('select * from public.e2_submit_loan($1,$2,true,true)',[a.id,a.revision]);
+
+const req=()=>call('select public.e2_loan_document_requirements($1) r',[a.id]);
+const choose=(name='AEON Credit',guarantor=false,revision=a.revision)=>call('select * from public.e2_set_loan_institution($1,$2,$3,$4)',[a.id,name,guarantor,revision]);
+await denied(()=>choose(),'Customer cannot choose institution');
+await as(sales);check((await db.query('select * from public.e2_loan_institution_choices($1)',[a.id])).rows.length,13,'Assigned staff sees institution names');
+await denied(()=>choose(),'Inactive institution cannot be selected');
+await as(other);await denied(()=>req(),'Other customer cannot read requirements');await denied(()=>choose(),'Other customer cannot select institution');
+await as(admin);await denied(()=>choose(),'Unassigned staff cannot select institution');
+// Isolated test-only enablement; production migration intentionally keeps active=false.
+await db.exec('reset role');
+const checks=(await db.query("select conname from pg_constraint where conrelid='public.e2_finance_institution_drafts'::regclass and pg_get_constraintdef(oid) like '%active%'")).rows;
+for(const {conname} of checks)await db.exec('alter table public.e2_finance_institution_drafts drop constraint '+conname);
+await db.exec("update public.e2_finance_institution_drafts set active=true,checklist_confirmed=true,guarantor_policy='case_by_case',required_documents=array['ic_front','ic_back','payslips','personal_bank'],salary_payslip_months=6,salary_bank_months=6 where name='AEON Credit'");
+await as(sales);await denied(()=>choose('AEON Credit',false,0),'Stale assignment rejected');a=await current();a=await choose();
+check((await req()).r.items.some(i=>i.key==='driving_license'),false,'Institution without DL removes DL requirement');
+check((await req()).r.items.find(i=>i.key==='payslip').months,6,'Institution statement period mapped');
+check((await req()).r.items.some(i=>i.key==='guarantor'),false,'Guarantor not imposed on every case');
+a=await choose('AEON Credit',true);check((await req()).r.items.some(i=>i.key==='guarantor'),true,'Case-specific guarantor documents added');
+await db.exec('reset role');await db.exec("update public.e2_finance_institution_drafts set guarantor_policy='required' where name='AEON Credit'");await as(sales);await denied(()=>choose('AEON Credit',false),'Required guarantor cannot be unchecked');
+await db.exec('reset role');await db.exec("update public.e2_finance_institution_drafts set guarantor_policy='not_required' where name='AEON Credit'");await as(sales);await denied(()=>choose('AEON Credit',true),'Not-required guarantor cannot be imposed');
+await db.exec('reset role');await db.exec("update public.e2_finance_institution_drafts set guarantor_policy='case_by_case' where name='AEON Credit'");await as(sales);
+await as(customer);check((await req()).r.institution,'AEON Credit','Customer can read their assigned checklist');
+check('portal_url' in (await req()).r,false,'Private institution settings not exposed');
+await denied(()=>reserve('driving_license'),'Upload category follows selected institution');
+const six=(await db.query("select to_char(current_date-i*interval '1 month','YYYY-MM') m from generate_series(1,6) i")).rows.map(r=>r.m);
+let supplement=await reserve('payslip',six);await remove(supplement);
+a=await type('commission',(await current()).revision);check((await req()).r.status,'review_required','Applicant type change requires staff review');
+supplement=await reserve('payslip',six);await remove(supplement);await denied(()=>reserve('epf'),'Commission does not require default EPF');
+a=await type('worker',(await current()).revision);
+await db.exec('reset role');await db.exec("update public.e2_finance_institution_drafts set active=false,revision=revision+1 where name='AEON Credit'");
+await as(customer);check((await req()).r.status,'review_required','Disabled or changed institution fails closed');
 for(const id of [owner,sales]){await as(id);check((await seen()).n,2,'Super and assignee see ready submitted files only');check((await blobs()).n,2,'Super and assignee can fetch submitted files');await denied(()=>reserve(),'Staff cannot upload');await denied(()=>remove(newDoc),'Staff cannot remove');await denied(()=>type('worker'),'Staff cannot change checklist')}
 for(const id of [admin,account,other,unconfirmed,inactive]){await as(id);check((await seen()).n,0,'Unassigned or inactive accounts cannot see submitted documents');check((await blobs()).n,0,'Unassigned or inactive accounts cannot fetch submitted blobs')}
 await as(customer);const pending=await reserve('epf');await upload(pending);await as(sales);check((await seen()).n,2,'Submitted pending upload remains hidden from staff');check((await blobs()).n,2,'Pending blob remains hidden from staff');
@@ -90,7 +122,7 @@ await as(customer);check((await call('select count(*)::int n from public.loan_do
 await as(other);for(let i=1;i<30;i++)await reserve('driving_license');await denied(()=>reserve('ic_back'),'Thirty active files enforced server-side');
 await db.exec('reset role');await db.query("insert into public.staff_memberships(user_id,role,active) values($1,'customer',false)",[other]);await as(other);check((await blobs()).n,0,'Disabled applicant loses file access');await denied(()=>reserve(),'Disabled applicant upload blocked');
 const {fileType,checklist,categoryProgress}=await import('../../document-fields.js');
-check(await fileType(new Blob(['%PDF-1.4 test'])),'application/pdf','PDF signature accepted');check(await fileType(new Blob([new Uint8Array([137,80,78,71,13,10,26,10])])),'image/png','PNG signature accepted');await denied(()=>fileType(new Blob(['<html>'],{type:'application/pdf'})),'Disguised HTML rejected by preview/upload');check(checklist('worker').length,6,'Worker checklist has six upload categories');check(checklist('self_employed').length,4,'Self-employed individual checklist has four categories');check(categoryProgress({key:'payslip',months:3},[{category:'payslip',state:'ready',covered_months:['2026-08']},{category:'payslip',state:'ready',covered_months:['2026-08']}]),'1 / 3 months uploaded','Duplicate files do not over-count a month');
+check(await fileType(new Blob(['%PDF-1.4 test'])),'application/pdf','PDF signature accepted');check(await fileType(new Blob([new Uint8Array([137,80,78,71,13,10,26,10])])),'image/png','PNG signature accepted');await denied(()=>fileType(new Blob(['<html>'],{type:'application/pdf'})),'Disguised HTML rejected by preview/upload');check(checklist('worker').length,6,'Worker checklist has six upload categories');check(checklist('self_employed').length,5,'Self-employed checklist includes SSM');check(checklist('commission').find(i=>i.key==='payslip').months,6,'Commission requires six months');check(categoryProgress({key:'payslip',months:3},[{category:'payslip',state:'ready',covered_months:[months.prev]},{category:'payslip',state:'ready',covered_months:[months.prev]}]),`1 / 3 months uploaded · Missing: ${[2,3].map(i=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}).join(', ')}`,'Duplicate files do not over-count a month');
 await db.close();console.log(passed+' document privacy and upload checks passed.');
 })().catch(e=>{console.error(e);process.exit(1)});
 
