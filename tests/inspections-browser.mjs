@@ -4,7 +4,8 @@ import {readFile,mkdir} from 'node:fs/promises';
 import {resolve,extname,sep} from 'node:path';
 import assert from 'node:assert/strict';
 import {pngBytes} from './fixtures/preview-fixtures.mjs';
-const root=process.cwd();
+const root=process.cwd(),dir=process.env.INSPECTION_SCREENSHOTS;
+if(dir)await mkdir(dir,{recursive:true});
 import {mock} from './fixtures/inspection-photos.mjs';
 const server=createServer(async(req,res)=>{const u=new URL(req.url,'http://localhost');if(u.pathname==='/e2-data.js'){res.setHeader('Content-Type','text/javascript');res.end(mock);return}const path=resolve(root,'.'+decodeURIComponent(u.pathname));if(!path.startsWith(root+sep)){res.writeHead(403).end();return}try{res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png'})[extname(path)]||'application/octet-stream');res.end(await readFile(path))}catch{res.writeHead(404).end()}});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser;
@@ -13,7 +14,20 @@ try{
  await page.goto(base+'/inspections.html');await page.locator('#workspace').waitFor({state:'visible'});assert.equal(await page.locator('#vehiclesLink').isVisible(),false);
  await page.getByRole('button',{name:'Start inspection +',exact:true}).click();await page.locator('#newVehicle').selectOption('22222222-2222-4222-8222-222222222222');await page.getByRole('button',{name:'Create record',exact:true}).click();await page.locator('#editor').waitFor({state:'visible'});
  assert.equal(await page.locator('[data-check]').count(),9);assert.equal(await page.locator('#assignee').inputValue(),'11111111-1111-4111-8111-111111111111');
- await page.locator('#status').selectOption('Repair booked');await page.locator('#findings').fill('Brake vibration. <script>alert(1)</script>');await page.locator('#workshop').fill('TEST workshop');await page.locator('#repairDate').fill('2026-10-21');await page.locator('#repairTime').fill('10:00');await page.locator('#repairNotes').fill('Parts ordered; check again after fitting.');await page.getByRole('button',{name:'Save inspection',exact:true}).click();await page.getByText('Saved.',{exact:true}).waitFor();assert.equal(await page.locator('#status').inputValue(),'Repair booked');
+ await page.locator('#status').selectOption('Repair booked');await page.locator('#findings').fill('Brake vibration. <script>alert(1)</script>');await page.locator('#workshopSelect').selectOption('new');await page.locator('#workshop').fill('TEST workshop');await page.locator('#repairDate').fill('2026-10-21');await page.locator('#repairTime').fill('10:00');await page.locator('#repairNotes').fill('Parts ordered; check again after fitting.');await page.getByRole('button',{name:'Save inspection',exact:true}).click();await page.getByText('Saved.',{exact:true}).waitFor();assert.equal(await page.locator('#status').inputValue(),'Repair booked');
+ assert.equal(await page.locator('#newWorkshopField').isVisible(),false);
+ assert.equal(await page.locator('#workshopSelect option:checked').textContent(),'TEST workshop');
+ await page.locator('#workshopSelect').selectOption('new');await page.locator('#workshop').fill('  test   WORKSHOP  ');
+ await page.getByRole('button',{name:'Save inspection',exact:true}).click();await page.getByText('Saved.',{exact:true}).waitFor();
+ assert.equal(await page.locator('#workshop').inputValue(),'TEST workshop');
+ assert.equal(await page.locator('#workshopSelect option').count(),3);
+ await page.locator('#workshopSelect').selectOption('new');await page.locator('#workshop').fill('Unsaved workshop');
+ page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Close inspection',exact:true}).click();
+ await page.getByRole('button',{name:'Manage inspection ↗',exact:true}).click();
+ assert.equal(await page.locator('#workshopSelect option').count(),3);
+ await page.locator('#workshopSelect').selectOption('');assert.equal(await page.locator('#workshop').inputValue(),'');
+ await page.locator('#workshopSelect').selectOption({label:'TEST workshop'});assert.equal(await page.locator('#workshop').inputValue(),'TEST workshop');
+ if(dir){await page.locator('#findings').fill('Brake vibration / 刹车抖动（测试）');await page.locator('#workshopSelect').scrollIntoViewIfNeeded();await page.screenshot({path:resolve(dir,'workshop-desktop.png')});await page.setViewportSize({width:390,height:844});await page.locator('#workshopSelect').scrollIntoViewIfNeeded();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:resolve(dir,'workshop-mobile.png')});await page.setViewportSize({width:1440,height:1000});await page.locator('#findings').fill('Brake vibration. <script>alert(1)</script>');}
  await page.locator('[data-check="windscreen"]').selectOption('attention');
  await page.locator('#defectCategory').selectOption('windscreen');
  await page.locator('#defectCaption').fill('Synthetic windscreen chip · test only');
@@ -34,7 +48,7 @@ try{
  await page.locator('[data-defect]').click();
  await page.locator('.defectImage img').waitFor({state:'visible'});
  assert.equal(await page.locator('.defectImage img').getAttribute('alt'),'Synthetic windscreen chip · test only');
- const dir=process.env.INSPECTION_SCREENSHOTS;if(dir){await mkdir(dir,{recursive:true});await page.screenshot({path:resolve(dir,'inspector-desktop.png'),fullPage:true});}
+ if(dir){await mkdir(dir,{recursive:true});await page.screenshot({path:resolve(dir,'inspector-desktop.png'),fullPage:true});}
  await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile has no horizontal overflow');if(dir)await page.screenshot({path:resolve(dir,'inspector-mobile.png'),fullPage:true});
  for(const select of await page.locator('[data-check]').all())await select.selectOption('pass');await page.locator('#status').selectOption('Ready');await page.locator('#completionNotes').fill('Repair checked and road test completed.');await page.getByRole('button',{name:'Save inspection',exact:true}).click();await page.getByText('Saved. This record is now closed.',{exact:true}).waitFor();assert.equal(await page.locator('#saveJob').isDisabled(),true);
  await page.getByRole('button',{name:'Close inspection',exact:true}).click();await page.locator('#filter').selectOption('all');await page.getByRole('button',{name:'View record ↗',exact:true}).click();assert.equal(await page.locator('#findings').inputValue(),'Brake vibration. <script>alert(1)</script>');
