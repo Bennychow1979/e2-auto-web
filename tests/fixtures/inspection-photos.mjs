@@ -17,4 +17,7 @@ rpc:async(name,args)=>{
  if(name==='e2_reserve_inspection_photo'){let p=photos.find(p=>p.id===args.request_id);if(!p){p={id:args.request_id,inspection_id:args.target,category:args.photo_category,caption:args.photo_caption,filename:args.file_name,path:args.target+'/'+args.request_id,state:'uploading',created_at:new Date().toISOString()};photos.push(p)}return {data:structuredClone(p)}};
  if(name==='e2_finish_inspection_photo'){const p=photos.find(p=>p.id===args.photo_id);p.state='ready';return {data:structuredClone(p)}};
  throw Error(name);
-}};`;
+}};
+// Supabase PostgREST returns a thenable builder without Promise.catch.
+const rpcResult=db.rpc;
+db.rpc=(...args)=>({then:(resolve,reject)=>rpcResult(...args).then(resolve,reject)});`;
