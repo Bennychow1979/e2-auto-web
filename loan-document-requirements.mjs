@@ -2,7 +2,7 @@ import {checklist,documentCoverage} from './document-fields.js';
 const labels={ic_front:'IC — front',ic_back:'IC — back',driving_license:'Driving licence',payslip:'Payslips / commission statements',bank_statement:'Personal bank statements',company_bank_statement:'Company bank statements',epf:'EPF statement',ssm:'SSM business documents',employment:'Employment confirmation',tax:'Income tax documents',financials:'Business financial statements',vehicle:'Vehicle documents',guarantor:'Guarantor documents'};
 export function requirementItems(type,requirements){
  if(requirements?.status!=='selected')return checklist(type);
- return requirements.items.map(i=>({...i,label:labels[i.key]||i.key,hint:i.months?`Latest ${i.months} completed months before checklist selection`:'Required by selected institution'}));
+ return requirements.items.map(i=>{const includeCurrentMonth=['worker','commission'].includes(type)&&i.key==='bank_statement';return {...i,includeCurrentMonth,label:includeCurrentMonth?'Bank statements / transaction history':labels[i.key]||i.key,hint:i.months?(includeCurrentMonth?`Latest ${i.months} months including the month of checklist selection · show ${type==='commission'?'commission':'salary'} credited to your personal bank account`:`Latest ${i.months} completed months before checklist selection`):'Required by selected institution'}});
 }
 export function retainedItems(items,rows){return [...new Set(rows.filter(r=>!r.removed_at).map(r=>r.category))].filter(key=>!items.some(i=>i.key===key)).map(key=>({key,label:labels[key]||key,hint:'Previously uploaded · retained for reference',retained:true}));}
 export function requirementSummary(items,rows,requirements){
