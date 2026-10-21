@@ -11,7 +11,7 @@ export function setupVehicleLifecycle({db,check,esc,friendlyError,getCars,getRol
  const labels={active:'Stock / 库存',trash:'Recycle bin / 回收站',archived:'Archived / 已归档',purging:'Deletion incomplete / 删除待完成'};
  const state=c=>c.lifecycle_state||'active';
  function lock(value){busy=value;dialog.querySelectorAll('button,input,textarea').forEach(e=>e.disabled=value);}
- function reset(){ticket++;selected=null;view='active';if(dialog.open)dialog.close();}
+ function reset(){ticket++;selected=null;view='active';lock(false);if(dialog.open)dialog.close();}
  function render(){
   tabs.hidden=!manager();if(!manager())view='active';
   tabs.innerHTML=['active','trash','archived'].map(s=>`<button type="button" data-view="${s}" aria-pressed="${view===s}">${labels[s]} (${getCars().filter(c=>state(c)===s||(s==='trash'&&state(c)==='purging')).length})</button>`).join('');

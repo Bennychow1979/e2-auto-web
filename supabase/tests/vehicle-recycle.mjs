@@ -35,6 +35,7 @@ try{
  await db.query('insert into vehicle_photos(id,vehicle_id,path,position) values($1,$2,$3,0)',[photo,photoCar,path]);
  await action(photoCar,'remove','photo test');await action(photoCar,'restore');assert.equal((await db.query('select id from vehicle_photos where vehicle_id=$1',[photoCar])).rows.length,1);
  await action(photoCar,'remove','permanent test');
+ await assert.rejects(()=>db.query("insert into storage.objects(bucket_id,name) values('vehicle-photos',$1)",[photoCar+'/'+randomUUID()+'.webp']),/row-level security/);
  const realAdmin=randomUUID();await db.exec('reset role');await db.query('insert into auth.users values($1,$2,now())',[realAdmin,'local-admin@example.test']);await db.query("insert into staff_memberships(user_id,role) values($1,'admin')",[realAdmin]);ids.regularAdmin=realAdmin;
  await as('regularAdmin');await assert.rejects(()=>action(photoCar,'purge_begin','','RECYCLE2'),/Super Admin/);
  await as('admin');await assert.rejects(()=>action(photoCar,'purge_begin','','WRONG'),/confirmation/);

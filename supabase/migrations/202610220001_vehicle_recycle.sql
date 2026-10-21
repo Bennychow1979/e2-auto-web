@@ -138,19 +138,29 @@ create policy visible_stock on public.vehicles for select to anon,authenticated 
 );
 -- The ordinary photo-removal policy requires an unlinked row. Purge cleanup is
 -- deliberately narrow and keeps photo metadata until Storage confirms removal.
+-- Lock the parent for Storage writes too: an in-flight upload must finish before
+-- removal inspects its cleanup paths, or see the new state and be rejected.
+create function public.e2_storage_vehicle_lifecycle(object_name text,allow_purge boolean default false) returns boolean language plpgsql security definer set search_path='' as $$
+declare state text;
+begin
+ select lifecycle_state into state from public.vehicles where id::text=split_part(object_name,'/',1) for update;
+ return coalesce(state='active' or (allow_purge and state='purging' and public.e2_is_super_admin()),false);
+end;$$;
+revoke all on function public.e2_storage_vehicle_lifecycle(text,boolean) from public,anon,authenticated;
+grant execute on function public.e2_storage_vehicle_lifecycle(text,boolean) to authenticated;
 create policy super_admin_purge_storage on storage.objects for delete to authenticated using (
  bucket_id='vehicle-photos' and public.e2_is_super_admin() and exists(select 1 from public.vehicles where id::text=split_part(name,'/',1) and lifecycle_state='purging')
 );
 create policy lifecycle_storage_upload on storage.objects as restrictive for insert to authenticated with check (
- bucket_id<>'vehicle-photos' or exists(select 1 from public.vehicles where id::text=split_part(name,'/',1) and lifecycle_state='active')
+ bucket_id<>'vehicle-photos' or public.e2_storage_vehicle_lifecycle(name,false)
 );
 create policy lifecycle_storage_delete on storage.objects as restrictive for delete to authenticated using (
- bucket_id<>'vehicle-photos' or exists(select 1 from public.vehicles where id::text=split_part(name,'/',1) and (lifecycle_state='active' or (lifecycle_state='purging' and public.e2_is_super_admin())))
+ bucket_id<>'vehicle-photos' or public.e2_storage_vehicle_lifecycle(name,true)
 );
 create policy lifecycle_storage_update on storage.objects as restrictive for update to authenticated using (
- bucket_id<>'vehicle-photos' or exists(select 1 from public.vehicles where id::text=split_part(name,'/',1) and lifecycle_state='active')
+ bucket_id<>'vehicle-photos' or public.e2_storage_vehicle_lifecycle(name,false)
 ) with check (
- bucket_id<>'vehicle-photos' or exists(select 1 from public.vehicles where id::text=split_part(name,'/',1) and lifecycle_state='active')
+ bucket_id<>'vehicle-photos' or public.e2_storage_vehicle_lifecycle(name,false)
 );
 -- Block ordinary unlink/upload/reorder while removed. Purge may delete metadata.
 create function public.e2_guard_inactive_photo() returns trigger language plpgsql security definer set search_path='' as $$
