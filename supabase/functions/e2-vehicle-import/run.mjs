@@ -4,7 +4,7 @@ import {MASTERLIST,VERSION,period,folderPlate,sourceRows,makePlan} from './plan.
 export const fingerprint=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 // All network/storage boundaries are injected so the complete workflow is testable offline.
-export async function runImport({drive,store,loadWorkbook,root,actor,now=new Date(),retry=false}) {
+export async function runImport({drive,store,loadWorkbook,root,actor,now=new Date(),retry=false,rowCache}) {
   const result={created:[],blocked:[],existing:0,unchanged:0,remaining:0};
   try {
   const when=period(now),folders=(await drive.list(root)).filter(f=>f.mimeType==='application/vnd.google-apps.folder'&&!f.trashed&&f.parents?.includes(root));
@@ -33,8 +33,9 @@ export async function runImport({drive,store,loadWorkbook,root,actor,now=new Dat
     candidates.push({folder,files,stamp,old});
   }
   if(!candidates.length)return result;
-  const workbook=await loadWorkbook(await drive.workbook(MASTERLIST,source.md5Checksum));
-  const rows=sourceRows(workbook,when,new Set(candidates.map(c=>folderPlate(c.folder.name)).filter(Boolean)));
+  // Project every root plate so the existing bounded cache serves later batches.
+  const build=async()=>sourceRows(await loadWorkbook(await drive.workbook(MASTERLIST,source.md5Checksum),when),when,new Set(folders.map(f=>folderPlate(f.name)).filter(Boolean)));
+  const rows=rowCache?(await rowCache.get(fingerprint([sourceKey,folders.map(f=>[f.id,f.name])]),build)).rows:await build();
   // Keep each request bounded; the portal continues batches without AI/browser photo inspection.
   for(const {folder,files,stamp,old} of candidates.slice(0,3)) {
     let plan;
