@@ -10,6 +10,7 @@ async function scenario({authorization='Bearer test-user-token',origin='https://
 }
 (async()=>{
 let office=await scenario({body:{action:'invite',email:'office@example.test',role:'office_admin'}});assert.equal(office.status,200);assert.equal(office.attached,1);
+let runner=await scenario({body:{action:'invite',email:'runner@example.test',role:'runner'}});assert.equal(runner.status,200);assert.equal(runner.attached,1);
 let inspector=await scenario({body:{action:'invite',email:'inspector@example.test',role:'inspector'}});assert.equal(inspector.status,200);assert.equal(inspector.attached,1);
 let r=await scenario({authorization:''});assert.equal(r.status,401);assert.equal(r.sends,0);
 r=await scenario({validUser:false});assert.equal(r.status,401);assert.equal(r.sends,0);

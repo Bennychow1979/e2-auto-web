@@ -1,0 +1,141 @@
+E2 Runner jobs & repair bills — LOCAL PREVIEW
+2026-10-21, Malaysia
+
+Delivery boundary
+This branch has not been pushed, merged or deployed. No production database,
+vehicle, staff account, invoice or payment was changed. No real invitations or
+messages were sent. No passwords or secret keys were read.
+Branch: codex/runner-bills-preview-20261021
+Base: f7073106623f6ad8d0491b4e5721a4224b7abd0d
+
+Try the preview
+Run npm run preview:operations from the repository, then open:
+http://127.0.0.1:64028/operations.html?previewRole=runner
+The top bar switches synthetic identities. It exists only in the local test
+server; it is not part of operations.html and is not a production login.
+The preview database and private file bytes live in memory. Refresh preserves
+them; restarting the server resets them. The server binds to localhost only.
+The preview deliberately serves no production config or credentials.
+
+Starter examples:
+- Runner A: DEMO01, PUSPAKOM job; two sample PDF attachments and approved
+  RM50 petrol expense.
+- Runner B: DEMO02, Carsome pickup; cannot see Runner A's job.
+- Inspector: submitted RM320 repair bill for DEMO01.
+- Admin: both jobs and the repair bill awaiting approval.
+- Account: approved RM50 petrol expense ready for verification.
+All sample PDFs contain test colour pages, not actual invoices or appointments.
+
+Roles and workflow
+Runner:
+- Uses the existing staff sign-in. New Runner role is managed by Super Admin.
+- Sees only currently assigned jobs and their own petrol claims on those jobs.
+- Uploads PUSPAKOM appointment, job sheet and handover evidence.
+- PUSPAKOM/ordinary trips: Assigned -> Car out -> Arrived -> Returning -> Car in.
+- Carsome pickup: Assigned -> Collected -> Car in.
+- Petrol: save draft, upload receipt, submit to Admin.
+- Cannot browse unpublished vehicle stock, repair bills, inspections, customer
+  applications, another Runner's jobs, approvals or user permissions.
+
+Inspector / Admin:
+- Upload repair invoices against an existing vehicle inspection.
+- The inspection editor links directly to that vehicle's repair bills.
+- Admin assigns/reassigns unstarted jobs, can cancel with a reason, and
+  approves or returns submitted petrol/repair expenses.
+
+Account:
+- Sees only approved, verified and paid expenses and the necessary job records.
+- Reviews evidence, verifies an expense, uploads payment proof, then records
+  actual payment date/reference.
+- Can return a query to Admin; this removes the item from Account's queue until
+  reapproved. New payment evidence is required after re-verification.
+- Cannot change a submitted amount or approve an expense.
+- Recording Paid does not execute a bank transfer.
+
+Archive and concurrency
+- Private operations-files bucket; no public file URLs.
+- JPG, PNG, WebP or PDF; 10 MB per file; 50 files per job/expense including
+  pending reservations. File picker and mobile camera input are provided.
+- Archived files cannot be replaced/deleted by ordinary staff.
+- Submitted amounts lock until Admin returns the expense.
+- Revision checks reject stale edits and repeated payments.
+- File reservation/upload/finalization verifies stored byte size and MIME.
+- Submit, approval, return, verification, payment and movement events persist.
+- Closed jobs retain documents but do not accept new job attachments.
+- Reassigning an unstarted job immediately removes the former Runner's access,
+  including their petrol claim on that job; Admin retains the full record.
+- Movement records do not change a vehicle's sale/publication status.
+
+Verification completed
+- npm run check: passed.
+- npm test: complete existing regression suite passed, with new operations tests.
+- Latest focused SQL run: 56 permission/workflow checks passed against PGlite
+  using the actual migration and RLS functions.
+- Browser workflow: Runner separation; image/camera-input/PDF upload; private
+  attachment opening; vehicle movement; petrol return/edit/resubmit; Admin
+  approval; Account query/verify/payment evidence; repair bills; refresh
+  persistence; mobile layout/touch; keyboard modal operation and dirty guards.
+- Login integration: 7 checks for Runner/Account routing, retained Inspector/
+  Office Admin/Sales/Admin behavior, Admin navigation and persistent staff session.
+- Existing inspection browser regression passed: create, arrange repair,
+  workshops, defect photos, save, complete, history, sign-out and denied access.
+- Invitation handler tests used simulated mail delivery only.
+- Screenshots: desktop Runner, mobile list/job, Admin approval, Account payment.
+- A short automated workflow recording is included with delivery artifacts.
+
+Still requires approval and a separate release
+- Apply 202610210003_runner_bills.sql to the real Supabase project.
+- Deploy the updated e2-invite-user function and web assets together.
+- Create/assign actual Runner and Account users through Super Admin.
+- Recheck access and private storage against hosted Supabase.
+- Real iPhone/Android camera capture, gallery formats and upload on a physical
+  phone have NOT been validated. Browser tests cover file input/capture wiring,
+  upload/archive and touch layout, not operation of a physical camera.
+- Actual invitation delivery and password sign-in have not been exercised.
+- Production data volume and long-term archive cleanup have not been load-tested;
+  this first version loads the authorized workspace snapshot as a whole.
+
+Files changed
+operations.html / operations.css / operations.js / operations-files.js
+e2-data.js
+portal.html / portal.js
+inspections.html / inspections.js
+team.html / team.js
+supabase/functions/e2-invite-user/index.ts
+supabase/migrations/202610210003_runner_bills.sql
+supabase/tests/operations.mjs / supabase/tests/invite-handler.cjs
+tests/fixtures/operations-db.mjs
+tests/serve-operations.mjs
+tests/operations-browser.mjs / tests/operations-login-browser.mjs
+package.json
+.github/workflows/inventory-checks.yml
+.github/workflows/document-preview.yml
+docs/runner-bills-preview-20261021.txt
+
+Rollback
+Current preview: stop the local preview server and return to base f707310 on a
+separate checkout; the feature branch and source backup remain recoverable.
+No production rollback is needed because nothing was deployed.
+After a future approved release: restore the previous web/invite release and
+disable operations access with a reviewed permission change. Preserve the new
+tables, audit records and private files; do not delete invoices or apply a
+destructive schema rollback.
+
+Preview revision — plate selection and Inspector uploads
+- Main list now has a vehicle-plate filter.
+- New repair bills require an explicit vehicle/inspection selection, with plate
+  search and a persistent Recorded against vehicle label.
+- New bill dialog shows Choose file and Take photo immediately. A selected file
+  can be saved and uploaded together after required bill details are completed.
+- Submitted Inspector bills explain why they are read-only and need Admin return.
+- Focused full browser workflow and Inspector mobile layout passed after changes.
+- Still local preview only; no production database or deployment changes.
+
+Preview revision — Carro collection and invoice delivery
+- Collect car from Carro: Assigned -> Collected -> Car in.
+- Send invoice: Assigned -> Delivering -> Completed, with invoice copy and
+  handover attachments; no vehicle movement or odometer input.
+- Invoice jobs can coexist with an active vehicle trip for the same car.
+- 62 SQL permission/workflow checks and the extended browser workflow passed.
+- New preview runs on port 64028; the older preview data on 64027 is retained.
+- No production deployment or real invoice transmission was performed.

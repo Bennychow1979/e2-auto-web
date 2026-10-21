@@ -1,0 +1,64 @@
+E2 Runner notification and acceptance preview — 21 October 2026
+
+Preview only. Not pushed or deployed. No production data changed.
+Admin: http://127.0.0.1:64029/operations.html?previewRole=admin
+Runner: http://127.0.0.1:64029/operations.html?previewRole=runner
+Start locally: npm run preview:operations
+All preview records and messages are synthetic and reset on server restart.
+
+Implemented
+- New dispatch creates a simulated Telegram message with job details and a link.
+- Viewing a message is not acceptance. Only the assigned active Runner can confirm.
+- Acceptance stores a server timestamp and audit event; duplicate retries do not
+  create another acceptance. Vehicles cannot start movement before acceptance.
+- Saving edits or reassigning a job clears acceptance, increments the dispatch
+  version and starts a fresh confirmation/reminder period.
+- At 15 minutes without acceptance, one simulated Admin reminder per dispatch.
+  Acceptance or cancellation resolves the active warning. Historical records remain.
+- Admin can use Simulate +15 minutes; Runner cannot access this control or RPC.
+- Runner cannot read another Runner's job link or notification.
+- Includes previous Carro collection, invoice-delivery jobs, shared From/To saved
+  locations, and Inspector draft/submitted/returned summary cards.
+
+Implementation boundary
+- Acceptance is implemented in the unpublished runner/bills SQL migration and is
+  exercised with the local SQL engine and authenticated-role policies.
+- Telegram transport, Bot creation, verified employee chat binding, production
+  scheduled worker, delivery failures/retries and real background delivery are NOT
+  connected. No Telegram credential was read or requested. No external messages.
+- Notification storage and the virtual clock exist only in the local preview
+  server. Timeout evaluation runs when the preview is read (the open page refreshes
+  every 15 seconds); this is NOT a deployed background reminder scheduler.
+- Preview role selection is synthetic, only injected by the local test server.
+  It must never be used as production authentication or Telegram account binding.
+- Before any release, implement and verify real Bot/employee binding, private
+  server-side transport, durable notification outbox, timer worker, recipient
+  configuration and retry/cancellation checks. User approval is still required.
+
+Validation
+- 66 SQL operations permission/workflow checks passed.
+- 28 acceptance + simulated notification checks passed: ownership, inactive/anon
+  roles, stale versions, retries, reassignment, 14:59 vs 15:00 boundary, deduplication,
+  acceptance/cancellation resolution and notification isolation.
+- Browser notification tests passed: mobile touch, job links, persisted acceptance,
+  Admin timeout counts and zero external network requests.
+- Existing full operations browser workflow passed: Carro/invoice, files, movement,
+  expenses, Admin review, Account payment evidence, mobile and keyboard.
+- Source syntax checked; Admin and Runner preview visually inspected.
+
+Main changed files for this revision
+operations.js, operations.html, operations.css
+supabase/migrations/202610210003_runner_bills.sql (unpublished)
+tests/fixtures/operations-db.mjs
+tests/fixtures/runner-notifications-preview.mjs
+tests/serve-operations.mjs
+tests/runner-acceptance.mjs
+tests/runner-notifications-browser.mjs
+supabase/tests/operations.mjs, tests/operations-browser.mjs
+
+Rollback / recovery
+No production rollback needed. Keep the source ZIP as a separate copy.
+Previous local Inspector preview commit: 5901e77. Do not reset a dirty working tree.
+Use an isolated checkout or extract the desired archive into a separate directory.
+The older preview servers on 64027/64028 retain their synthetic records but use an
+older in-memory schema; use 64029 for this revision.
