@@ -12,7 +12,7 @@ function renderVehicles(){
  const matches=vehicles.filter(v=>(v.plate+' '+v.brand+' '+v.model).toLocaleLowerCase().replace(/\s/g,'').includes(query));
  const current=vehicles.find(v=>v.id===selected),retained=Boolean(current&&!matches.includes(current));
  const options=retained?[current,...matches]:matches;
- $('vehicle').replaceChildren(...options.map(car=>{const option=document.createElement('option');option.value=car.id;option.textContent=car.plate+' · '+car.brand+' '+car.model+(car.publication==='draft'?' · '+t('草稿'):'')+(retained&&car===current?' · '+t('当前选择'):'');return option;}));
+ $('vehicle').replaceChildren(...options.map(car=>{const option=document.createElement('option');option.value=car.id;option.textContent=car.plate+' · '+([car.brand,car.model].filter(Boolean).join(' ')||'Awaiting import')+(car.publication==='draft'?' · '+t('草稿'):'')+(retained&&car===current?' · '+t('当前选择'):'');return option;}));
  if(current)$('vehicle').value=selected;
  $('searchStatus').hidden=!query;text('searchStatus',()=>matches.length?t('找到 {count} 辆车。',{count:matches.length}):t('没有匹配的车辆。请尝试其他车牌、品牌或车型。'));
 }

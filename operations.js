@@ -7,6 +7,7 @@ const time=value=>value?new Date(value).toLocaleString('en-MY',{timeZone:'Asia/K
 const localTime=value=>value?new Date(new Date(value).getTime()+8*3600000).toISOString().slice(0,16):'';
 const badge=status=>`<span class="badge ${esc(status)}">${esc(names[status]||status)}</span>`;
 let data,view='jobs',currentJob,currentClaim,dispatch,claimRequest,panels={},busy=0,dirty=new Set(),accessEpoch=0,pendingClaimFile=null;
+let draftHandoff=null;
 const admin=()=>['admin','super_admin'].includes(data?.role);
 const canEdit=c=>!c||c.created_by===data.user_id&&['draft','returned'].includes(c.status);
 async function rpc(name,args={}){return check(await db.rpc(name,args));}
@@ -18,6 +19,7 @@ async function action(id,fn){
 }
 async function reload(){const epoch=accessEpoch,result=await rpc('e2_operations_workspace');if(epoch!==accessEpoch)throw Error('Your login changed. / 登录身份已改变。');data=result;render();}
 function clearAccess(){
+ endDraftHandoff();
  accessEpoch++;Object.values(panels).forEach(p=>p.dispose());panels={};dirty.clear();data=null;
  document.querySelectorAll('dialog').forEach(d=>d.close());
  for(const id of ['records','summary','jobSummary','claimSummary','jobFiles','claimFiles','jobHistory','claimHistory','notificationPreview','jobNotifications','acceptance'])$(id).replaceChildren();
@@ -92,11 +94,52 @@ function renderDispatchVehicles(selected=$('dispatchForm').elements.vehicle_id.v
  const normalize=value=>String(value??'').toLowerCase().replace(/[\s-]+/g,'');
  const query=normalize($('dispatchVehicleSearch').value);
  const vehicles=data.vehicles.filter(v=>normalize(v.plate+' '+v.label).includes(query));
- select.innerHTML='<option value="">Choose vehicle / 请选择车辆</option>'+vehicles.map(v=>`<option value="${v.id}">${esc(v.plate)} · ${esc(v.label)}</option>`).join('');
+ select.innerHTML='<option value="">Choose vehicle / 请选择车辆</option>'+vehicles.map(v=>`<option value="${v.id}">${esc(v.plate)} · ${esc(v.label||'Awaiting import / 等待导入')}</option>`).join('');
  select.value=vehicles.some(v=>v.id===selected)?selected:'';
  $('dispatchVehicleResults').textContent=vehicles.length?`${vehicles.length} matching vehicles / 辆匹配车辆`:'No matching stock vehicle. / 库存里没有匹配车辆。';
+ $('addDispatchVehicle').hidden=!!vehicles.length||!query||!admin()||dispatch?.revision!=null;
 }
 $('dispatchVehicleSearch').oninput=()=>renderDispatchVehicles();
+function endDraftHandoff(){
+ draftHandoff=null;$('dispatchDraftDialog').close();$('dispatchDraftFrame').removeAttribute('src');
+}
+$('addDispatchVehicle').onclick=()=>{
+ if(!admin()||dispatch?.revision!=null||busy)return;
+ const token=crypto.randomUUID(),url=new URL('portal.html',location.href);
+ draftHandoff={token,jobId:dispatch.id,epoch:accessEpoch,receiving:false};
+ url.searchParams.set('dispatchDraft',token);
+ url.searchParams.set('plate', $('dispatchVehicleSearch').value.trim());
+ if(['127.0.0.1','localhost'].includes(location.hostname)){
+  const previewRole=new URLSearchParams(location.search).get('previewRole');
+  if(previewRole)url.searchParams.set('previewRole',previewRole);
+ }
+ $('dispatchDraftMessage').textContent='';$('dispatchDraftFrame').src=url.href;$('dispatchDraftDialog').showModal();
+};
+function requestDraftClose(){
+ if(draftHandoff&&!draftHandoff.ready){endDraftHandoff();$('addDispatchVehicle').focus();return;}
+ if(draftHandoff)$('dispatchDraftFrame').contentWindow?.postMessage({type:'e2-dispatch-close',token:draftHandoff.token},location.origin);
+}
+$('closeDispatchDraft').onclick=requestDraftClose;
+$('dispatchDraftDialog').addEventListener('cancel',event=>{event.preventDefault();requestDraftClose();});
+window.addEventListener('message',async event=>{
+ const handoff=draftHandoff,message=event.data;
+ if(!handoff||event.origin!==location.origin||event.source!==$('dispatchDraftFrame').contentWindow||message?.token!==handoff.token)return;
+ if(message.type==='e2-dispatch-ready'){handoff.ready=true;return;}
+ if(message.type==='e2-dispatch-cancel'){endDraftHandoff();$('addDispatchVehicle').focus();return;}
+ if(message.type!=='e2-dispatch-saved'||handoff.receiving||!admin()||handoff.epoch!==accessEpoch||handoff.jobId!==dispatch?.id||!$('dispatchDialog').open)return;
+ if(!/^[0-9a-f-]{36}$/i.test(message.vehicleId||''))return;
+ handoff.receiving=true;
+ try{
+  await reload();
+  if(draftHandoff!==handoff||handoff.epoch!==accessEpoch||handoff.jobId!==dispatch?.id)return;
+  const vehicle=data.vehicles.find(v=>v.id===message.vehicleId);
+  if(!vehicle)throw Error('Draft saved, but unavailable for dispatch. Check access and retry. / 草稿已保存，暂未能选取，请重试。');
+  $('dispatchVehicleSearch').value=vehicle.plate;renderDispatchVehicles(vehicle.id);dirty.add('dispatchDialog');
+  $('dispatchMessage').textContent='Draft saved and selected. Continue assigning this job. / 车辆草稿已保存并选中，请继续派工。';
+  endDraftHandoff();$('dispatchVehicle').focus();
+ }catch(e){error('dispatchDraftMessage',e);event.source.postMessage({type:'e2-dispatch-retry',token:handoff.token},location.origin);}
+ finally{handoff.receiving=false;}
+});
 function openDispatch(job=null){
  dispatch=job?{...job}:{id:crypto.randomUUID(),revision:null};const f=$('dispatchForm');f.reset();
  renderDispatchVehicles(job?.vehicle_id||'');

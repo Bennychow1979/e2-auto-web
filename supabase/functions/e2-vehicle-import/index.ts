@@ -1,7 +1,12 @@
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 import ExcelJS from 'npm:exceljs@4.4.0';
+import JSZip from 'npm:jszip@3.10.2';
+import {SaxesParser} from 'npm:saxes@5.0.1';
 import {googleDrive} from '../e2-drive-photos/google.mjs';
 import {runImport} from './run.mjs';
+import {createWorkbookLoader,createRowCache} from './workbook.mjs';
+// Parse only the current-month worksheet; older months made full parses exceed the CPU limit.
+const loadWorkbook=createWorkbookLoader({ExcelJS,JSZip,SaxesParser}),rowCache=createRowCache();
 const origins=new Set(['https://e2auto.my','https://bennychow1979.github.io']);
 const url=Deno.env.get('SUPABASE_URL')||'',anon=Deno.env.get('SUPABASE_ANON_KEY')||'';
 const options={auth:{persistSession:false,autoRefreshToken:false}};
@@ -14,7 +19,7 @@ async function all(table,columns) {
   for(let offset=0;;offset+=500){const batch=checked(await admin.from(table).select(columns).order(table==='vehicles'?'id':'folder_id').range(offset,offset+499));rows.push(...batch);if(batch.length<500)return rows}
 }
 const store={
-  inventory:()=>all('vehicles','id,plate'),
+  inventory:()=>all('vehicles','id,plate,publication,import_pending,vehicle_photos(id)'),
   jobs:async()=>new Map((await all('vehicle_import_jobs','folder_id,fingerprint,status,issue,vehicle_id')).map(j=>[j.folder_id,j])),
   save:async job=>{checked(await admin.from('vehicle_import_jobs').upsert({...job,updated_at:new Date().toISOString()}))},
   commit:async({actor,folder,stamp,source,plan})=>checked(await admin.rpc('e2_import_drive_vehicle',{actor_id:actor,folder,stamp,source_stamp:source,plan})),
@@ -61,12 +66,7 @@ Deno.serve(async req=>{
       if(scheduled)throw Error('Automatic import is disabled.');
       return reply(503,{error:'Automatic import is not enabled. MASTERLIST read-only access needs approval and a connection test.'});
     }
-    output=await runImport({drive,store,root,actor,retry:!scheduled&&body.retry===true,loadWorkbook:async bytes=>{
-      const workbook=new ExcelJS.Workbook();
-      try{await workbook.xlsx.load(bytes)}catch{throw Error('MASTERLIST could not be read as XLSX. No source cell content was saved.')}
-      if(workbook.worksheets.some(s=>s.rowCount>20000||s.columnCount>200))throw Error('MASTERLIST is larger than the supported worksheet limits.');
-      return workbook;
-    }});
+    output=await runImport({drive,store,root,actor,retry:!scheduled&&body.retry===true,loadWorkbook,rowCache});
     if(scheduled) {
       checked(await admin.rpc('e2_finish_scheduled_import',{dispatch:scheduled.dispatch_id,result:output}));
       // Keep vehicle details out of the pg_net HTTP response/log; private run receipts contain them.

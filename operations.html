@@ -5,8 +5,8 @@
  <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
  <title>Jobs & bills | E2 Workspace</title>
  <link rel="icon" href="assets/e2-logo.png"><link rel="apple-touch-icon" href="assets/e2-logo.png">
- <link rel="stylesheet" href="partner.css"><link rel="stylesheet" href="operations.css?v=2">
- <script src="e2-config.js"></script><script type="module" src="operations.js?v=5"></script>
+ <link rel="stylesheet" href="partner.css"><link rel="stylesheet" href="operations.css?v=3">
+ <script src="e2-config.js"></script><script type="module" src="operations.js?v=6"></script>
 </head>
 <body>
  <header><a class="opsBrand" href="portal.html"><img src="assets/e2-logo.png" alt="E2 Auto"><span>E2 WORKSPACE<small>JOBS &amp; BILLS · 任务与费用</small></span></a>
@@ -28,6 +28,7 @@
   <form id="dispatchForm">
    <label>Search vehicle / 搜索车辆<input id="dispatchVehicleSearch" type="search" placeholder="Plate or model / 车牌或车型" autocomplete="off" aria-controls="dispatchVehicle" aria-describedby="dispatchVehicleResults"></label>
    <p id="dispatchVehicleResults" class="muted" role="status" aria-live="polite"></p>
+   <button id="addDispatchVehicle" class="quiet" type="button" hidden>＋ Add vehicle / 新增车辆</button>
    <div class="pair"><label>Vehicle / 车辆<select id="dispatchVehicle" name="vehicle_id" required></select></label><label>Runner<select name="assigned_to" required></select></label></div>
    <label>Job type / 任务类型<select name="kind" required><option value="puspakom">PUSPAKOM</option><option value="carsome_pickup">Collect from Carsome / Carsome 取车</option><option value="carro_pickup">Collect car from Carro / Carro 取车</option><option value="send_invoice">Send invoice / 送发票</option><option value="workshop">Workshop / 维修厂</option><option value="delivery">Delivery / 送车</option><option value="other">Other / 其他</option></select></label>
    <div class="pair"><div><label>From / 出发地点<select id="originSelect" required></select></label><label id="originNewField" hidden>New location / 新增地点<input name="origin" maxlength="200"></label></div><div><label>To / 目的地<select id="destinationSelect" required></select></label><label id="destinationNewField" hidden>New location / 新增地点<input name="destination" maxlength="200"></label></div></div><p class="muted">New locations join both lists after Save job. / 新地点保存 JOB 后，FROM 和 TO 都可再次选择。</p>
@@ -60,5 +61,10 @@
    <div id="claimActions" class="buttonRow"></div>
   </form>
   <details><summary>Activity / 操作记录</summary><div id="claimHistory"></div></details>
+ </dialog>
+ <dialog id="dispatchDraftDialog" aria-label="Add a draft vehicle / 新增车辆草稿">
+  <button id="closeDispatchDraft" type="button" class="quiet">← Back to job / 返回派工</button>
+  <p id="dispatchDraftMessage" role="status" aria-live="polite"></p>
+  <iframe id="dispatchDraftFrame" title="New vehicle draft / 新增车辆草稿"></iframe>
  </dialog>
 </body></html>

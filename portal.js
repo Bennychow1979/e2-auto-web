@@ -1,4 +1,4 @@
-import {setupVehicleImport,showImportReview} from './vehicle-import.mjs?v=vehicle-schedule-1';
+import {setupVehicleImport,showImportReview} from './vehicle-import.mjs?v=plate-draft-2';
 import {setupVehicleTranslations} from './vehicle-translation-ui.mjs?v=auto-translation-1';
 import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
 import {setupDrivePhotoPicker} from './drive-photo-picker.mjs?v=drive-1';
@@ -7,7 +7,26 @@ import {setupYearReference} from './model-year-reference.mjs?v=verified-spec-bat
 import {db,configured,check,esc,rm,mileageText,getVehicles,photoURLs,retryPhotos,compressPhoto,friendlyError} from './e2-data.js?v=ops-1';
 import {setupBenefitsEditor} from './vehicle-benefits-editor.mjs?v=1';
 const MAX_PHOTOS=30;
+const completeVehicle=car=>car&&['brand','model','year','engine_litres','transmission','fuel_type','price'].every(key=>car[key]!=null&&String(car[key]).trim()!=='');
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');
+// Same-origin dispatch embeds the existing editor; only a private draft can be saved here.
+const draftToken=new URLSearchParams(location.search).get('dispatchDraft');
+const dispatchDraft=window.parent!==window&&/^[0-9a-f-]{36}$/i.test(draftToken||'');
+let draftOpened=false,draftSaved=null;
+const sendDraft=(type,extra={})=>{if(dispatchDraft)window.parent.postMessage({type,token:draftToken,...extra},location.origin);};
+if(dispatchDraft){
+ document.documentElement.classList.add('dispatchDraftMode');
+ $('saveVehicle').textContent='Save & return / 保存草稿并返回';
+ window.addEventListener('message',event=>{
+  if(event.origin!==location.origin||event.source!==window.parent||event.data?.token!==draftToken)return;
+  if(event.data.type==='e2-dispatch-close')closeEditor();
+  if(event.data.type==='e2-dispatch-retry'&&draftSaved){
+   $('saveVehicle').disabled=false;$('saveVehicle').textContent='Retry selecting saved draft / 重新选取已保存草稿';
+   message('editorMessage','Vehicle saved. Retry returning to the job; this will not create another vehicle. / 车辆已保存，请重试返回派工，不会重复新增。');
+  }
+ });
+ sendDraft('e2-dispatch-ready');
+}
 const benefitsEditor=setupBenefitsEditor(form);
 const canManageStock=()=>['super_admin','admin'].includes(role);
 const roleLabels={super_admin:'Super Admin',admin:'Admin',office_admin:'Office Admin',inspector:'Inspector',runner:'Runner',sales:'Salesman · view only',account:'Account · payments',customer:'Customer · public stock only'};
@@ -41,7 +60,7 @@ const yearReference=setupYearReference({form,identity});
 const yearSpecSelect=setupYearSpecSelect({form,identity,inventory:()=>cars,current:()=>current});
 function message(id,text,error=false){$(id).textContent=text;$(id).classList.toggle('error',error)}
 function editorError(error){message('editorMessage',friendlyError(error),true)}
-function setBusy(state){busy=state;fields.disabled=state||current?.publication==='published';$('saveVehicle').disabled=fields.disabled;$('closeEditor').disabled=state;$('publishVehicle').disabled=state||!current||dirty||!current.photos.length;$('photoInput').disabled=state||dirty||!current||current.publication==='published'||current.photos.length>=MAX_PHOTOS;document.querySelectorAll('#photos button').forEach(b=>b.disabled=state||dirty||current?.publication==='published'||b.dataset.boundary==='true');drivePicker.update();}
+function setBusy(state){busy=state;fields.disabled=state||current?.publication==='published';$('saveVehicle').disabled=fields.disabled;$('closeEditor').disabled=state;$('publishVehicle').disabled=state||!current||dirty||!current.photos.length||current.publication==='draft'&&!completeVehicle(current);$('photoInput').disabled=state||dirty||!current||current.publication==='published'||current.photos.length>=MAX_PHOTOS;document.querySelectorAll('#photos button').forEach(b=>b.disabled=state||dirty||current?.publication==='published'||b.dataset.boundary==='true');drivePicker.update();}
 function selectOptions(name,choices,selected=''){
   const select=form.elements.namedItem(name), manual=form.elements.namedItem(name+'Manual');
   const items=[...new Set(choices.filter(Boolean))].sort();
@@ -56,7 +75,7 @@ function identityChanged(name){const select=form.elements.namedItem(name),manual
   form.elements.namedItem('model').disabled=!identity('brand');form.elements.namedItem('variant').disabled=!identity('model');
 }
 ['brand','model','variant'].forEach(name=>{form.elements.namedItem(name).addEventListener('change',()=>identityChanged(name));form.elements.namedItem(name+'Manual').addEventListener('input',()=>identityChanged(name))});
-form.addEventListener('input',()=>{dirty=true;vehicleTranslations.markDirty();setBusy(false);$('saveHint').textContent='Unsaved changes · Save draft before publishing or previewing.'});
+form.addEventListener('input',()=>{dirty=true;if(dispatchDraft)message('editorMessage','');vehicleTranslations.markDirty();setBusy(false);$('saveHint').textContent=dispatchDraft?'Private draft · details await import / 车辆草稿 · 等待导入资料':'Unsaved changes · Save draft before publishing or previewing.'});
 form.addEventListener('change',()=>{dirty=true;vehicleTranslations.markDirty();setBusy(false)});
 async function refresh(){
   const epoch=authEpoch;message('stockMessage','Loading inventory…');
@@ -65,8 +84,8 @@ async function refresh(){
 }
 function renderStock(){
   const query=$('stockSearch').value.toLowerCase().replace(/\s/g,'');
-  const found=cars.filter(c=>(c.plate+c.brand+c.model+c.variant).toLowerCase().replace(/\s/g,'').includes(query));
-  $('stockList').innerHTML=found.map(c=>'<article class="stockItem"><div class="noPhoto" data-cover="'+c.id+'">'+(c.photos.length?'Loading photo…':'No photos yet')+'</div><div><span class="stockState">'+esc(c.publication==='published'?'Published · '+c.stock_status:'Draft · private')+'</span><h2>'+esc(c.brand+' '+c.model)+'</h2><p>'+esc([c.plate,c.year,c.variant].filter(Boolean).join(' · '))+'</p><small>'+esc(mileageText(c))+' · '+Number(c.engine_litres).toFixed(1)+' L</small><p class="stockPrice">'+rm(c.price)+'</p></div>'+(canManageStock()?'<button class="primary" data-edit="'+c.id+'">Manage vehicle ↗</button>':'<span>View only</span>')+'</article>').join('')||'<p>No vehicles found. '+(canManageStock()?'Add your first vehicle to begin.':'')+'</p>';
+  const found=cars.filter(c=>[c.plate,c.brand,c.model,c.variant].filter(Boolean).join(' ').toLowerCase().replace(/\s/g,'').includes(query));
+  $('stockList').innerHTML=found.map(c=>'<article class="stockItem"><div class="noPhoto" data-cover="'+c.id+'">'+(c.photos.length?'Loading photo…':'No photos yet')+'</div><div><span class="stockState">'+esc(c.publication==='published'?'Published · '+c.stock_status:'Draft · private')+'</span><h2>'+esc([c.brand,c.model].filter(Boolean).join(' ')||'Awaiting import / 等待导入资料')+'</h2><p>'+esc([c.plate,c.year,c.variant].filter(Boolean).join(' · '))+'</p><small>'+esc(mileageText(c))+' · '+(c.engine_litres==null?'Engine pending':Number(c.engine_litres).toFixed(1)+' L')+'</small><p class="stockPrice">'+(c.price==null?'Price pending / 售价待补':rm(c.price))+'</p></div>'+(canManageStock()?'<button class="primary" data-edit="'+c.id+'">Manage vehicle ↗</button>':'<span>View only</span>')+'</article>').join('')||'<p>No vehicles found. '+(canManageStock()?'Add your first vehicle to begin.':'')+'</p>';
   const epoch=authEpoch;
   // One link request for every cover in the list; searching reuses the links.
   const covered=found.filter(c=>c.photos.length);
@@ -98,33 +117,47 @@ function populate(car){
   selectOptions('brand',choices('brand'),car?.brand||'');selectOptions('model',choices('model'),car?.model||'');
   form.elements.namedItem('model').disabled=!car;form.elements.namedItem('variant').disabled=!car;
   for(const name of ['plate','year','engine_litres','transmission','fuel_type','mileage','price','body_type','stock_status','description'])if(car)form.elements.namedItem(name).value=car[name]??'';
-  if(car)form.elements.namedItem('engine_litres').value=Number(car.engine_litres).toFixed(1);
+  if(car?.engine_litres!=null)form.elements.namedItem('engine_litres').value=Number(car.engine_litres).toFixed(1);
+  for(const name of ['brand','model','year','engine_litres','price','transmission','fuel_type'])form.elements.namedItem(name).required=!dispatchDraft&&!car?.import_pending;
+  if(dispatchDraft||car?.import_pending)for(const name of ['transmission','fuel_type']){
+    const select=form.elements.namedItem(name);
+    if(![...select.options].some(o=>o.value===''))select.prepend(new Option('Not entered / 尚未填写',''));
+    select.value=car?.[name]||'';
+  }
   form.elements.namedItem('mileage_confirmed').checked=car?.mileage_confirmed||false;
   benefitsEditor.populate(car);
-  $('editorTitle').textContent=car?car.brand+' '+car.model:'Add vehicle';$('editorStatus').textContent=car?.publication==='published'?'PUBLISHED ON WEBSITE':'DRAFT · PRIVATE';
+  $('editorTitle').textContent=car?([car.brand,car.model].filter(Boolean).join(' ')||car.plate):'Add vehicle';$('editorStatus').textContent=car?.publication==='published'?'PUBLISHED ON WEBSITE':'DRAFT · PRIVATE';
   $('saveHint').textContent=car?.publication==='published'?'Move this vehicle to draft to edit its details or photos.':car?'Details saved. You can add photos and preview this draft.':'Save vehicle details before adding photos.';
   $('publishVehicle').textContent=car?.publication==='published'?'Move to draft':'Publish to website';
-  if(car)$('previewVehicle').href='car.html?id='+car.id+'&preview=1';else $('previewVehicle').removeAttribute('href');
+  if(completeVehicle(car))$('previewVehicle').href='car.html?id='+car.id+'&preview=1';else $('previewVehicle').removeAttribute('href');
   $('photos').replaceChildren();yearSpecSelect.refresh({selected:car?.variant||'',engine:car?.engine_litres??'',reset:true});setBusy(false);yearReference.refresh();
   vehicleTranslations.refresh();
 }
 async function openEditor(car=null){populate(car);message('editorMessage','');$('vehicleEditor').showModal();try{await showImportReview(db,car);await renderPhotos()}catch(error){editorError(error)}}
-function closeEditor(){if(busy)return;if(dirty&&!confirm('Discard unsaved vehicle details? Uploaded photos are already saved.'))return;vehicleTranslations.stop();$('vehicleEditor').close();current=null;dirty=false}
+function closeEditor(){if(busy)return;if(dirty&&!confirm('Discard unsaved vehicle details? Uploaded photos are already saved.'))return;vehicleTranslations.stop();$('vehicleEditor').close();current=null;dirty=false;sendDraft('e2-dispatch-cancel')}
 $('closeEditor').onclick=closeEditor;$('vehicleEditor').addEventListener('cancel',e=>{e.preventDefault();closeEditor()});
 $('addVehicle').onclick=()=>openEditor();$('stockSearch').oninput=renderStock;$('refreshStock').onclick=()=>{retryPhotos();refresh()};
 form.onsubmit=async event=>{
   event.preventDefault();if(busy||!canManageStock())return;
+  if(dispatchDraft&&draftSaved){sendDraft('e2-dispatch-saved',{vehicleId:draftSaved});$('saveVehicle').disabled=true;return;}
   const mileage=value('mileage')===''?null:Number(value('mileage'));
   const confirmed=form.elements.namedItem('mileage_confirmed').checked;
   if(confirmed&&mileage===null){editorError(new Error('Enter the mileage before marking it confirmed.'));return}
   let benefitData;try{benefitData=benefitsEditor.read()}catch(error){editorError(error);return}
-  const data={...benefitData,plate:value('plate').toUpperCase().replace(/\s/g,''),brand:identity('brand'),model:identity('model'),variant:identity('variant'),year:Number(value('year')),engine_litres:Number(identity('engine_litres')),transmission:value('transmission'),fuel_type:value('fuel_type'),mileage,mileage_confirmed:confirmed,price:Number(value('price')),body_type:value('body_type'),stock_status:value('stock_status'),description:value('description').trim()};
-  setBusy(true);message('editorMessage','Saving vehicle details…');
+  const data=dispatchDraft?{plate:value('plate').toUpperCase().replace(/\s/g,''),import_pending:true}:{...benefitData,plate:value('plate').toUpperCase().replace(/\s/g,''),brand:identity('brand')||null,model:identity('model')||null,variant:identity('variant'),year:value('year')===''?null:Number(value('year')),engine_litres:identity('engine_litres')===''?null:Number(identity('engine_litres')),transmission:value('transmission')||null,fuel_type:value('fuel_type')||null,mileage,mileage_confirmed:confirmed,price:value('price')===''?null:Number(value('price')),body_type:value('body_type'),stock_status:value('stock_status'),description:value('description').trim()};
+  const saveEpoch=authEpoch;setBusy(true);message('editorMessage','Saving vehicle details…');
   try{
-    const saved=check(await (current?db.from('vehicles').update(data).eq('id',current.id).eq('updated_at',current.updated_at):db.from('vehicles').insert({...data,id:crypto.randomUUID()})).select().maybeSingle());
+    const saved=check(await (current?db.from('vehicles').update(data).eq('id',current.id).eq('updated_at',current.updated_at):db.from('vehicles').insert({...data,id:crypto.randomUUID(),publication:'draft'})).select().maybeSingle());
     if(!saved)throw new Error('This vehicle changed in another session. Close and refresh before editing again.');
+    if(dispatchDraft){
+      if(saveEpoch!==authEpoch||!canManageStock())throw new Error('Your login changed. Reopen the job and check the saved vehicle. / 登录身份已改变，请重新打开派工并检查车辆档案。');
+      if(saved.publication!=='draft')throw new Error('The saved vehicle must be a private draft.');
+      draftSaved=saved.id;dirty=false;vehicleTranslations.stop();
+      message('editorMessage','Draft saved. Returning to the job… / 草稿已保存，正在返回派工…');
+      sendDraft('e2-dispatch-saved',{vehicleId:saved.id});return;
+    }
     saved.photos=current?.photos||[];populate(saved);await renderPhotos();await refresh();message('editorMessage','Saved to the database. Add photos, then publish when ready.');
-  }catch(error){editorError(error)}finally{setBusy(false)}
+  }catch(error){editorError(error)}finally{setBusy(false);if(dispatchDraft&&draftSaved){fields.disabled=true;$('saveVehicle').disabled=true;}}
 };
 async function syncCurrent(){const rows=await getVehicles({staff:true,id:current.id});if(!rows.length)throw new Error('Vehicle is no longer accessible.');current=rows[0];await renderPhotos();await refresh()}
 $('photoInput').onchange=async()=>{
@@ -185,9 +218,9 @@ enablePhotoDrag($('photos'),{
   onDrop:savePhotoOrder
 });
 $('publishVehicle').onclick=async()=>{
-  if(busy||!current||dirty)return;const publication=current.publication==='published'?'draft':'published';setBusy(true);
+  if(busy||!current||dirty)return;if(current.publication==='draft'&&!completeVehicle(current)){editorError(new Error('Complete vehicle details and price before publishing. / 请补齐车辆资料和售价后再发布。'));return;}const publication=current.publication==='published'?'draft':'published';setBusy(true);
   try{
-    const row=check(await db.from('vehicles').update({publication}).eq('id',current.id).eq('updated_at',current.updated_at).select().maybeSingle());
+    const row=check(await db.from('vehicles').update({publication,...(publication==='published'?{import_pending:false}:{})}).eq('id',current.id).eq('updated_at',current.updated_at).select().maybeSingle());
     if(!row)throw new Error('This vehicle changed in another session. Close and refresh first.');
     row.photos=current.photos;populate(row);await renderPhotos();await refresh();
     message('editorMessage',publication==='published'?'Published. This vehicle now appears in the showroom.':'Moved to draft. New visitors cannot see this vehicle. A page someone already has open drops it at its next check, usually within 5 minutes while that page is online and in view; a page left offline or in the background updates only after it reconnects or is viewed again.');
@@ -195,13 +228,28 @@ $('publishVehicle').onclick=async()=>{
 };
 async function showSession(session){
   const epoch=++authEpoch;
-  if(!session){if($('manageMileage'))$('manageMileage').hidden=true;vehicleTranslations.stop();$('manageLoans').hidden=true;$('manageCustomers').hidden=true;$('myProfileLink').hidden=true;$('manageUsers').hidden=true;if($('manageInstitutions'))$('manageInstitutions').hidden=true;role=null;cars=[];$('stockList').replaceChildren();$('workspace').hidden=true;$('entry').hidden=false;$('vehicleEditor').close();return}
+  if(!session){draftSaved=null;draftOpened=false;if($('manageMileage'))$('manageMileage').hidden=true;vehicleTranslations.stop();$('manageLoans').hidden=true;$('manageCustomers').hidden=true;$('myProfileLink').hidden=true;$('manageUsers').hidden=true;if($('manageInstitutions'))$('manageInstitutions').hidden=true;role=null;cars=[];$('stockList').replaceChildren();$('workspace').hidden=true;$('entry').hidden=false;$('vehicleEditor').close();return}
   if(recovery)return;
   try{
     const membership=check(await db.from('staff_memberships').select('role,active').eq('user_id',session.user.id).maybeSingle());if(epoch!==authEpoch)return;
     if(!membership?.active||!Object.hasOwn(roleLabels,membership.role)){$('entry').hidden=false;$('workspace').hidden=true;await db.auth.signOut();throw new Error('This account has no inventory access. Ask the E2 administrator to activate your staff membership.')}
-    role=membership.role;if(['runner','account'].includes(role)){location.replace('operations.html');return}if($('manageOperations'))$('manageOperations').hidden=!['super_admin','admin'].includes(role);if(role==='inspector'){location.replace('inspections.html');return}if($('manageInspections'))$('manageInspections').hidden=!['super_admin','admin'].includes(role);if($('manageMileage'))$('manageMileage').hidden=window.E2_CONFIG?.mileageChecks!==true||!['super_admin','admin','sales'].includes(role);if(role==='office_admin'){location.replace('intake-workspace.html');return}$('manageLoans').hidden=!['super_admin','admin','sales'].includes(role);$('manageCustomers').hidden=!['super_admin','admin'].includes(role);$('myProfileLink').hidden=role==='customer';$('profileName').textContent=session.user.email;$('profileRole').textContent=roleLabels[role];$('manageUsers').hidden=role!=='super_admin';if($('manageInstitutions'))$('manageInstitutions').hidden=role!=='super_admin';$('addVehicle').hidden=!canManageStock();vehicleImporter.update();$('entry').hidden=true;$('workspace').hidden=false;await refresh();
-  }catch(error){message('authMessage',friendlyError(error),true)}
+    role=membership.role;
+    if(dispatchDraft){
+      if(!canManageStock())throw new Error('Only Admin / Super Admin can add a vehicle. / 只有 Admin / Super Admin 可以新增车辆。');
+      $('entry').hidden=true;$('workspace').hidden=true;
+      if(!draftOpened){
+        await refresh();if(epoch!==authEpoch)return;
+        draftOpened=true;await openEditor();
+        const query=new URLSearchParams(location.search).get('plate')||'';
+        if(/^[A-Za-z0-9 -]{1,20}$/.test(query))form.elements.plate.value=query.toUpperCase();
+        for(const input of form.querySelectorAll('input,select,textarea'))if(input.name!=='plate'){input.disabled=true;input.required=false;}
+        $('editorTitle').textContent='Add plate / 新增车牌';
+        $('saveHint').textContent='Plate only. Details and photos await import. / 只需车牌，资料及照片等待导入。';
+      }
+      return;
+    }
+    if(['runner','account'].includes(role)){location.replace('operations.html');return}if($('manageOperations'))$('manageOperations').hidden=!['super_admin','admin'].includes(role);if(role==='inspector'){location.replace('inspections.html');return}if($('manageInspections'))$('manageInspections').hidden=!['super_admin','admin'].includes(role);if($('manageMileage'))$('manageMileage').hidden=window.E2_CONFIG?.mileageChecks!==true||!['super_admin','admin','sales'].includes(role);if(role==='office_admin'){location.replace('intake-workspace.html');return}$('manageLoans').hidden=!['super_admin','admin','sales'].includes(role);$('manageCustomers').hidden=!['super_admin','admin'].includes(role);$('myProfileLink').hidden=role==='customer';$('profileName').textContent=session.user.email;$('profileRole').textContent=roleLabels[role];$('manageUsers').hidden=role!=='super_admin';if($('manageInstitutions'))$('manageInstitutions').hidden=role!=='super_admin';$('addVehicle').hidden=!canManageStock();vehicleImporter.update();$('entry').hidden=true;$('workspace').hidden=false;await refresh();
+  }catch(error){if(dispatchDraft){$('entry').hidden=false;$('workspace').hidden=true;$('vehicleEditor').close();}message('authMessage',friendlyError(error),true)}
 }
 $('loginForm').onsubmit=async e=>{
   e.preventDefault();const button=$('loginForm').querySelector('button[type=submit]');button.disabled=true;message('authMessage','Signing in…');
