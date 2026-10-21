@@ -7,9 +7,12 @@ import {randomUUID} from 'node:crypto';
 import {operationsDatabase} from './fixtures/operations-db.mjs';
 import {pdfBytes} from './fixtures/preview-fixtures.mjs';
 import {notificationPreview} from './fixtures/runner-notifications-preview.mjs';
+import {benefitFields} from '../vehicle-benefits.mjs';
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)));
 export async function startPreview({port=0,seed=true,showcase=false}={}){
  const {db,ids,as,rpc}=await operationsDatabase(),blobs=new Map();
+ await db.exec(await readFile(resolve(root,'supabase/migrations/202610190001_vehicle_benefits.sql'),'utf8'));
+ await db.exec(await readFile(resolve(root,'supabase/migrations/202610210004_plate_drafts.sql'),'utf8'));
  const notifications=notificationPreview({runnerRoles:{[ids.runner]:'runner',[ids.runner2]:'runner2'}});
  if(seed){
   await as('admin');
@@ -37,18 +40,31 @@ export async function startPreview({port=0,seed=true,showcase=false}={}){
  await as('admin');notifications.sync((await rpc('e2_operations_workspace')).jobs);
  let queue=Promise.resolve();
  const serial=fn=>{const p=queue.then(fn);queue=p.catch(()=>{});return p;};
- const roles=['admin','runner','runner2','inspector','account','sales','inactive'];
+ const roles=['admin','runner','runner2','inspector','account','sales','inactive','anonymous'];
  const adapter=`
  export const configured=true,esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  export const rm=(n,d=0)=>'RM'+Number(n).toLocaleString('en-MY',{minimumFractionDigits:d,maximumFractionDigits:d});
  export const friendlyError=e=>e?.message||'Unable to complete this action';
  export function check(r){if(r.error)throw r.error;return r.data;}
+ export const mileageText=car=>car.mileage==null?'Pending confirmation':car.mileage+' km';
+ export const photoURLs=async()=>[],retryPhotos=()=>{},compressPhoto=async()=>{throw Error('Photos are not part of this preview');},drivePhotoRequest=async()=>{throw Error('Drive is not connected in this preview');};
+ export const getVehicles=async()=>check(await call('vehicles')).map(v=>({...v,photos:[]}));
  const role=new URLSearchParams(location.search).get('previewRole')||'runner';
  async function call(path,options={}){try{const r=await fetch('/preview-api/'+path,{...options,headers:{'X-Preview-Role':role,...options.headers}});if(!r.ok)return {error:{message:(await r.json()).error,status:r.status}};return {data:options.binary?await r.blob():await r.json(),error:null};}catch(e){return {error:{message:e.message}};}}
  export const db={auth:{getSession:async()=>({data:{session:{user:{id:'preview',email:role+'@example.test'}}}}),signOut:async()=>({data:{}})},rpc:(name,args)=>({then:(resolve,reject)=>call('rpc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,args})}).then(resolve,reject)}),storage:{from:bucket=>({upload:(path,file,opts)=>call('file?path='+encodeURIComponent(path),{method:'POST',headers:{'Content-Type':opts.contentType},body:file}),download:path=>call('file?path='+encodeURIComponent(path),{binary:true})})}};
+ db.auth.onAuthStateChange=callback=>queueMicrotask(()=>callback('INITIAL_SESSION',{user:{id:'preview',email:role+'@example.test'}}));
+ db.from=table=>{
+  let value,mode='select';const query={
+   select:()=>query,eq:()=>query,order:()=>query,limit:()=>query,
+   insert:row=>{value=row;mode='insert';return query;},
+   maybeSingle:()=>query,
+   then:(resolve,reject)=>call('table',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({table,mode,value})}).then(resolve,reject)
+  };return query;
+ };
  `;
  const banner=`<aside id="previewBanner" style="background:#f5e8bf;color:#4b390a;padding:12px 20px;font:14px system-ui;display:flex;gap:18px;align-items:center;flex-wrap:wrap"><strong>LOCAL PREVIEW · 测试资料 · 未上线</strong><label style="margin:0">Preview role / 体验身份 <select id="previewRole" style="width:auto;min-height:40px;margin:0"><option value="runner">Runner A</option><option value="runner2">Runner B</option><option value="admin">Admin</option><option value="inspector">Inspector</option><option value="account">Account</option></select></label><small>Disposable local records. No real login, email or payments. / 本机模拟身份，重启后重置。</small></aside><script>const rolePicker=document.getElementById('previewRole');rolePicker.value=new URLSearchParams(location.search).get('previewRole')||'runner';rolePicker.onchange=()=>location.href='/operations.html?previewRole='+rolePicker.value;</script>`;
  const allowed=new Set(['operations.html','operations.js','operations-files.js','operations.css','partner.css','assets/e2-logo.png']);
+ for(const file of ['portal.html','portal.js','portal-demo.css','production.css','team.css','drive-photos.css','vehicle-translation.css','vehicle-benefits.css','vehicle-import.mjs','vehicle-translation-ui.mjs','photo-sort.js','drive-photo-picker.mjs','year-spec-select.mjs','model-year-reference.mjs','vehicle-benefits-editor.mjs','vehicle-benefits.mjs','verified-model-years.json','i18n.mjs','translations.mjs','vehicle-routes.mjs','booking-translations.mjs','sales-team-translations.mjs'])allowed.add(file);
  const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://127.0.0.1');
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
@@ -60,6 +76,18 @@ export async function startPreview({port=0,seed=true,showcase=false}={}){
     const chunks=[];let length=0;for await(const chunk of req){length+=chunk.length;if(length>11*1024*1024)throw Error('File too large');chunks.push(chunk);}const bytes=Buffer.concat(chunks);
     const result=await serial(async()=>{
      await as(role);
+     if(url.pathname==='/preview-api/vehicles'&&req.method==='GET')return {data:(await db.query('select * from public.vehicles order by created_at desc')).rows};
+     if(url.pathname==='/preview-api/table'&&req.method==='POST'){
+      const {table,mode,value}=JSON.parse(bytes);
+      if(table==='staff_memberships'&&mode==='select')return {data:(await db.query('select role,active from staff_memberships where user_id=auth.uid()')).rows[0]||null};
+      if(table==='vehicles'&&mode==='insert'){
+       const allowedFields=new Set(['id','plate','brand','model','variant','year','engine_litres','transmission','fuel_type','mileage','mileage_confirmed','price','body_type','stock_status','description','publication','import_pending',...benefitFields]);
+       const keys=Object.keys(value);if(value.publication!=='draft'||keys.some(k=>!allowedFields.has(k)))throw Error('Only draft vehicle creation is supported');
+       const columns=keys.map(k=>'"'+k+'"').join(',');
+       return {data:(await db.query(`insert into public.vehicles (${columns}) select ${columns} from jsonb_populate_record(null::public.vehicles,$1::jsonb) returning *`,[JSON.stringify(value)])).rows[0]};
+      }
+      throw Error('Unsupported preview table operation');
+     }
      if(url.pathname==='/preview-api/rpc'&&req.method==='POST'){
       const {name,args}=JSON.parse(bytes);
       if(name==='e2_preview_advance_time'){
@@ -95,7 +123,7 @@ export async function startPreview({port=0,seed=true,showcase=false}={}){
    if(!allowed.has(path)){res.writeHead(404);res.end('This preview serves Jobs & Bills only. Return to /operations.html');return;}
    let content=await readFile(resolve(root,path));
    if(path==='operations.html')content=content.toString().replace('<body>','<body>'+banner);
-   res.writeHead(200,{'Content-Type':path.endsWith('.html')?'text/html; charset=utf-8':path.endsWith('.js')?'text/javascript':path.endsWith('.css')?'text/css':'image/png'});res.end(content);
+   res.writeHead(200,{'Content-Type':path.endsWith('.html')?'text/html; charset=utf-8':/\.m?js$/.test(path)?'text/javascript':path.endsWith('.css')?'text/css':path.endsWith('.json')?'application/json':'image/png'});res.end(content);
   }catch(e){json(e.code==='23505'?409:400,{error:e.message});}
  });
  await new Promise(resolve=>server.listen(port,'127.0.0.1',resolve));

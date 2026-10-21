@@ -8,3 +8,15 @@
 
 /* Live inventory uses the approved demo gallery proportions and depth. */
 #galleryTrack .galleryCard{display:block;text-decoration:none}#galleryViewport{scroll-behavior:auto;scroll-snap-type:none}#galleryTrack .photo{aspect-ratio:3/2;height:auto}#galleryTrack .noPhoto{height:100%;aspect-ratio:3/2}#galleryViewport.dragging .galleryCard{cursor:grabbing}.flowControls button:disabled{opacity:.4;cursor:default}
+
+.dispatchDraftMode #vehicleEditor{width:100%;max-width:none;max-height:100dvh;height:100dvh;margin:0;border-radius:0;box-sizing:border-box}
+.dispatchDraftMode #vehicleEditor .realMedia,.dispatchDraftMode #vehicleEditor .publishRow,.dispatchDraftMode #vehicleTranslation,.dispatchDraftMode #closeEditor{display:none!important}
+.dispatchDraftMode #vehicleEditor .saveRow{position:sticky;bottom:0;background:#fff;z-index:3}
+.dispatchDraftMode #vehicleEditor .saveRow button{white-space:normal}
+.dispatchDraftMode #vehicleEditor .saveRow span{font-size:13px}
+.dispatchDraftMode #vehicleEditor .dialogHead{padding:18px 20px}
+
+.dispatchDraftMode #vehicleFields>label:not(:first-child),.dispatchDraftMode #vehicleFields>section{display:none}
+
+.dispatchDraftMode #vehicleFields{display:block}
+.dispatchDraftMode #vehicleFields>label:first-child{display:block}

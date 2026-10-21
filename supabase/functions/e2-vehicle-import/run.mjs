@@ -8,9 +8,10 @@ export async function runImport({drive,store,loadWorkbook,root,actor,now=new Dat
   const result={created:[],blocked:[],existing:0,unchanged:0,remaining:0};
   try {
   const when=period(now),folders=(await drive.list(root)).filter(f=>f.mimeType==='application/vnd.google-apps.folder'&&!f.trashed&&f.parents?.includes(root));
-  const inventory=await store.inventory(),existing=new Set(inventory.map(c=>normalizePlate(c.plate))),jobs=await store.jobs();
+  const inventory=await store.inventory(),jobs=await store.jobs();
   const pending=folders.filter(f=>{
-    if(existing.has(folderPlate(f.name))){result.existing++;return false}
+    const matches=inventory.filter(c=>normalizePlate(c.plate)===folderPlate(f.name));
+    if(matches.length===1&&!(matches[0].publication==='draft'&&matches[0].import_pending===true&&!matches[0].vehicle_photos?.length)){result.existing++;return false}
     // Completed folders stay completed, even after a folder rename or a vehicle's plate edit.
     if(jobs.get(f.id)?.status==='completed'){result.unchanged++;return false}
     return true;
@@ -60,9 +61,9 @@ export async function runImport({drive,store,loadWorkbook,root,actor,now=new Dat
     const saved=await store.commit({actor,folder:folder.id,stamp,source:sourceKey,plan});
     if(saved.status==='existing'){result.existing++;continue}
     const check=await store.verify(saved.vehicle_id);
-    if(check.publication!=='draft'||Number(check.price)!==plan.vehicle.price||check.photos.length!==plan.items.length||check.photos[0]?.file_id!==plan.items[0].file_id)
+    if(check.publication!=='draft'||(saved.status!=='enriched'&&Number(check.price)!==plan.vehicle.price)||check.photos.length!==plan.items.length||check.photos[0]?.file_id!==plan.items[0].file_id)
       throw Error('Draft verification needs attention for '+plan.vehicle.plate+'. Do not import it again.');
-    result.created.push({plate:plan.vehicle.plate,price:plan.vehicle.price,photos:plan.items.length,id:saved.vehicle_id,review:plan.review,skipped:plan.skipped});
+    result.created.push({plate:plan.vehicle.plate,price:Number(check.price),photos:plan.items.length,id:saved.vehicle_id,review:plan.review,skipped:plan.skipped,...(saved.status==='enriched'?{updated:true}:{})});
   }
   result.remaining=Math.max(0,candidates.length-3);
   return result;

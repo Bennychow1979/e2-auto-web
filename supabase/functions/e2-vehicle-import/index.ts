@@ -14,7 +14,7 @@ async function all(table,columns) {
   for(let offset=0;;offset+=500){const batch=checked(await admin.from(table).select(columns).order(table==='vehicles'?'id':'folder_id').range(offset,offset+499));rows.push(...batch);if(batch.length<500)return rows}
 }
 const store={
-  inventory:()=>all('vehicles','id,plate'),
+  inventory:()=>all('vehicles','id,plate,publication,import_pending,vehicle_photos(id)'),
   jobs:async()=>new Map((await all('vehicle_import_jobs','folder_id,fingerprint,status,issue,vehicle_id')).map(j=>[j.folder_id,j])),
   save:async job=>{checked(await admin.from('vehicle_import_jobs').upsert({...job,updated_at:new Date().toISOString()}))},
   commit:async({actor,folder,stamp,source,plan})=>checked(await admin.rpc('e2_import_drive_vehicle',{actor_id:actor,folder,stamp,source_stamp:source,plan})),

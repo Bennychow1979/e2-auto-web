@@ -33,7 +33,7 @@ function paintBenefits(record){
   $('benefitDetails').innerHTML=benefitDetailsHTML(record);
   $('benefitDetails').hidden=!$('benefitDetails').innerHTML;
 }
-const car=rows[0];paintBenefits(car); car.name=car.brand+' '+car.model;car.priceValue=Number(car.price);
+const car=rows[0];if(preview&&['brand','model','year','engine_litres','transmission','fuel_type','price'].some(key=>car[key]==null)){unavailable=true;excludeVehicleFromSearch();throw Error('This private draft is awaiting vehicle details and price. Complete the import in E2 Workspace before previewing.');}paintBenefits(car); car.name=car.brand+' '+car.model;car.priceValue=Number(car.price);
 const imageOrigin=document.documentElement.dataset.publicImageOrigin;
 const publicImage=staticSnapshot&&imageOrigin&&car.photos?.length?publicVehicleImageURL(imageOrigin,car.id):null;
 applyVehicleMetadata(car,{preview,lang:language,staticPages:usesStaticVehiclePages(),imageURL:publicImage});

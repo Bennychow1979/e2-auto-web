@@ -12,7 +12,7 @@ export function setupVehicleImport({db,canManage,onFinished}) {
     const parts=[config.data?.enabled?'Automatic check: daily at 9:00 AM (Malaysia).':'Automatic check is off.'];
     if(run) {
       parts.push('Last run: '+new Date(run.started_at).toLocaleString('en-MY',{timeZone:'Asia/Kuala_Lumpur'})+' · '+run.status);
-      if(summary.created?.length)parts.push(summary.created.map(c=>c.plate+' · RM'+Number(c.price).toLocaleString('en-MY')+' · '+c.photos+' photos · private draft').join('\n'));
+      if(summary.created?.length)parts.push(summary.created.map(c=>c.plate+(c.updated?' · Updated existing draft':'')+' · RM'+Number(c.price).toLocaleString('en-MY')+' · '+c.photos+' photos · private draft').join('\n'));
       if(summary.blocked?.length)parts.push(summary.blocked.map(c=>c.plate+' · Needs review: '+c.issue).join('\n'));
       if(summary.error)parts.push(summary.error);
       if(run.status==='completed'&&!summary.created?.length&&!summary.blocked?.length)parts.push('No new drafts or changed issues.');
@@ -29,7 +29,7 @@ export function setupVehicleImport({db,canManage,onFinished}) {
         const response=await db.functions.invoke('e2-vehicle-import',{body:{action:'run'}});
         if(response.error){let detail;try{detail=await response.error.context?.json()}catch{}throw Error(detail?.error||'Import interrupted. Refresh before retrying.')}
         result=response.data;
-        for(const car of result.created||[])lines.push(car.plate+' · RM'+Number(car.price).toLocaleString('en-MY')+' · '+car.photos+' photos · Private draft'+(car.skipped?' · '+car.skipped+' unsupported or duplicate files skipped':''));
+        for(const car of result.created||[])lines.push(car.plate+(car.updated?' · Updated existing draft':'')+' · RM'+Number(car.price).toLocaleString('en-MY')+' · '+car.photos+' photos · Private draft'+(car.skipped?' · '+car.skipped+' unsupported or duplicate files skipped':''));
         for(const car of result.blocked||[])lines.push(car.plate+' · Needs review: '+car.issue);
         if(result.error)throw Error(result.error);
         output.textContent=lines.join('\n')+(result.remaining?'\nContinuing remaining vehicles…':'');
