@@ -111,7 +111,10 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  let gatewayVerified=false;
  if(release){
   if(snapshot.kind!=='public-complete'||images.size!==rows.length)throw Error('Release requires a complete public snapshot and photo coverage.');
-  for(const car of imageCars)if(!await probePublicImageGateway(snapshot.publicImageOrigin,car.id,imageRequest))throw Error('Stable public image gateway is not active; no release artifact written.');
+  for(const car of imageCars){
+   try{if(!await probePublicImageGateway(snapshot.publicImageOrigin,car.id,imageRequest))throw Error('Invalid image response');}
+   catch(error){throw Error('Stable public image gateway is not active for vehicle '+car.id+'; no release artifact written.',{cause:error});}
+  }
   gatewayVerified=true;
  }
  let previous={files:[],slugs:{}},exists=false;

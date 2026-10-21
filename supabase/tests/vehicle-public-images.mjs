@@ -41,3 +41,13 @@ test('invalid IDs cannot enter raw HTML image URLs or trigger network probes',as
   let called=false;await assert.rejects(probePublicImageGateway(config.supabaseUrl,id,async()=>{called=true;return ok()}));assert.equal(called,false);
  }
 });
+
+test('transient image failures retry at most three times without weakening header checks',async()=>{
+ for(const fail of [()=>{throw new DOMException('timeout','TimeoutError')},()=>new Response(null,{status:404}),()=>new Response(null,{status:503})]){
+  let calls=0;assert.equal(await probePublicImageGateway(config.supabaseUrl,vehicleA.id,async()=>++calls===1?fail():ok()),true);assert.equal(calls,2);
+ }
+ let calls=0;assert.equal(await probePublicImageGateway(config.supabaseUrl,vehicleA.id,async()=>{calls++;return new Response(null,{status:404})}),false);assert.equal(calls,3);
+ calls=0;await assert.rejects(probePublicImageGateway(config.supabaseUrl,vehicleA.id,async()=>{calls++;throw Error('offline')}),/offline/);assert.equal(calls,3);
+ calls=0;assert.equal(await probePublicImageGateway(config.supabaseUrl,vehicleA.id,async()=>{calls++;return new Response(null,{headers:{'content-type':'image/jpeg'}})}),false);assert.equal(calls,1);
+ calls=0;assert.equal(await probePublicImageGateway(config.supabaseUrl,vehicleA.id,async()=>{calls++;return new Response(null,{status:403})}),false);assert.equal(calls,1);
+});
