@@ -97,7 +97,7 @@ function renderDispatchVehicles(selected=$('dispatchForm').elements.vehicle_id.v
  const vehicles=data.vehicles.filter(v=>normalize(v.plate+' '+v.label).includes(query));
  select.innerHTML='<option value="">Choose vehicle / 请选择车辆</option>'+vehicles.map(v=>`<option value="${v.id}">${esc(v.plate)} · ${esc(v.label||'Awaiting import / 等待导入')}</option>`).join('');
  select.value=vehicles.some(v=>v.id===selected)?selected:'';
- $('dispatchVehicleResults').textContent=vehicles.length?`${vehicles.length} matching vehicles / 辆匹配车辆`:'No matching stock vehicle. / 库存里没有匹配车辆。';
+ $('dispatchVehicleResults').textContent=vehicles.length?`${vehicles.length} matching vehicles / 辆匹配车辆`:data.role==='account'?'No matching vehicle. Ask Admin to create or restore its vehicle record first. / 没有匹配车辆，请 Admin 先新增或恢复车辆档案。':'No matching stock vehicle. / 库存里没有匹配车辆。';
  $('addDispatchVehicle').hidden=!!vehicles.length||!query||!admin()||dispatch?.revision!=null;
 }
 $('dispatchVehicleSearch').oninput=()=>renderDispatchVehicles();
