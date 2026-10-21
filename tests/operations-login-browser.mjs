@@ -1,10 +1,10 @@
 import {chromium,expect} from '@playwright/test';
-import {readFile} from 'node:fs/promises';
+import {readFile,mkdir} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import assert from 'node:assert/strict';
 const browser=await chromium.launch(process.platform==='win32'?{channel:'msedge'}:{});
 try{
- for(const role of ['runner','account','inspector','office_admin','sales','admin']){
+ for(const role of ['runner','account','inspector','office_admin','sales','admin','super_admin']){
   const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
    const url=new URL(route.request().url()),path=url.pathname.slice(1);
@@ -27,7 +27,40 @@ try{
    await page.waitForURL('**/'+destination);
   }else{
    await page.locator('#workspace').waitFor({state:'visible'});
-   assert.equal(await page.locator('#manageOperations').isVisible(),role==='admin');
+   assert.equal(await page.locator('#manageOperations').isVisible(),['admin','super_admin'].includes(role));
+   if(role==='super_admin'){
+    const sidebar=page.locator('.sidebar'),users=page.locator('#manageUsers'),signOut=page.locator('#signOut');
+    for(const viewport of [{width:1366,height:600},{width:1024,height:480},{width:800,height:360}]){
+     await page.setViewportSize(viewport);
+     await sidebar.evaluate(el=>{el.scrollTop=0;});
+     await sidebar.hover({position:{x:80,y:100}});
+     await page.mouse.wheel(0,2000);
+     await expect.poll(()=>sidebar.evaluate(el=>el.scrollTop)).toBeGreaterThan(0);
+     await expect(users).toBeInViewport();
+     await expect(signOut).toBeInViewport();
+     assert.equal(await page.evaluate(()=>window.scrollY),0,'scrolling the sidebar leaves the page in place');
+     // Keyboard navigation must reveal links below the initial viewport as well.
+     await sidebar.locator('nav button').focus();
+     for(let i=0;i<20&&!await users.evaluate(el=>el===document.activeElement);i++)await page.keyboard.press('Tab');
+     await expect(users).toBeFocused();
+     await expect(users).toBeInViewport();
+     await page.keyboard.press('Tab');await page.keyboard.press('Tab');
+     await expect(signOut).toBeFocused();
+     await expect(signOut).toBeInViewport();
+    }
+    if(process.env.SIDEBAR_ARTIFACT_DIR){
+     await mkdir(process.env.SIDEBAR_ARTIFACT_DIR,{recursive:true});
+     await page.screenshot({path:resolve(process.env.SIDEBAR_ARTIFACT_DIR,'sidebar-desktop.png')});
+    }
+    await page.setViewportSize({width:390,height:844});
+    assert.equal(await sidebar.evaluate(el=>getComputedStyle(el).position),'static','mobile keeps its existing layout');
+    await users.focus();
+    await expect(users).toBeInViewport();
+    await signOut.focus();
+    await expect(signOut).toBeInViewport();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'no mobile page overflow');
+    if(process.env.SIDEBAR_ARTIFACT_DIR)await page.screenshot({path:resolve(process.env.SIDEBAR_ARTIFACT_DIR,'sidebar-mobile.png')});
+   }
   }
   assert.deepEqual(errors,[],role+' login has no JavaScript errors');await page.close();
  }
@@ -44,5 +77,5 @@ try{
  await page.goto('http://preview.test/operations.html');await expect(page.locator('#message')).toContainText('Sign in with your staff account');
  assert.equal(await page.evaluate(()=>window.testAuthOptions.persistSession),true);
  assert.equal(await page.evaluate(()=>window.testAuthOptions.storageKey),'e2-staff-auth');
- console.log('7 login integration checks passed: role routing, existing roles, Admin navigation and persistent staff session. No real login or email used.');
+ console.log('8 login integration checks passed, including Super Admin wheel/keyboard sidebar access at three desktop sizes and mobile layout. No real login or email used.');
 }finally{await browser.close();}

@@ -9,3 +9,9 @@
 @media(max-width:420px){.mediaGrid{gap:10px}.mediaTileActions button{min-width:36px}.mediaHeading .status{font-size:.5rem;padding:6px}.mediaHeading h3{font-size:1.1rem}}
 
 .identityField>label{font-size:.75rem}.manualIdentity{display:flex;flex-direction:column;gap:8px;color:#6b7167;font-size:.6875rem}.identityHelp{color:#6b7167;font-size:.6875rem;line-height:1.6;margin:0}.identityField select:disabled{background:#eeefea;color:#92978d;cursor:not-allowed}
+
+/* Keep every workspace link and sign-out reachable on short desktop screens. */
+@media(min-width:701px){
+  .sidebar{overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;scrollbar-gutter:stable}
+  .sidebar>*{flex-shrink:0}
+}
