@@ -39,7 +39,7 @@ function renderWorkshops(selected=''){
 }
 function savedWorkshop(){const name=cleanWorkshop($('workshop').value);return workshopNames().find(n=>n.toLowerCase()===name.toLowerCase())||name;}
 function assigneeOptions(selected){let rows=[...data.staff];if(selected&&!rows.some(s=>s.id===selected))rows.push({id:selected,name:'Former / inactive staff'});return options(rows,s=>s.id,s=>s.name);}
-async function open(job){current={...job};dirty=false;const ticket=epoch;$('vehicleDetails').textContent=vehicleName(vehicle(job.vehicle_id));$('status').innerHTML=options(statuses,s=>s,s=>s);$('status').value=job.status;$('assignee').innerHTML=assigneeOptions(job.assigned_to);$('assignee').value=job.assigned_to;
+async function open(job){current={...job};dirty=false;const ticket=epoch;$('vehicleDetails').textContent=vehicleName(vehicle(job.vehicle_id));$('repairBills').href='operations.html?inspection='+encodeURIComponent(job.id);$('status').innerHTML=options(statuses,s=>s,s=>s);$('status').value=job.status;$('assignee').innerHTML=assigneeOptions(job.assigned_to);$('assignee').value=job.assigned_to;
  $('checklist').innerHTML=Object.entries(checks).map(([key,label])=>`<label>${label}<select data-check="${key}" aria-label="${label}">${options(Object.entries(results),r=>r[0],r=>r[1])}</select></label>`).join('');document.querySelectorAll('[data-check]').forEach(s=>s.value=job.checklist[s.dataset.check]||'unchecked');
  for(const [id,key] of [['findings','findings'],['workshop','workshop'],['repairDate','repair_date'],['repairTime','repair_time'],['repairNotes','repair_notes'],['completionNotes','completion_notes']])$(id).value=job[key]||'';
  renderWorkshops(job.workshop);
