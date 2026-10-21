@@ -1,4 +1,5 @@
 // Simulation only. No Telegram SDK, credentials, external network or delivery worker.
+import {runnerMessage} from '../../runner-message.mjs';
 export function notificationPreview({now=()=>Date.now(),runnerRoles={}}={}){
  let offset=0;
  const jobs=new Map(),messages=new Map();
@@ -11,7 +12,7 @@ export function notificationPreview({now=()=>Date.now(),runnerRoles={}}={}){
    jobs.set(row.id,job);
    const key=`${job.id}:${version}:assignment`;
    if(!messages.has(key))messages.set(key,{id:key,job_id:job.id,dispatch_version:version,kind:'assignment',recipient:job.assigned_to,recipient_name:job.runner_name,created_at:new Date(clock()).toISOString(),resolved:false,
-    text:`New job / 新任务\n${job.plate} · ${job.kind}\n${job.origin} → ${job.destination}\nAppointment / 预约：${job.appointment_at||'To arrange / 待安排'}\nPlease sign in and confirm acceptance. / 请登录确认接单。`,
+    text:runnerMessage(job),
     url:`/operations.html?previewRole=${runnerRoles[job.assigned_to]||'runner'}&job=${encodeURIComponent(job.id)}`});
    if(job.accepted_at||job.status!=='assigned')for(const m of messages.values())if(m.job_id===job.id)m.resolved=true;
   }
@@ -29,6 +30,6 @@ export function notificationPreview({now=()=>Date.now(),runnerRoles={}}={}){
  return {
   sync,
   advance(){offset+=15*60000;tick();},
-  view(role,user){tick();const admin=['admin','super_admin'].includes(role);return {mode:'simulation',now:new Date(clock()).toISOString(),messages:[...messages.values()].filter(m=>admin||role==='runner'&&m.recipient===user&&jobs.get(m.job_id)?.assigned_to===user&&jobs.get(m.job_id)?.dispatch_version===m.dispatch_version).sort((a,b)=>b.created_at.localeCompare(a.created_at))};}
+  view(role,user){tick();const admin=['admin','super_admin'].includes(role);return {mode:'simulation',now:new Date(clock()).toISOString(),messages:[...messages.values()].filter(m=>admin||role==='account'&&m.kind==='assignment'||role==='runner'&&m.recipient===user&&jobs.get(m.job_id)?.assigned_to===user&&jobs.get(m.job_id)?.dispatch_version===m.dispatch_version).sort((a,b)=>b.created_at.localeCompare(a.created_at))};}
  };
 }

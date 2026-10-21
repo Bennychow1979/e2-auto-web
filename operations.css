@@ -7,3 +7,6 @@ dialog{border:0;border-radius:24px;width:min(780px,calc(100% - 28px));max-height
 #dispatchDraftFrame{display:block;border:0;width:100%;height:min(470px,calc(90dvh - 80px));background:#fff;border-radius:16px}
 #dispatchDraftMessage:empty{display:none}
 #dispatchDraftMessage{margin:8px;font-size:13px}
+.whatsappButton{background:#176b45;color:#fff;border:1px solid #176b45}.notificationLink{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:12px 18px;border-radius:14px;text-decoration:none;border:1px solid #ccd5ce;overflow-wrap:anywhere}#whatsappText{font-size:14px;line-height:1.6;box-sizing:border-box}#whatsappDialog .buttonRow>*{max-width:100%;box-sizing:border-box}#whatsappDialog [hidden]{display:none}#whatsappRecipient{font-weight:650}
+.verifyRunnerCheck{display:flex;align-items:flex-start;gap:12px;line-height:1.5}.verifyRunnerCheck input{width:22px;min-width:22px;height:22px;margin:2px 0 0}.verifyRunnerCheck span{flex:1}#runnerWhatsAppPhone{box-sizing:border-box;width:100%}#runnerWhatsAppForm .buttonRow button{white-space:normal}
+@media(max-width:640px){#runnerWhatsAppForm .buttonRow{flex-direction:column}#runnerWhatsAppForm .buttonRow button{flex:auto;width:100%}}

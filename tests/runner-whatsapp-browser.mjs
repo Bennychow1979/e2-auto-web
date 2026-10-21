@@ -1,0 +1,42 @@
+import {chromium,expect} from '@playwright/test';
+import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
+import {startPreview} from './serve-operations.mjs';
+const preview=await startPreview({lifecycle:true});let browser;
+try{
+ browser=await chromium.launch(process.platform==='win32'?{channel:'msedge'}:{});
+ const context=await browser.newContext({viewport:{width:1365,height:900}}),external=[],errors=[];
+ await context.route('**/*',r=>{if(new URL(r.request().url()).origin!==preview.url){external.push(r.request().url());return r.abort();}return r.continue();});
+ const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+ const evidence=process.env.PREVIEW_EVIDENCE;if(evidence)await mkdir(evidence,{recursive:true});
+ await page.goto(preview.url+'/operations.html?previewRole=admin');
+ await page.locator('#records article').filter({hasText:'DEMO01'}).getByRole('button').click();
+ await page.locator('#notifyWhatsApp').click();await expect(page.locator('#whatsappDialog')).toBeVisible();
+ await expect(page.locator('#whatsappText')).toHaveValue(/DEMO01[\s\S]*PUSPAKOM[\s\S]*From[\s\S]*To[\s\S]*https:\/\/e2auto.my\/operations.html\?job=/);
+ await expect(page.locator('#whatsappOpen')).toBeHidden();assert.equal(await page.locator('#whatsappOpen').getAttribute('href'),null);
+ if(evidence)await page.screenshot({path:evidence+'/whatsapp-desktop.png'});
+ await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ if(evidence)await page.screenshot({path:evidence+'/whatsapp-mobile.png'});
+ await page.locator('#whatsappPreviewLink').click();await expect(page.locator('#acceptJob')).toBeVisible();
+ await expect(page.locator('#notifyWhatsApp')).toBeHidden();await page.locator('#acceptJob').click();await expect(page.locator('#acceptance')).toContainText('已接单');
+ await page.goto(preview.url+'/operations.html?previewRole=admin');await page.locator('#advancePreviewTime').click();await expect(page.locator('#notificationPreview')).toContainText('1 jobs overdue');
+ await page.locator('#notificationPreview summary').click();
+ if(evidence)await page.screenshot({path:evidence+'/telegram-mobile.png',fullPage:true});
+ await page.locator('#records article').filter({hasText:'DEMO02'}).getByRole('button').click();await page.locator('#notifyWhatsApp').click();await expect(page.locator('#whatsappRecipient')).toContainText('尚无已核实号码');await expect(page.locator('#whatsappOpen')).toBeHidden();
+ await page.locator('#editRunnerWhatsApp').click();await expect(page.locator('#saveRunnerWhatsApp')).toBeDisabled();
+ await page.locator('#runnerWhatsAppPhone').fill('invalid');await page.locator('#runnerWhatsAppConfirmed').check();await expect(page.locator('#saveRunnerWhatsApp')).toBeDisabled();
+ await page.locator('#runnerWhatsAppPhone').fill('010-000 0001');await expect(page.locator('#runnerWhatsAppConfirmed')).not.toBeChecked();await expect(page.locator('#runnerWhatsAppFormat')).toContainText('+60100000001');await expect(page.locator('#saveRunnerWhatsApp')).toBeDisabled();
+ await page.locator('#runnerWhatsAppConfirmed').check();await expect(page.locator('#saveRunnerWhatsApp')).toBeEnabled();
+ assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ if(evidence){await page.screenshot({path:evidence+'/runner-number-mobile.png'});await page.setViewportSize({width:1365,height:900});await page.screenshot({path:evidence+'/runner-number-desktop.png'});}
+ await page.locator('#saveRunnerWhatsApp').click();await expect(page.locator('#runnerWhatsAppForm')).toBeHidden();await expect(page.locator('#whatsappRecipient')).toContainText('+60100000001');await expect(page.locator('#whatsappCopyStatus')).toContainText('已核实保存');await expect(page.locator('#whatsappText')).toHaveValue(/DEMO02/);await expect(page.locator('#whatsappOpen')).toBeHidden();assert.equal(await page.locator('#whatsappOpen').getAttribute('href'),null);
+ if(evidence)await page.screenshot({path:evidence+'/runner-number-saved.png'});
+ await page.reload();await page.locator('#records article').filter({hasText:'DEMO02'}).getByRole('button').click();await page.locator('#notifyWhatsApp').click();await expect(page.locator('#whatsappRecipient')).toContainText('+60100000001');
+ await page.locator('#editRunnerWhatsApp').click();await expect(page.locator('#runnerWhatsAppConfirmed')).not.toBeChecked();await page.locator('#runnerWhatsAppPhone').fill('0100000002');await page.locator('#cancelRunnerWhatsApp').click();await expect(page.locator('#whatsappRecipient')).toContainText('+60100000001');
+ await page.goto(preview.url+'/operations.html?previewRole=account');await page.locator('#jobsTab').click();await page.locator('#records article').filter({hasText:'DEMO02'}).getByRole('button').click();await expect(page.locator('#notifyWhatsApp')).toBeVisible();await page.locator('#notifyWhatsApp').click();await expect(page.locator('#whatsappText')).toHaveValue(/Carsome/);
+ await expect(page.locator('#editRunnerWhatsApp')).toBeHidden();await expect(page.locator('#whatsappRecipient')).toContainText('+60100000001');
+ await page.getByRole('button',{name:'Close WhatsApp preview'}).click();await expect(page.locator('#whatsappDialog')).toBeHidden();await expect(page.locator('#jobDialog')).toBeVisible();await page.locator('#notifyWhatsApp').click();await page.keyboard.press('Escape');await expect(page.locator('#whatsappDialog')).toBeHidden();
+ assert.deepEqual(external,[],'No WhatsApp, Telegram or other external requests');assert.deepEqual(errors,[]);
+ console.log('Desktop/mobile manual preview, missing number, Account access, Runner acceptance, reminder stop and zero external traffic passed.');
+ await context.close();
+}finally{if(browser)await browser.close();await preview.close();}

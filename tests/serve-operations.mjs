@@ -11,6 +11,11 @@ import {benefitFields} from '../vehicle-benefits.mjs';
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)));
 export async function startPreview({port=0,seed=true,showcase=false,lifecycle=false}={}){
  const {db,ids,as,rpc}=await operationsDatabase(),blobs=new Map();
+ await db.exec(await readFile(resolve(root,'supabase/migrations/202610220004_runner_whatsapp.sql'),'utf8'));
+ await as('admin');
+ // Synthetic number only; the UI never creates a wa.me link in this preview.
+ await db.query('select public.e2_verify_runner_whatsapp($1,$2)',[ids.runner,'60100000000']);
+ await db.exec('reset role');
  await db.exec(await readFile(resolve(root,'supabase/migrations/202610190001_vehicle_benefits.sql'),'utf8'));
  await db.exec(await readFile(resolve(root,'supabase/migrations/202610210004_plate_drafts.sql'),'utf8'));
  if(lifecycle){
@@ -67,7 +72,7 @@ export async function startPreview({port=0,seed=true,showcase=false,lifecycle=fa
  };
  `;
  const banner=`<aside id="previewBanner" style="background:#f5e8bf;color:#4b390a;padding:12px 20px;font:14px system-ui;display:flex;gap:18px;align-items:center;flex-wrap:wrap"><strong>LOCAL PREVIEW · 测试资料 · 未上线</strong><label style="margin:0">Preview role / 体验身份 <select id="previewRole" style="width:auto;min-height:40px;margin:0"><option value="runner">Runner A</option><option value="runner2">Runner B</option><option value="admin">Admin</option><option value="inspector">Inspector</option><option value="account">Account</option></select></label><small>Disposable local records. No real login, email or payments. / 本机模拟身份，重启后重置。</small></aside><script>const rolePicker=document.getElementById('previewRole');rolePicker.value=new URLSearchParams(location.search).get('previewRole')||'runner';rolePicker.onchange=()=>location.href='/operations.html?previewRole='+rolePicker.value;</script>`;
- const allowed=new Set(['operations.html','operations.js','operations-files.js','operations.css','partner.css','assets/e2-logo.png']);
+ const allowed=new Set(['operations.html','operations.js','operations-files.js','runner-message.mjs','profile-utils.js','operations.css','partner.css','assets/e2-logo.png']);
  for(const file of ['portal.html','portal.js','portal-demo.css','production.css','team.css','drive-photos.css','vehicle-translation.css','vehicle-benefits.css','vehicle-lifecycle.mjs','vehicle-lifecycle.css','inspections.html','inspections.js','inspections.css','inspection-photos.js','vehicle-import.mjs','vehicle-translation-ui.mjs','photo-sort.js','drive-photo-picker.mjs','year-spec-select.mjs','model-year-reference.mjs','vehicle-benefits-editor.mjs','vehicle-benefits.mjs','verified-model-years.json','i18n.mjs','translations.mjs','vehicle-routes.mjs','booking-translations.mjs','sales-team-translations.mjs'])allowed.add(file);
  const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://127.0.0.1');
@@ -96,6 +101,10 @@ export async function startPreview({port=0,seed=true,showcase=false,lifecycle=fa
      }
      if(url.pathname==='/preview-api/rpc'&&req.method==='POST'){
       const {name,args}=JSON.parse(bytes);
+      if(['e2_prepare_runner_whatsapp','e2_verify_job_runner_whatsapp'].includes(name)){
+       const prepared=await scalarCall(name,name==='e2_prepare_runner_whatsapp'?['target','expected_revision']:['target','expected_revision','phone','confirmed','expected_verified_at'],args);
+       return {data:{...prepared,mode:'simulation',preview_job_url:`/operations.html?previewRole=${prepared.job.assigned_to===ids.runner?'runner':'runner2'}&job=${encodeURIComponent(prepared.job.id)}`}};
+      }
       if(name==='e2_preview_advance_time'){
        if(role!=='admin')throw Error('Admin preview control only');notifications.advance();return {data:true};
       }

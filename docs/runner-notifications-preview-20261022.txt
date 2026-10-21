@@ -1,0 +1,72 @@
+E2 Runner manual WhatsApp + Telegram flow preview — 22 October 2026
+
+Preview: http://127.0.0.1:61495/operations.html?previewRole=admin
+Runner: http://127.0.0.1:61495/operations.html?previewRole=runner
+Account: http://127.0.0.1:61495/operations.html?previewRole=account
+Local-only synthetic identities and records. Restart resets records and messages.
+No push, merge, deployment, production migration, real Bot access or real messages.
+
+How to preview
+1. Admin: open DEMO01, click WhatsApp 通知 Runner. Review plate, task, From/To,
+   appointment (Malaysia time) and login-protected job link.
+2. The preview deliberately disables wa.me navigation. Copy adds PREVIEW ONLY.
+   Preview Runner acceptance opens the local Runner page; viewing is not accepting.
+3. Confirm acceptance to stop the outstanding reminder.
+4. Admin: Simulate +15 minutes creates one simulated Admin reminder per dispatch.
+   Editing/reassigning restarts the timer; acceptance/cancellation clears warnings.
+5. DEMO02 demonstrates missing verified WhatsApp number, with no send link.
+6. Account: choose Jobs tab; the WhatsApp action is available for awaiting jobs.
+7. Close via X or Escape returns to the Job. Mobile dialogs scroll vertically.
+
+Implemented source
+- runner-message.mjs: shared bilingual plain text, sanitized fields, Malaysia time,
+  fixed HTTPS login-protected job URL, international WhatsApp number validation.
+- operations.js/html/css: manual notification preview, copying, recipient review,
+  stale revision/recipient recheck before opening WhatsApp, no sent/accepted claim.
+- Migration 202610220004_runner_whatsapp.sql: private verified contacts, Admin-only
+  verification RPC, Admin/Account job-scoped preparation RPC; RLS and no direct
+  client table reads. NOT applied in production.
+- tests/serve-operations.mjs and fixtures: safe synthetic contact and local link,
+  shared Telegram content, Account preview visibility. No messaging transport.
+
+Still required before a live notification release
+- Populate actual verified contacts only after release approval; do not infer
+  verification from public sales profiles or reuse synthetic test contacts.
+- Telegram real Runner binding to the existing E2 Bot and verified Admin recipient.
+- Durable server-side Telegram outbox, scheduled worker, retry/failure management,
+  duplicate suppression and last-moment assignment/binding validation.
+- Production Bot integration and real delivery acceptance are NOT implemented or
+  verified by this preview. Existing simulation is in-memory, read-driven with
+  a virtual clock; it is not a background production scheduler.
+- Approval before applying migration or enabling real outbound notifications.
+- External Runner still needs a login and only sees assigned jobs. No anonymous
+  or one-time-token external Runner flow was added.
+
+Validation
+- npm run check passed; operations.js checked again after close-handler correction.
+- WhatsApp SQL/content tests passed: verified recipient, missing phone, roles,
+  stale revisions, reassignment, accepted jobs, URL encoding and injection input.
+- Existing 28 acceptance/simulated reminder checks passed, including 14:59/15:00,
+  one reminder per version, reassignment reset and cancellation resolution.
+- New desktop/mobile browser tests passed: manual preview, missing contact,
+  Account access, Runner acceptance, X/Escape closing and zero external traffic.
+- Existing Telegram browser tests and full Jobs/Bills browser regressions passed.
+- Browser launch was blocked by Windows sandbox; tests reran successfully outside
+  that sandbox with all application external network requests intercepted/blocked.
+- Screenshots saved outside source under runner-notification-preview-20261022.
+
+Recovery
+No production rollback is needed. Work is on local branch
+codex/runner-whatsapp-telegram-preview-20261022, based on main 4120a700.
+Do not reset unrelated untracked previews/ files. Stop this local preview server
+to discard its synthetic records. Keep the source backup for review.
+
+Number verification preview update
+- Admin/Super Admin can add or edit a Runner number from the Job notification.
+- Malaysian 01 numbers normalize to +601. Explicit ownership confirmation required.
+- Saving returns to the same Job preview; no message opens or sends.
+- Account can use a verified contact but cannot edit/verify it.
+- Job revision and contact timestamp checks reject stale or reassigned dialogs.
+- SQL permission/stale/confirmation checks and desktop/mobile save, reload, cancel,
+  phone normalization and no-external-network browser checks passed.
+- No production changes. New screenshots: runner-number-preview-20261022.
