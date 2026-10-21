@@ -9,6 +9,7 @@ const badge=status=>`<span class="badge ${esc(status)}">${esc(names[status]||sta
 let data,view='jobs',currentJob,currentClaim,dispatch,claimRequest,panels={},busy=0,dirty=new Set(),accessEpoch=0,pendingClaimFile=null;
 let draftHandoff=null;
 const admin=()=>['admin','super_admin'].includes(data?.role);
+const canDispatch=()=>['admin','super_admin','account'].includes(data?.role);
 const canEdit=c=>!c||c.created_by===data.user_id&&['draft','returned'].includes(c.status);
 async function rpc(name,args={}){return check(await db.rpc(name,args));}
 function error(id,e){$(id).textContent=friendlyError(e);$(id).classList.add('error');}
@@ -30,9 +31,9 @@ function clearAccess(){
 function render(){
  const isAdmin=admin(),role=data.role;
  $('roleCaption').textContent=`E2 WORKSPACE · ${role.replace('_',' ').toUpperCase()}`;
- $('pageTitle').textContent=role==='runner'?'My jobs / 我的任务':role==='account'?'Check. Record. / 核对与付款':role==='inspector'?'Repair bills / 维修账单':'Jobs & bills / 派工与费用';
- $('pageIntro').textContent=role==='runner'?'Only jobs assigned to you. Record movement, archive documents and submit petrol claims. / 仅显示你的派工。':role==='account'?'Admin-approved expenses. Verify documents, then record actual payment. / 核对获批费用及实际付款。':'Keep each vehicle, document and approval together. / 每辆车的任务、附件与审批统一存档。';
- $('createJob').hidden=!isAdmin;$('createRepair').hidden=!isAdmin&&role!=='inspector';
+ $('pageTitle').textContent=role==='runner'?'My jobs / 我的任务':role==='account'?'Dispatch. Check. Record. / 派工、核对与付款':role==='inspector'?'Repair bills / 维修账单':'Jobs & bills / 派工与费用';
+ $('pageIntro').textContent=role==='runner'?'Only jobs assigned to you. Record movement, archive documents and submit petrol claims. / 仅显示你的派工。':role==='account'?'Assign Runner jobs, verify approved expenses and record payment. / 安排 Runner 派工，核对获批费用及实际付款。':'Keep each vehicle, document and approval together. / 每辆车的任务、附件与审批统一存档。';
+ $('createJob').hidden=!canDispatch();$('createRepair').hidden=!isAdmin&&role!=='inspector';
  $('stockLink').hidden=!isAdmin;$('inspectionLink').hidden=!isAdmin&&role!=='inspector';
  $('jobsTab').hidden=role==='inspector';if(role==='inspector')view='claims';
  $('workspace').hidden=false;$('signOut').hidden=false;$('message').textContent='';
@@ -141,6 +142,7 @@ window.addEventListener('message',async event=>{
  finally{handoff.receiving=false;}
 });
 function openDispatch(job=null){
+ if(!canDispatch())return;
  dispatch=job?{...job}:{id:crypto.randomUUID(),revision:null};const f=$('dispatchForm');f.reset();
  renderDispatchVehicles(job?.vehicle_id||'');
  f.elements.assigned_to.innerHTML=data.runners.map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('');
@@ -162,7 +164,7 @@ function openJob(id){
  const steps=j.kind==='send_invoice'?['assigned','delivering','completed']:['carsome_pickup','carro_pickup'].includes(j.kind)?['assigned','collected','car_in']:['assigned','car_out','arrived','returning','car_in'];
  $('journey').innerHTML=steps.map((s,i)=>`<span class="${s===j.status?'current':i<steps.indexOf(j.status)?'done':''}">${names[s]}</span>`).join('');
  const writable=(admin()||data.role==='runner'&&j.assigned_to===data.user_id)&&!['car_in','completed','cancelled'].includes(j.status);
- $('editDispatch').hidden=!admin()||j.status!=='assigned';$('petrolClaim').hidden=data.role!=='runner'||j.assigned_to!==data.user_id||j.status==='cancelled';
+ $('editDispatch').hidden=!canDispatch()||j.status!=='assigned';$('petrolClaim').hidden=data.role!=='runner'||j.assigned_to!==data.user_id||j.status==='cancelled';
  const next=steps[steps.indexOf(j.status)+1],mf=$('movementForm');mf.reset();mf.hidden=!writable;
  mf.hidden=!writable||(!j.accepted_at&&!admin());
  mf.elements.next_status.innerHTML=(next&&j.accepted_at?`<option value="${next}">${names[next]}</option>`:'')+(admin()?'<option value="cancelled">Cancel job / 取消（必须说明原因）</option>':'');
