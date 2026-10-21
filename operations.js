@@ -87,14 +87,25 @@ function locationOptions(field,value=''){
  const index=values.indexOf(value);select.value=index>=0?'place-'+index:'';input.value=value;wrapper.hidden=true;input.required=false;
  select.onchange=()=>{const fresh=select.value==='new';wrapper.hidden=!fresh;input.required=fresh;input.value=fresh?'':select.value?values[Number(select.value.slice(6))]:'';if(fresh)input.focus();};
 }
+function renderDispatchVehicles(selected=$('dispatchForm').elements.vehicle_id.value){
+ const select=$('dispatchForm').elements.vehicle_id;
+ const normalize=value=>String(value??'').toLowerCase().replace(/[\s-]+/g,'');
+ const query=normalize($('dispatchVehicleSearch').value);
+ const vehicles=data.vehicles.filter(v=>normalize(v.plate+' '+v.label).includes(query));
+ select.innerHTML='<option value="">Choose vehicle / 请选择车辆</option>'+vehicles.map(v=>`<option value="${v.id}">${esc(v.plate)} · ${esc(v.label)}</option>`).join('');
+ select.value=vehicles.some(v=>v.id===selected)?selected:'';
+ $('dispatchVehicleResults').textContent=vehicles.length?`${vehicles.length} matching vehicles / 辆匹配车辆`:'No matching stock vehicle. / 库存里没有匹配车辆。';
+}
+$('dispatchVehicleSearch').oninput=()=>renderDispatchVehicles();
 function openDispatch(job=null){
  dispatch=job?{...job}:{id:crypto.randomUUID(),revision:null};const f=$('dispatchForm');f.reset();
- f.elements.vehicle_id.innerHTML=data.vehicles.map(v=>`<option value="${v.id}">${esc(v.plate)} · ${esc(v.label)}</option>`).join('');
+ renderDispatchVehicles(job?.vehicle_id||'');
  f.elements.assigned_to.innerHTML=data.runners.map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('');
  for(const key of ['vehicle_id','assigned_to','kind','origin','destination','instructions'])if(job)f.elements[key].value=job[key]||'';
  locationOptions('origin',job?.origin||'');locationOptions('destination',job?.destination||'');
  f.elements.appointment_at.value=localTime(job?.appointment_at);
  f.elements.vehicle_id.disabled=!!job;f.elements.kind.disabled=!!job;
+ $('dispatchVehicleSearch').disabled=!!job;
  $('dispatchMessage').textContent=data.runners.length?'':'Create an active Runner account first. / 请先添加启用的 Runner 账号。';
  show('dispatchDialog');
 }

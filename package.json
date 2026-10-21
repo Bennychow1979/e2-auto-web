@@ -9,7 +9,7 @@
     "build:sitemap": "node scripts/build-sitemap.mjs",
     "build:languages": "node scripts/build-languages.mjs",
     "build:pdf-preview": "node scripts/build-pdf-preview.mjs",
-    "test:browser": "npm run build:pdf-preview && playwright test && npm run test:vehicle-browser && node tests/inspections-browser.mjs && node tests/operations-browser.mjs && node tests/runner-notifications-browser.mjs && node tests/operations-login-browser.mjs",
+    "test:browser": "npm run build:pdf-preview && playwright test && npm run test:vehicle-browser && node tests/inspections-browser.mjs && node tests/operations-browser.mjs && node tests/runner-notifications-browser.mjs && node tests/operations-login-browser.mjs && node tests/dispatch-search-browser.mjs",
     "test:vehicle-pages": "node --test supabase/tests/vehicle-pages.mjs supabase/tests/vehicle-public-images.mjs supabase/tests/public-vehicle-images.mjs supabase/tests/vehicle-registry.mjs supabase/tests/inventory-refresh-policy.mjs",
     "test:vehicle-browser": "playwright test -c playwright.vehicle.config.mjs",
     "test:photo-browser": "node tests/photo-recovery-browser.mjs",
