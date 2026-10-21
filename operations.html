@@ -5,8 +5,8 @@
  <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
  <title>Jobs & bills | E2 Workspace</title>
  <link rel="icon" href="assets/e2-logo.png"><link rel="apple-touch-icon" href="assets/e2-logo.png">
- <link rel="stylesheet" href="partner.css"><link rel="stylesheet" href="operations.css?v=3">
- <script src="e2-config.js"></script><script type="module" src="operations.js?v=account-dispatch-1-6"></script>
+ <link rel="stylesheet" href="partner.css"><link rel="stylesheet" href="operations.css?v=runner-notify-2">
+ <script src="e2-config.js"></script><script type="module" src="operations.js?v=runner-notify-2"></script>
 </head>
 <body>
  <header><a class="opsBrand" href="portal.html"><img src="assets/e2-logo.png" alt="E2 Auto"><span>E2 WORKSPACE<small>JOBS &amp; BILLS · 任务与费用</small></span></a>
@@ -40,9 +40,29 @@
  <dialog id="jobDialog" aria-labelledby="jobTitle">
   <div class="dialogHead"><h2 id="jobTitle">Job / 任务</h2><button class="quiet" type="button" data-close="jobDialog" aria-label="Close job">×</button></div>
   <div id="jobSummary"></div><div id="acceptance" class="detailBox"></div><button id="acceptJob" type="button" hidden>Confirm acceptance / 确认接单</button><div id="jobNotifications"></div><div id="journey" class="journey"></div>
-  <div class="buttonRow"><button id="editDispatch" class="quiet" hidden>Edit dispatch / 修改派工</button><button id="petrolClaim" hidden>Petrol claim + / 油费报销</button></div>
+  <div class="buttonRow"><button id="notifyWhatsApp" class="whatsappButton" type="button" hidden>WhatsApp 通知 Runner ↗</button><button id="editDispatch" class="quiet" hidden>Edit dispatch / 修改派工</button><button id="petrolClaim" hidden>Petrol claim + / 油费报销</button></div>
   <form id="movementForm" hidden><h3 id="movementTitle">Record movement / 车辆进出</h3><div class="pair"><label>Next update / 更新状态<select name="next_status" required></select></label><label>Odometer / 里程（km）<input name="mileage" type="number" min="0" max="2147483647" step="1"></label></div><label>Note / 交接说明<textarea name="note" maxlength="1000" rows="2"></textarea></label><button type="submit">Record update / 保存状态</button></form>
   <p id="jobMessage" role="status"></p><section id="jobFiles"></section><details><summary>Activity / 操作记录</summary><div id="jobHistory"></div></details>
+ </dialog>
+ <dialog id="whatsappDialog" aria-labelledby="whatsappTitle">
+  <div class="dialogHead"><h2 id="whatsappTitle">WhatsApp · 通知 Runner</h2><button type="button" class="quiet" data-close="whatsappDialog" aria-label="Close WhatsApp preview">×</button></div>
+  <p id="whatsappRecipient" class="detailBox"></p>
+  <button id="editRunnerWhatsApp" type="button" class="quiet" hidden>Add / verify number · 填写并核实号码</button>
+  <form id="runnerWhatsAppForm" hidden>
+   <p id="runnerWhatsAppIdentity"></p>
+   <label>Runner WhatsApp number / Runner WhatsApp 号码<input id="runnerWhatsAppPhone" type="tel" inputmode="tel" autocomplete="off" maxlength="32" placeholder="+60… / 01…" required aria-describedby="runnerWhatsAppFormat"></label>
+   <p id="runnerWhatsAppFormat" class="muted" aria-live="polite">Malaysian 01… numbers become +601… / 马来西亚 01… 号码会转成 +601…。</p>
+   <label class="verifyRunnerCheck"><input id="runnerWhatsAppConfirmed" type="checkbox" required><span>I have confirmed this number belongs to this Runner. / 我已核实此号码属于这位 Runner。</span></label>
+   <p class="muted">Manual Admin verification; no SMS or WhatsApp verification message is sent. / 由 Admin 人工核实，不会发送短信或 WhatsApp 验证消息。</p>
+   <p id="runnerWhatsAppSaveStatus" role="status" aria-live="polite"></p>
+   <div class="buttonRow"><button id="saveRunnerWhatsApp" type="submit" disabled>Save & return / 保存并返回</button><button id="cancelRunnerWhatsApp" type="button" class="quiet">Cancel / 取消</button></div>
+  </form>
+  <div id="whatsappMessagePanel">
+  <label>Message preview / 消息预览<textarea id="whatsappText" rows="12" readonly></textarea></label>
+  <p id="whatsappNote" class="muted"></p>
+  <div class="buttonRow"><button id="whatsappOpen" type="button" class="whatsappButton" hidden>Open WhatsApp / 打开 WhatsApp ↗</button><button id="whatsappCopy" type="button" class="quiet">Copy message / 复制内容</button><a id="whatsappPreviewLink" class="notificationLink" hidden>Preview Runner acceptance / 预览 Runner 接单 ↗</a></div>
+  <p id="whatsappCopyStatus" role="status" aria-live="polite"></p>
+  </div>
  </dialog>
  <dialog id="claimDialog" aria-labelledby="claimTitle">
   <div class="dialogHead"><h2 id="claimTitle">Expense / 费用</h2><button class="quiet" type="button" data-close="claimDialog" aria-label="Close expense">×</button></div>

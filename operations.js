@@ -1,5 +1,7 @@
 import {db,configured,check,esc,friendlyError,rm} from './e2-data.js?v=ops-1';
 import {filePanel} from './operations-files.js?v=3';
+import {runnerMessage,whatsappURL} from './runner-message.mjs';
+import {normalizeWhatsApp} from './profile-utils.js';
 const $=id=>document.getElementById(id);
 const names={assigned:'Assigned / 已派工',car_out:'Car out / 已出车',arrived:'Arrived / 已到达',returning:'Returning / 回程',collected:'Collected / 已取车',car_in:'Car in / 已回店',delivering:'Delivering / 送件中',completed:'Completed / 已完成',cancelled:'Cancelled / 已取消',draft:'Draft / 草稿',submitted:'Awaiting Admin / 待审批',returned:'Returned / 退回补充',approved:'Approved / 待会计核对',verified:'Verified / 待付款记录',paid:'Paid / 已记录付款',petrol:'Petrol claim / 油费报销',repair:'Repair bill / 维修账单',puspakom:'PUSPAKOM',carsome_pickup:'Carsome pickup / 取车',carro_pickup:'Carro pickup / Carro 取车',send_invoice:'Send invoice / 送发票',workshop:'Workshop / 维修厂',delivery:'Delivery / 送车',other:'Other / 其他'};
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -23,6 +25,10 @@ function clearAccess(){
  endDraftHandoff();
  accessEpoch++;Object.values(panels).forEach(p=>p.dispose());panels={};dirty.clear();data=null;
  document.querySelectorAll('dialog').forEach(d=>d.close());
+ whatsappDraft=null;$('whatsappText').value='';$('whatsappOpen').removeAttribute('href');$('whatsappRecipient').textContent='';
+ $('runnerWhatsAppForm').reset();$('runnerWhatsAppForm').hidden=true;$('editRunnerWhatsApp').hidden=true;
+ for(const id of ['runnerWhatsAppIdentity','runnerWhatsAppFormat','runnerWhatsAppSaveStatus','whatsappCopyStatus','whatsappNote'])$(id).textContent='';
+ $('whatsappPreviewLink').removeAttribute('href');
  for(const id of ['records','summary','jobSummary','claimSummary','jobFiles','claimFiles','jobHistory','claimHistory','notificationPreview','jobNotifications','acceptance'])$(id).replaceChildren();
  for(const id of ['dispatchForm','claimForm','movementForm','reviewForm'])$(id).reset();
  $('workspace').hidden=true;$('createJob').hidden=true;$('signOut').hidden=true;$('signIn').hidden=false;
@@ -52,12 +58,12 @@ function render(){
 function acceptanceText(j){return j.accepted_at?`Accepted / 已接单 · ${time(j.accepted_at)}`:j.status==='cancelled'?'Cancelled / 已取消':j.status==='assigned'?'Awaiting acceptance / 待接单':'Acceptance not recorded / 未记录接单';}
 function messageCard(m){return `<article class="notificationCard"><strong>${m.kind==='overdue'?'Admin reminder / Admin 超时提醒':'Telegram → '+esc(m.recipient_name)}</strong><small>SIMULATED ONLY / 仅模拟，未真实发送 · ${time(m.created_at)}${m.resolved?' · Resolved / 已处理':''}</small><p>${esc(m.text)}</p><a href="${esc(m.url)}">View job / 查看任务 ↗</a></article>`;}
 function renderNotifications(){
- const preview=data.notification_preview,root=$('notificationPreview');root.hidden=!['admin','super_admin','runner'].includes(data.role);
+ const preview=data.notification_preview,root=$('notificationPreview');root.hidden=!['admin','super_admin','account','runner'].includes(data.role);
  if(root.hidden){root.replaceChildren();return;}
  if(preview?.mode!=='simulation'){root.innerHTML='<strong>Telegram notifications are off / Telegram 通知未启用</strong><p>Admin must notify the Runner directly. Confirm acceptance in this workspace. Automatic 15-minute reminders are not enabled. / 请 Admin 另行通知 Runner，并在这里确认接单；15分钟自动提醒暂未启用。</p>';return;}
  const logOpen=root.querySelector('details')?.open;
  const overdue=preview.messages.filter(m=>m.kind==='overdue'&&!m.resolved);
- root.innerHTML=`<h2>Telegram preview / 通知预览</h2><p>Simulation only. No Bot connected and no messages sent. / 仅模拟，未连接 Bot，不会发送消息。</p>${admin()?`<p class="${overdue.length?'reviewNotice':''}" role="status">${overdue.length} jobs overdue / 项任务超过15分钟未接单</p><button id="advancePreviewTime" type="button" class="quiet">Simulate +15 minutes / 模拟经过15分钟</button>`:'<p>Opening a notification does not accept a job. Review the job, then confirm acceptance. / 查看通知不等于接单，请查看任务后确认。</p>'}<details><summary>Notification log / 通知记录 (${preview.messages.length})</summary>${preview.messages.map(messageCard).join('')||'<p>No notifications / 暂无通知</p>'}</details>`;
+ root.innerHTML=`<h2>Telegram automatic notifications / Telegram 自动通知预览</h2><p>Simulation only. No Bot connected and no messages sent. / 仅模拟，未连接 Bot，不会发送消息。</p><p>New or edited job → assigned Runner · No acceptance after 15 minutes → Admin · Accepted or cancelled → stop reminders. / 新增或修改派工自动通知对应 Runner；15分钟未接单提醒 Admin；接单或取消后停止提醒。</p>${admin()?`<p class="${overdue.length?'reviewNotice':''}" role="status">${overdue.length} jobs overdue / 项任务超过15分钟未接单</p><button id="advancePreviewTime" type="button" class="quiet">Simulate +15 minutes / 模拟经过15分钟</button>`:'<p>Opening a notification does not accept a job. Review the job, then confirm acceptance. / 查看通知不等于接单，请查看任务后确认。</p>'}<details><summary>Notification log / 通知记录 (${preview.messages.length})</summary>${preview.messages.map(messageCard).join('')||'<p>No notifications / 暂无通知</p>'}</details>`;
  if(admin())$('advancePreviewTime').onclick=()=>action('message',async()=>{await rpc('e2_preview_advance_time');await reload();});
  root.querySelector('details').open=!!logOpen;
 }
@@ -159,6 +165,7 @@ function openJob(id){
  $('jobTitle').textContent=`${j.plate} · ${names[j.kind]}`;
  $('acceptance').textContent=acceptanceText(j);
  $('acceptJob').hidden=data.role!=='runner'||j.assigned_to!==data.user_id||j.status!=='assigned'||!!j.accepted_at;
+ $('notifyWhatsApp').hidden=!canDispatch()||j.status!=='assigned'||!!j.accepted_at;
  $('jobNotifications').innerHTML=(data.notification_preview?.messages||[]).filter(m=>m.job_id===j.id).map(messageCard).join('');
  $('jobSummary').innerHTML=`${badge(j.status)}<div class="detailBox"><p>${esc(j.origin)} → ${esc(j.destination)}</p><p>${esc(j.runner_name)} · ${time(j.appointment_at)}</p><p>${esc(j.instructions||'No special instructions / 暂无交代事项')}</p>${j.kind==='send_invoice'?'':`<p>Last odometer / 最近里程：${j.last_mileage??'—'} km</p>`}</div>`;
  const steps=j.kind==='send_invoice'?['assigned','delivering','completed']:['carsome_pickup','carro_pickup'].includes(j.kind)?['assigned','collected','car_in']:['assigned','car_out','arrived','returning','car_in'];
@@ -173,6 +180,72 @@ function openJob(id){
  mountFiles('jobDialog','jobFiles',{job_id:id},writable?(j.kind==='send_invoice'?['invoice_copy','handover']:['appointment','job_sheet','handover']):[]);history('jobHistory',id,'job_id');
  if(!$('jobDialog').open)show('jobDialog');
 }
+let whatsappDraft=null;
+$('notifyWhatsApp').onclick=()=>action('jobMessage',async()=>{
+ const epoch=accessEpoch,id=currentJob.id;
+ const prepared=await rpc('e2_prepare_runner_whatsapp',{target:id,expected_revision:currentJob.revision});
+ if(epoch!==accessEpoch||currentJob?.id!==id||!canDispatch())return;
+ renderWhatsApp(prepared);show('whatsappDialog');
+});
+function renderWhatsApp(prepared){
+ whatsappDraft=prepared;dirty.delete('whatsappDialog');$('runnerWhatsAppForm').reset();$('runnerWhatsAppForm').hidden=true;$('whatsappMessagePanel').hidden=false;
+ $('editRunnerWhatsApp').hidden=!admin();$('editRunnerWhatsApp').textContent=prepared.phone?'Edit / reverify number · 修改并重新核实号码':'Add / verify number · 填写并核实号码';
+ const simulation=prepared.mode==='simulation',message=runnerMessage(prepared.job);
+ $('whatsappText').value=simulation?'[PREVIEW ONLY / 仅预览，未发送]\n'+message:message;
+ $('whatsappRecipient').textContent=prepared.phone&&prepared.verified_at?`${prepared.job.runner_name} · +${prepared.phone}\n${simulation?'Preview record · 预览记录 · ':''}Verified / 已核实：${time(prepared.verified_at)}`:`${prepared.job.runner_name} · No verified WhatsApp number / 尚无已核实号码`;
+ $('whatsappOpen').hidden=simulation||!prepared.phone||!prepared.verified_at;
+ $('whatsappOpen').removeAttribute('href');
+ // A button (not a prebuilt external link) forces all opens through the fresh
+ // assignment/contact check below, including when users try middle-clicking.
+ $('whatsappPreviewLink').hidden=!simulation;
+ if(simulation)$('whatsappPreviewLink').href=prepared.preview_job_url;
+ $('whatsappNote').textContent=(!prepared.phone||!prepared.verified_at?'Ask Admin to verify this Runner’s WhatsApp number first. / 请 Admin 先核实此 Runner 的 WhatsApp 号码。\n':'')+(simulation?'Preview only: WhatsApp cannot open or send here. The link below opens the local Runner preview. / 仅预览，不会打开或发送 WhatsApp；下方链接进入本机 Runner 接单页。':'Review the recipient and message, then open WhatsApp and press Send yourself. Opening WhatsApp does not mean sent or accepted. / 核对后打开 WhatsApp，由你按发送；打开不代表已发送或已接单。');
+ $('whatsappCopyStatus').textContent='';
+}
+function contactFormState(){
+ let number='';try{number=normalizeWhatsApp($('runnerWhatsAppPhone').value);}catch{}
+ $('runnerWhatsAppFormat').textContent=number?'Will save / 将保存：+'+number:'Enter a valid number with country code, e.g. +60… or Malaysian 01… / 请输入有效国际号码，或马来西亚 01… 号码。';
+ $('saveRunnerWhatsApp').disabled=!number||!$('runnerWhatsAppConfirmed').checked;
+}
+$('editRunnerWhatsApp').onclick=()=>{
+ if(!admin()||!whatsappDraft||busy)return;
+ $('runnerWhatsAppForm').reset();$('runnerWhatsAppPhone').value=whatsappDraft.phone?'+'+whatsappDraft.phone:'';
+ $('runnerWhatsAppIdentity').textContent='Runner: '+whatsappDraft.job.runner_name+' · Job: '+whatsappDraft.job.plate;
+ $('runnerWhatsAppSaveStatus').textContent='';$('runnerWhatsAppForm').hidden=false;$('whatsappMessagePanel').hidden=true;$('editRunnerWhatsApp').hidden=true;
+ contactFormState();$('runnerWhatsAppPhone').focus();
+};
+$('runnerWhatsAppPhone').oninput=()=>{$('runnerWhatsAppConfirmed').checked=false;contactFormState();};
+$('runnerWhatsAppConfirmed').onchange=contactFormState;
+$('cancelRunnerWhatsApp').onclick=()=>{renderWhatsApp(whatsappDraft);$('editRunnerWhatsApp').focus();};
+$('runnerWhatsAppForm').onsubmit=event=>{
+ event.preventDefault();
+ action('runnerWhatsAppSaveStatus',async()=>{
+  if(!admin()||!whatsappDraft||!$('runnerWhatsAppConfirmed').checked)throw Error('Admin must confirm the Runner number / 需要 Admin 核实号码');
+  const before=whatsappDraft,epoch=accessEpoch,number=normalizeWhatsApp($('runnerWhatsAppPhone').value);
+  if(!number)throw Error('WhatsApp number required / 请填写号码');
+  const saved=await rpc('e2_verify_job_runner_whatsapp',{target:before.job.id,expected_revision:before.job.revision,phone:number,confirmed:true,expected_verified_at:before.verified_at||null});
+  if(epoch!==accessEpoch||!admin()||!$('whatsappDialog').open)return;
+  renderWhatsApp(saved);$('whatsappCopyStatus').textContent='Saved and verified. Back to this Job notification; no message sent. / 已核实保存，已返回此 Job 通知；未发送消息。';
+  $('whatsappDialog').scrollTop=0;$('whatsappCopy').focus();
+ });
+};
+$('whatsappCopy').onclick=async()=>{
+ try{await navigator.clipboard.writeText($('whatsappText').value);$('whatsappCopyStatus').textContent='Copied, not sent / 已复制，未发送';}
+ catch{$('whatsappText').focus();$('whatsappText').select();$('whatsappCopyStatus').textContent='Select and copy the message / 请复制选中的内容';}
+};
+// Refresh the recipient/revision before opening an external manual-send link.
+$('whatsappOpen').onclick=async event=>{
+ event.preventDefault();
+ if(!whatsappDraft||!canDispatch())return;
+ const before=whatsappDraft,epoch=accessEpoch;
+ try{
+  const latest=await rpc('e2_prepare_runner_whatsapp',{target:before.job.id,expected_revision:before.job.revision});
+  if(epoch!==accessEpoch||!$('whatsappDialog').open)return;
+  if(latest.mode==='simulation'||!latest.phone||!latest.verified_at||latest.phone!==before.phone)throw Error('Recipient changed. Close and reopen this preview / 收件人已变更，请重新打开预览');
+  window.location.assign(whatsappURL(latest.phone,runnerMessage(latest.job)));
+  $('whatsappCopyStatus').textContent='WhatsApp requested. Send manually; acceptance remains pending. / 已请求打开 WhatsApp，请手动发送；仍需 Runner 确认接单。';
+ }catch(e){$('whatsappOpen').hidden=true;error('whatsappCopyStatus',e);}
+};
 function renderRepairChoices(selected=''){
  const q=$('repairPlateSearch').value.trim().toLowerCase(),select=$('claimForm').elements.inspection_id;
  const rows=data.inspections.filter(i=>i.plate.toLowerCase().includes(q));
@@ -249,7 +322,7 @@ $('reviewForm').onsubmit=event=>{event.preventDefault();action('claimMessage',as
  await rpc('e2_action_ops_claim',{target:currentClaim.id,expected_revision:currentClaim.revision,action:kind,note:f.elements.note.value,payment_date:kind==='paid'?f.elements.payment_date.value||null:null,payment_reference:kind==='paid'?f.elements.payment_reference.value:null});
  await reload();if(data.claims.some(c=>c.id===currentClaim.id))openClaim(currentClaim.id);else{$('claimDialog').close();panels.claimDialog?.dispose();delete panels.claimDialog;$('message').textContent='Returned to Admin for review. / 已退回 Admin。';}
 });};
-for(const id of ['dispatchDialog','jobDialog','claimDialog']){
+for(const id of ['dispatchDialog','jobDialog','claimDialog','whatsappDialog']){
  $(id).addEventListener('cancel',event=>{event.preventDefault();close(id);});
  $(id).querySelector('[data-close]').onclick=()=>close(id);
  $(id).querySelectorAll('form').forEach(form=>{if(form.id!=='reviewForm')form.addEventListener('input',()=>dirty.add(id));});
