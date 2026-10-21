@@ -18,7 +18,7 @@ export function friendlyError(error) {
   if (error?.message === 'Failed to fetch') return 'Connection interrupted. Check your connection and retry; saved records remain in the database.';
   return error?.message || 'Unable to complete this action. Please try again.';
 }
-export async function getVehicles({staff = false, id = null} = {}) {
+export async function getVehicles({staff = false, id = null, includeInactive = false} = {}) {
   if (!db) throw new Error('The E2 inventory connection is being prepared. Please contact E2 for current availability.');
   const rows = [];
   for (let offset=0; ; offset+=100) {
@@ -29,7 +29,7 @@ export async function getVehicles({staff = false, id = null} = {}) {
     if (batch.length < 100 || id) break;
   }
   for (const row of rows) row.photos=(row.vehicle_photos || []).sort((a,b)=>a.position-b.position);
-  return rows;
+  return includeInactive ? rows : rows.filter(row=>!row.lifecycle_state||row.lifecycle_state==='active');
 }
 const photoLinks=photoURLCache(photos=>resolvePhotoURLs(photos,{
   uploaded:async items=>check(await db.storage.from('vehicle-photos').createSignedUrls(items.map(p=>p.path),300)),

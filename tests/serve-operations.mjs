@@ -9,10 +9,13 @@ import {pdfBytes} from './fixtures/preview-fixtures.mjs';
 import {notificationPreview} from './fixtures/runner-notifications-preview.mjs';
 import {benefitFields} from '../vehicle-benefits.mjs';
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)));
-export async function startPreview({port=0,seed=true,showcase=false}={}){
+export async function startPreview({port=0,seed=true,showcase=false,lifecycle=false}={}){
  const {db,ids,as,rpc}=await operationsDatabase(),blobs=new Map();
  await db.exec(await readFile(resolve(root,'supabase/migrations/202610190001_vehicle_benefits.sql'),'utf8'));
  await db.exec(await readFile(resolve(root,'supabase/migrations/202610210004_plate_drafts.sql'),'utf8'));
+ if(lifecycle){
+  for(const f of ['202609180001_drive_photos','202609210001_vehicle_import','202609210003_plate_only_import','202610010001_vehicle_translation','202610210005_enrich_plate_drafts','202610220001_vehicle_recycle','202610220002_inspection_statuses','202610220003_account_dispatch'])await db.exec(await readFile(resolve(root,'supabase/migrations/'+f+'.sql'),'utf8'));
+ }
  const notifications=notificationPreview({runnerRoles:{[ids.runner]:'runner',[ids.runner2]:'runner2'}});
  if(seed){
   await as('admin');
@@ -38,6 +41,7 @@ export async function startPreview({port=0,seed=true,showcase=false}={}){
   await rpc('e2_action_ops_claim',{target:repair.id,expected_revision:repair.revision,action:'submit'});
  }
  await as('admin');notifications.sync((await rpc('e2_operations_workspace')).jobs);
+ const scalarCall=async(name,keys,args={},defaults={})=>Object.values((await db.query('select to_jsonb(public.'+name+'('+keys.map((k,i)=>'$'+(i+1)).join(',')+'))',keys.map(k=>args[k]??defaults[k]??null))).rows[0])[0];
  let queue=Promise.resolve();
  const serial=fn=>{const p=queue.then(fn);queue=p.catch(()=>{});return p;};
  const roles=['admin','runner','runner2','inspector','account','sales','inactive','anonymous'];
@@ -48,23 +52,23 @@ export async function startPreview({port=0,seed=true,showcase=false}={}){
  export function check(r){if(r.error)throw r.error;return r.data;}
  export const mileageText=car=>car.mileage==null?'Pending confirmation':car.mileage+' km';
  export const photoURLs=async()=>[],retryPhotos=()=>{},compressPhoto=async()=>{throw Error('Photos are not part of this preview');},drivePhotoRequest=async()=>{throw Error('Drive is not connected in this preview');};
- export const getVehicles=async()=>check(await call('vehicles')).map(v=>({...v,photos:[]}));
+ export const getVehicles=async({includeInactive=false}={})=>check(await call('vehicles')).filter(v=>includeInactive||!v.lifecycle_state||v.lifecycle_state==='active').map(v=>({...v,photos:[]}));
  const role=new URLSearchParams(location.search).get('previewRole')||'runner';
  async function call(path,options={}){try{const r=await fetch('/preview-api/'+path,{...options,headers:{'X-Preview-Role':role,...options.headers}});if(!r.ok)return {error:{message:(await r.json()).error,status:r.status}};return {data:options.binary?await r.blob():await r.json(),error:null};}catch(e){return {error:{message:e.message}};}}
- export const db={auth:{getSession:async()=>({data:{session:{user:{id:'preview',email:role+'@example.test'}}}}),signOut:async()=>({data:{}})},rpc:(name,args)=>({then:(resolve,reject)=>call('rpc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,args})}).then(resolve,reject)}),storage:{from:bucket=>({upload:(path,file,opts)=>call('file?path='+encodeURIComponent(path),{method:'POST',headers:{'Content-Type':opts.contentType},body:file}),download:path=>call('file?path='+encodeURIComponent(path),{binary:true})})}};
+ export const db={auth:{getSession:async()=>({data:{session:{user:{id:'preview',email:role+'@example.test'}}}}),signOut:async()=>({data:{}})},rpc:(name,args)=>({then:(resolve,reject)=>call('rpc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,args})}).then(resolve,reject)}),storage:{from:bucket=>({remove:paths=>call('remove-storage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bucket,paths})}),upload:(path,file,opts)=>call('file?path='+encodeURIComponent(path),{method:'POST',headers:{'Content-Type':opts.contentType},body:file}),download:path=>call('file?path='+encodeURIComponent(path),{binary:true})})}};
  db.auth.onAuthStateChange=callback=>queueMicrotask(()=>callback('INITIAL_SESSION',{user:{id:'preview',email:role+'@example.test'}}));
  db.from=table=>{
-  let value,mode='select';const query={
-   select:()=>query,eq:()=>query,order:()=>query,limit:()=>query,
+  let value,mode='select',filters={};const query={
+   select:()=>query,eq:(key,v)=>{filters[key]=v;return query;},order:()=>query,limit:()=>query,
    insert:row=>{value=row;mode='insert';return query;},
    maybeSingle:()=>query,
-   then:(resolve,reject)=>call('table',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({table,mode,value})}).then(resolve,reject)
+   then:(resolve,reject)=>call('table',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({table,mode,value,filters})}).then(resolve,reject)
   };return query;
  };
  `;
  const banner=`<aside id="previewBanner" style="background:#f5e8bf;color:#4b390a;padding:12px 20px;font:14px system-ui;display:flex;gap:18px;align-items:center;flex-wrap:wrap"><strong>LOCAL PREVIEW · 测试资料 · 未上线</strong><label style="margin:0">Preview role / 体验身份 <select id="previewRole" style="width:auto;min-height:40px;margin:0"><option value="runner">Runner A</option><option value="runner2">Runner B</option><option value="admin">Admin</option><option value="inspector">Inspector</option><option value="account">Account</option></select></label><small>Disposable local records. No real login, email or payments. / 本机模拟身份，重启后重置。</small></aside><script>const rolePicker=document.getElementById('previewRole');rolePicker.value=new URLSearchParams(location.search).get('previewRole')||'runner';rolePicker.onchange=()=>location.href='/operations.html?previewRole='+rolePicker.value;</script>`;
  const allowed=new Set(['operations.html','operations.js','operations-files.js','operations.css','partner.css','assets/e2-logo.png']);
- for(const file of ['portal.html','portal.js','portal-demo.css','production.css','team.css','drive-photos.css','vehicle-translation.css','vehicle-benefits.css','vehicle-import.mjs','vehicle-translation-ui.mjs','photo-sort.js','drive-photo-picker.mjs','year-spec-select.mjs','model-year-reference.mjs','vehicle-benefits-editor.mjs','vehicle-benefits.mjs','verified-model-years.json','i18n.mjs','translations.mjs','vehicle-routes.mjs','booking-translations.mjs','sales-team-translations.mjs'])allowed.add(file);
+ for(const file of ['portal.html','portal.js','portal-demo.css','production.css','team.css','drive-photos.css','vehicle-translation.css','vehicle-benefits.css','vehicle-lifecycle.mjs','vehicle-lifecycle.css','inspections.html','inspections.js','inspections.css','inspection-photos.js','vehicle-import.mjs','vehicle-translation-ui.mjs','photo-sort.js','drive-photo-picker.mjs','year-spec-select.mjs','model-year-reference.mjs','vehicle-benefits-editor.mjs','vehicle-benefits.mjs','verified-model-years.json','i18n.mjs','translations.mjs','vehicle-routes.mjs','booking-translations.mjs','sales-team-translations.mjs'])allowed.add(file);
  const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://127.0.0.1');
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
@@ -77,14 +81,16 @@ export async function startPreview({port=0,seed=true,showcase=false}={}){
     const result=await serial(async()=>{
      await as(role);
      if(url.pathname==='/preview-api/vehicles'&&req.method==='GET')return {data:(await db.query('select * from public.vehicles order by created_at desc')).rows};
+     if(url.pathname==='/preview-api/remove-storage'&&req.method==='POST'){const {bucket,paths}=JSON.parse(bytes);return {data:(await db.query('delete from storage.objects where bucket_id=$1 and name=any($2) returning name',[bucket,paths])).rows};}
      if(url.pathname==='/preview-api/table'&&req.method==='POST'){
-      const {table,mode,value}=JSON.parse(bytes);
+      const {table,mode,value,filters={}}=JSON.parse(bytes);
+      if(lifecycle&&['e2_inspection_photos','e2_vehicle_inspection_events'].includes(table)&&mode==='select')return {data:(await db.query('select * from public.'+table+' where inspection_id=$1 order by created_at desc',[filters.inspection_id])).rows};
       if(table==='staff_memberships'&&mode==='select')return {data:(await db.query('select role,active from staff_memberships where user_id=auth.uid()')).rows[0]||null};
       if(table==='vehicles'&&mode==='insert'){
        const allowedFields=new Set(['id','plate','brand','model','variant','year','engine_litres','transmission','fuel_type','mileage','mileage_confirmed','price','body_type','stock_status','description','publication','import_pending',...benefitFields]);
        const keys=Object.keys(value);if(value.publication!=='draft'||keys.some(k=>!allowedFields.has(k)))throw Error('Only draft vehicle creation is supported');
        const columns=keys.map(k=>'"'+k+'"').join(',');
-       return {data:(await db.query(`insert into public.vehicles (${columns}) select ${columns} from jsonb_populate_record(null::public.vehicles,$1::jsonb) returning *`,[JSON.stringify(value)])).rows[0]};
+       return {data:(await db.query(`insert into public.vehicles (${columns}) values (${keys.map((k,i)=>'$'+(i+1)).join(',')}) returning *`,keys.map(k=>value[k]))).rows[0]};
       }
       throw Error('Unsupported preview table operation');
      }
@@ -93,6 +99,10 @@ export async function startPreview({port=0,seed=true,showcase=false}={}){
       if(name==='e2_preview_advance_time'){
        if(role!=='admin')throw Error('Admin preview control only');notifications.advance();return {data:true};
       }
+      if(lifecycle&&name==='e2_vehicle_lifecycle')return {data:await scalarCall(name,['target','operation','expected_revision','note','confirm_plate'],args,{note:'',confirm_plate:''})};
+      if(lifecycle&&['e2_inspection_workspace','e2_inspection_workshops'].includes(name))return {data:await scalarCall(name,[],{})};
+      if(lifecycle&&name==='e2_start_inspection')return {data:await scalarCall(name,['request_id','car','assignee'],args)};
+      if(lifecycle&&name==='e2_save_inspection')return {data:await scalarCall(name,['target','expected_revision','changes'],args)};
       const result=await rpc(name,args);
       const workspace=name==='e2_operations_workspace'?result:await rpc('e2_operations_workspace');
       notifications.sync(workspace.jobs);
@@ -130,7 +140,7 @@ export async function startPreview({port=0,seed=true,showcase=false}={}){
  return {url:`http://127.0.0.1:${server.address().port}`,ids,close:async()=>{await new Promise(resolve=>server.close(resolve));await db.close();}};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- const preview=await startPreview({port:Number(process.env.PORT||64029),showcase:true});
+ const preview=await startPreview({port:Number(process.env.PORT||64029),showcase:true,lifecycle:process.env.LIFECYCLE==='1'});
  console.log(`Runner & bills LOCAL PREVIEW: ${preview.url}/operations.html`);
  console.log('Synthetic records only. Restart resets everything. No production connection.');
  for(const signal of ['SIGINT','SIGTERM'])process.on(signal,async()=>{await preview.close();process.exit(0);});

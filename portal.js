@@ -6,6 +6,7 @@ import {setupYearSpecSelect} from './year-spec-select.mjs?v=verified-spec-batch-
 import {setupYearReference} from './model-year-reference.mjs?v=verified-spec-batch-2';
 import {db,configured,check,esc,rm,mileageText,getVehicles,photoURLs,retryPhotos,compressPhoto,friendlyError} from './e2-data.js?v=ops-1';
 import {setupBenefitsEditor} from './vehicle-benefits-editor.mjs?v=1';
+import {setupVehicleLifecycle} from './vehicle-lifecycle.mjs?v=1';
 const MAX_PHOTOS=30;
 const completeVehicle=car=>car&&['brand','model','year','engine_litres','transmission','fuel_type','price'].every(key=>car[key]!=null&&String(car[key]).trim()!=='');
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');
@@ -31,6 +32,7 @@ const benefitsEditor=setupBenefitsEditor(form);
 const canManageStock=()=>['super_admin','admin'].includes(role);
 const roleLabels={super_admin:'Super Admin',admin:'Admin',office_admin:'Office Admin',inspector:'Inspector',runner:'Runner',sales:'Salesman · view only',account:'Account · payments',customer:'Customer · public stock only'};
 let cars=[], current=null, role=null, busy=false, dirty=false, recovery=false, authEpoch=0;
+const lifecycle=setupVehicleLifecycle({db,check,esc,friendlyError,getCars:()=>cars,getRole:()=>role,onRefresh:refresh,onViewChange:renderStock});
 const vehicleTranslations=setupVehicleTranslations({db,getCurrent:()=>current,canRetry:()=>!busy&&canManageStock(),isDirty:()=>dirty});
 const vehicleImporter=setupVehicleImport({db,canManage:canManageStock,onFinished:refresh});
 const drivePicker=setupDrivePhotoPicker({
@@ -79,17 +81,19 @@ form.addEventListener('input',()=>{dirty=true;if(dispatchDraft)message('editorMe
 form.addEventListener('change',()=>{dirty=true;vehicleTranslations.markDirty();setBusy(false)});
 async function refresh(){
   const epoch=authEpoch;message('stockMessage','Loading inventory…');
-  try{const rows=await getVehicles({staff:true});if(epoch!==authEpoch)return;cars=rows;renderStock();message('stockMessage',cars.length+' vehicles · Changes are stored in your E2 database.');}
+  try{const rows=await getVehicles({staff:true,includeInactive:true});if(epoch!==authEpoch)return;cars=rows;renderStock();message('stockMessage',cars.length+' vehicles · Changes are stored in your E2 database.');}
   catch(error){if(epoch===authEpoch)message('stockMessage',friendlyError(error),true)}
 }
 function renderStock(){
+  lifecycle.render();
   const query=$('stockSearch').value.toLowerCase().replace(/\s/g,'');
-  const found=cars.filter(c=>[c.plate,c.brand,c.model,c.variant].filter(Boolean).join(' ').toLowerCase().replace(/\s/g,'').includes(query));
-  $('stockList').innerHTML=found.map(c=>'<article class="stockItem"><div class="noPhoto" data-cover="'+c.id+'">'+(c.photos.length?'Loading photo…':'No photos yet')+'</div><div><span class="stockState">'+esc(c.publication==='published'?'Published · '+c.stock_status:'Draft · private')+'</span><h2>'+esc([c.brand,c.model].filter(Boolean).join(' ')||'Awaiting import / 等待导入资料')+'</h2><p>'+esc([c.plate,c.year,c.variant].filter(Boolean).join(' · '))+'</p><small>'+esc(mileageText(c))+' · '+(c.engine_litres==null?'Engine pending':Number(c.engine_litres).toFixed(1)+' L')+'</small><p class="stockPrice">'+(c.price==null?'Price pending / 售价待补':rm(c.price))+'</p></div>'+(canManageStock()?'<button class="primary" data-edit="'+c.id+'">Manage vehicle ↗</button>':'<span>View only</span>')+'</article>').join('')||'<p>No vehicles found. '+(canManageStock()?'Add your first vehicle to begin.':'')+'</p>';
+  const found=lifecycle.filter(cars).filter(c=>[c.plate,c.brand,c.model,c.variant].filter(Boolean).join(' ').toLowerCase().replace(/\s/g,'').includes(query));
+  $('stockList').innerHTML=found.map(c=>'<article class="stockItem"><div class="noPhoto" data-cover="'+c.id+'">'+(c.photos.length?'Loading photo…':'No photos yet')+'</div><div><span class="stockState">'+esc(lifecycle.badge(c))+'</span><h2>'+esc([c.brand,c.model].filter(Boolean).join(' ')||'Awaiting import / 等待导入资料')+'</h2><p>'+esc([c.plate,c.year,c.variant].filter(Boolean).join(' · '))+'</p><small>'+esc(mileageText(c))+' · '+(c.engine_litres==null?'Engine pending':Number(c.engine_litres).toFixed(1)+' L')+'</small><p class="stockPrice">'+(c.price==null?'Price pending / 售价待补':rm(c.price))+'</p></div>'+lifecycle.actions(c)+'</article>').join('')||'<p>No vehicles found. '+(canManageStock()?'Add your first vehicle to begin.':'')+'</p>';
   const epoch=authEpoch;
   // One link request for every cover in the list; searching reuses the links.
   const covered=found.filter(c=>c.photos.length);
   if(covered.length)photoURLs(covered.map(c=>c.photos[0])).then(urls=>covered.forEach((car,i)=>{const url=urls[i].url;if(!url||epoch!==authEpoch)return;const holder=document.querySelector('[data-cover="'+car.id+'"]');if(holder){const img=document.createElement('img');img.src=url;img.alt=car.brand+' '+car.model;img.loading='lazy';holder.replaceChildren(img)}})).catch(()=>{});
+  lifecycle.bind();
   document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEditor(cars.find(c=>c.id===b.dataset.edit)));
 }
 async function renderPhotos(){
@@ -133,7 +137,7 @@ function populate(car){
   $('photos').replaceChildren();yearSpecSelect.refresh({selected:car?.variant||'',engine:car?.engine_litres??'',reset:true});setBusy(false);yearReference.refresh();
   vehicleTranslations.refresh();
 }
-async function openEditor(car=null){populate(car);message('editorMessage','');$('vehicleEditor').showModal();try{await showImportReview(db,car);await renderPhotos()}catch(error){editorError(error)}}
+async function openEditor(car=null){if(car?.lifecycle_state&&car.lifecycle_state!=='active')return;populate(car);message('editorMessage','');$('vehicleEditor').showModal();try{await showImportReview(db,car);await renderPhotos()}catch(error){editorError(error)}}
 function closeEditor(){if(busy)return;if(dirty&&!confirm('Discard unsaved vehicle details? Uploaded photos are already saved.'))return;vehicleTranslations.stop();$('vehicleEditor').close();current=null;dirty=false;sendDraft('e2-dispatch-cancel')}
 $('closeEditor').onclick=closeEditor;$('vehicleEditor').addEventListener('cancel',e=>{e.preventDefault();closeEditor()});
 $('addVehicle').onclick=()=>openEditor();$('stockSearch').oninput=renderStock;$('refreshStock').onclick=()=>{retryPhotos();refresh()};
@@ -227,6 +231,7 @@ $('publishVehicle').onclick=async()=>{
   }catch(error){editorError(error)}finally{setBusy(false)}
 };
 async function showSession(session){
+  lifecycle.reset();
   const epoch=++authEpoch;
   if(!session){draftSaved=null;draftOpened=false;if($('manageMileage'))$('manageMileage').hidden=true;vehicleTranslations.stop();$('manageLoans').hidden=true;$('manageCustomers').hidden=true;$('myProfileLink').hidden=true;$('manageUsers').hidden=true;if($('manageInstitutions'))$('manageInstitutions').hidden=true;role=null;cars=[];$('stockList').replaceChildren();$('workspace').hidden=true;$('entry').hidden=false;$('vehicleEditor').close();return}
   if(recovery)return;
@@ -256,7 +261,7 @@ $('loginForm').onsubmit=async e=>{
   try{check(await db.auth.signInWithPassword({email:$('loginForm').elements.email.value.trim(),password:$('loginForm').elements.password.value}));$('loginForm').elements.password.value='';message('authMessage','')}
   catch(error){message('authMessage',friendlyError(error),true)}finally{button.disabled=false}
 };
-$('signOut').onclick=async()=>{if(busy){message('stockMessage','Wait for the current save or upload to finish before signing out.');return}try{check(await db.auth.signOut());await showSession(null)}catch(error){message('stockMessage',friendlyError(error),true)}};
+$('signOut').onclick=async()=>{if(busy||lifecycle.isBusy()){message('stockMessage','Wait for the current save or upload to finish before signing out.');return}try{check(await db.auth.signOut());await showSession(null)}catch(error){message('stockMessage',friendlyError(error),true)}};
 let resetSending=false,resetWaitUntil=0;
 try{const stored=Number(sessionStorage.getItem('e2-reset-wait'));if(Number.isFinite(stored)&&stored>Date.now())resetWaitUntil=Math.min(stored,Date.now()+60000)}catch{}
 function updateResetButton(){
