@@ -5,6 +5,7 @@ import {setupDrivePhotoPicker} from './drive-photo-picker.mjs?v=drive-1';
 import {setupYearSpecSelect} from './year-spec-select.mjs?v=verified-spec-batch-2';
 import {setupYearReference} from './model-year-reference.mjs?v=verified-spec-batch-2';
 import {db,configured,check,esc,rm,mileageText,getVehicles,photoURLs,retryPhotos,compressPhoto,friendlyError} from './e2-data.js?v=ops-1';
+import {benefitsHTML} from './vehicle-benefits.mjs';
 import {setupBenefitsEditor} from './vehicle-benefits-editor.mjs?v=1';
 import {setupVehicleLifecycle} from './vehicle-lifecycle.mjs?v=1';
 const MAX_PHOTOS=30;
@@ -88,7 +89,7 @@ function renderStock(){
   lifecycle.render();
   const query=$('stockSearch').value.toLowerCase().replace(/\s/g,'');
   const found=lifecycle.filter(cars).filter(c=>[c.plate,c.brand,c.model,c.variant].filter(Boolean).join(' ').toLowerCase().replace(/\s/g,'').includes(query));
-  $('stockList').innerHTML=found.map(c=>'<article class="stockItem"><div class="noPhoto" data-cover="'+c.id+'">'+(c.photos.length?'Loading photo…':'No photos yet')+'</div><div><span class="stockState">'+esc(lifecycle.badge(c))+'</span><h2>'+esc([c.brand,c.model].filter(Boolean).join(' ')||'Awaiting import / 等待导入资料')+'</h2><p>'+esc([c.plate,c.year,c.variant].filter(Boolean).join(' · '))+'</p><small>'+esc(mileageText(c))+' · '+(c.engine_litres==null?'Engine pending':Number(c.engine_litres).toFixed(1)+' L')+'</small><p class="stockPrice">'+(c.price==null?'Price pending / 售价待补':rm(c.price))+'</p></div>'+lifecycle.actions(c)+'</article>').join('')||'<p>No vehicles found. '+(canManageStock()?'Add your first vehicle to begin.':'')+'</p>';
+  $('stockList').innerHTML=found.map(c=>'<article class="stockItem"><div class="noPhoto" data-cover="'+c.id+'">'+(c.photos.length?'Loading photo…':'No photos yet')+'</div><div><span class="stockState">'+esc(lifecycle.badge(c))+'</span><h2>'+esc([c.brand,c.model].filter(Boolean).join(' ')||'Awaiting import / 等待导入资料')+'</h2><p>'+esc([c.plate,c.year,c.variant].filter(Boolean).join(' · '))+'</p><small>'+esc(mileageText(c))+' · '+(c.engine_litres==null?'Engine pending':Number(c.engine_litres).toFixed(1)+' L')+'</small>'+benefitsHTML(c)+'<p class="stockPrice">'+(c.price==null?'Price pending / 售价待补':rm(c.price))+'</p></div>'+lifecycle.actions(c)+'</article>').join('')||'<p>No vehicles found. '+(canManageStock()?'Add your first vehicle to begin.':'')+'</p>';
   const epoch=authEpoch;
   // One link request for every cover in the list; searching reuses the links.
   const covered=found.filter(c=>c.photos.length);
