@@ -5,6 +5,8 @@ import {canonicalVehicleURL} from '../vehicle-seo.mjs';
 const line = value => JSON.stringify(value).replace(/[<>&\u2028\u2029]/g,
   c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
 const columns = ['year', 'make', 'model', 'variant', 'plate', 'status', 'price_myr', 'url'];
+// Leave room for reader framing below the observed 20,000-character cap.
+export const STOCK_MAX_CHARACTERS = 18000;
 
 // rows have already crossed publicRows()'s public-field and freshness boundary.
 // Do not serialize whole rows: this is a deliberately small public allowlist.
@@ -19,7 +21,7 @@ export function renderStock(rows, {slugs, fetchedAt, builtAt, complete = false})
       plate: car.plate || null, status: car.stock_status, price_myr: Number(car.price),
       url: canonicalVehicleURL(car.id, 'en', {staticPages: true, slugs})};
   });
-  return [
+  const output = [
     line({format: 'e2-stock-v1', snapshot_at: fetchedAt, built_at: builtAt,
       complete, vehicles: vehicles.length, counts, columns}),
     '# Each vehicle line is a JSON array in columns order. Header and end marker are JSON objects.',
@@ -31,4 +33,8 @@ export function renderStock(rows, {slugs, fetchedAt, builtAt, complete = false})
     line({end: 'e2-stock-v1', vehicles: vehicles.length}),
     '',
   ].join('\n');
+  if (output.length > STOCK_MAX_CHARACTERS) {
+    throw Error('stock.txt exceeds the 18,000-character reader budget; review the compact format before publishing. No records were truncated.');
+  }
+  return output;
 }

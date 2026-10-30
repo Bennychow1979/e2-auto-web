@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile, mkdtemp, access} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {renderStock} from '../../scripts/build-stock.mjs';
+import {renderStock, STOCK_MAX_CHARACTERS} from '../../scripts/build-stock.mjs';
 import {buildVehicleSite, publicRows, createSlugMap} from '../../scripts/build-vehicle-pages.mjs';
 import {vehicleA, vehicleB, vehicleSold} from '../../tests/fixtures/vehicle-pages.mjs';
 
@@ -53,10 +53,16 @@ test('119 representative records fit the observed 20,000-character reader limit 
   const rows = Array.from({length: 119}, (_, i) => ({...vehicleB,
     id: 'aaaaaaaa-1111-4111-8111-' + String(i).padStart(12, '0'), plate: 'TEST' + i}));
   const text = renderStock(rows, {slugs: createSlugMap(rows), fetchedAt: new Date(now).toISOString(), builtAt: new Date(now).toISOString(), complete: true});
-  assert(text.length < 20000);
+  assert(text.length <= STOCK_MAX_CHARACTERS);assert(STOCK_MAX_CHARACTERS <= 18000);
   const parsed = parse(text);
   assert.equal(parsed.length, 121);assert.equal(parsed[0].vehicles, 119);assert.equal(parsed.at(-1).vehicles, 119);
   assert(parsed.slice(1, -1).every(row => Object.keys(row).length === 8));
+});
+
+test('oversized inventory fails explicitly instead of silently truncating records', () => {
+  const rows = Array.from({length: 250}, (_, i) => ({...vehicleB,
+    id: 'aaaaaaaa-1111-4111-8111-' + String(i).padStart(12, '0'), plate: 'TEST' + i}));
+  assert.throws(() => renderStock(rows, {slugs: createSlugMap(rows), fetchedAt: new Date(now).toISOString(), builtAt: new Date(now).toISOString(), complete: true}), /reader budget.*No records were truncated/);
 });
 
 test('quotes, line breaks, delimiters, Unicode and markup remain one data record; private fields are excluded', () => {
@@ -101,7 +107,7 @@ test('same build updates stock, pages and sitemap; rejected snapshots preserve p
   for (const bad of [snapshot([]), {...original, expectedCount: 4},
     {...original, fetchedAt: new Date(now - 1800001).toISOString()},
     {...original, fetchedAt: new Date(now + 60001).toISOString()},
-    snapshot([{...vehicleA, price: null}])]) {
+    snapshot([{...vehicleA, price: null}]), snapshot([{...vehicleA, variant: 'L'.repeat(20000)}])]) {
     await assert.rejects(buildVehicleSite(bad, out, {now}));
     assert.equal(await readFile(join(out, 'stock.txt'), 'utf8'), text);
   }

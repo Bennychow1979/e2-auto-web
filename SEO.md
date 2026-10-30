@@ -47,8 +47,12 @@ status, public price in MYR and canonical URL. Vehicle lines are compact JSON
 arrays; the header's `columns` gives their field order once instead of repeating
 keys on every line. Header and footer remain JSON objects. This keeps the
 current inventory below the observed 20,000-character assistant fetch limit.
-Future inventory growth still requires checking the end marker/count and
-increasing the reader's fetch limit when necessary; never silently truncate.
+The generator enforces an 18,000-character budget including its own header,
+instructions and footer, leaving room below that reader limit. If inventory
+growth exceeds it, the build fails explicitly before replacing the previous
+artifact; no record is silently truncated. A future format/reader review would
+be needed before that larger inventory could be published. Reader settings
+are not changed by this implementation. Consumers must still check the end marker/count.
 Free-text descriptions, private
 fields, customers, loans and photo metadata are not exported. JSON escaping
 keeps embedded newlines, tabs, quotes and markup inside a single data record.

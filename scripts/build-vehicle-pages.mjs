@@ -125,6 +125,7 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  const registry={...seed};
  for(const saved of [snapshot.priorSlugs||{},previous.slugs||{}]){createSlugMap([],saved);for(const [id,slug] of Object.entries(saved)){if(registry[id]&&registry[id]!==slug)throw Error('Saved slug identity cannot change.');registry[id]=slug;}}
  const slugs=createSlugMap(rows,registry),publicSlugs=Object.fromEntries(rows.map(car=>[car.id,slugs[car.id]]));
+ const stock=renderStock(rows,{slugs,fetchedAt:snapshot.fetchedAt,builtAt:new Date(now).toISOString(),complete:snapshot.kind==='public-complete'&&snapshot.complete===true&&snapshot.expectedCount===rows.length});
  const template=await readFile(join(root,'car.html'),'utf8'),pages=[];
  for(const car of rows)for(const lang of LANGUAGES)pages.push({file:vehiclePath(car.id,lang,slugs).slice(1)+'index.html',html:renderVehiclePage(template,car,lang,snapshot.fetchedAt,publicSlugs,{imageOrigin:snapshot.publicImageOrigin,imageAvailable:!!images.get(car.id)?.photoId})});
  const files=pages.map(p=>p.file),manifest={version:1,kind:snapshot.kind||'local-snapshot',fetchedAt:snapshot.fetchedAt,builtAt:new Date(now).toISOString(),includeSoldInSitemap:includeSold,slugs,files,imageVehicles:imageCars.length,imageGatewayVerified:gatewayVerified,imageGatewayVersion:gatewayVerified?'v2':null,imageGatewayCheck:gatewayVerified?'HEAD':null,releaseArtifact:release,vehicles:rows.map(v=>({id:v.id,updated_at:v.updated_at}))};
@@ -148,7 +149,7 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  for(const page of pages){const file=join(stage,page.file);await mkdir(dirname(file),{recursive:true});await writeFile(file,page.html);}
  for(const file of previous.files||[])if(!files.includes(file))await unlink(join(stage,file)).catch(e=>{if(e.code!=='ENOENT')throw e;});
  await writeFile(join(stage,'sitemap.xml'),renderSitemap(rows,{staticPages:true,slugs,includeSold}));
- await writeFile(join(stage,'stock.txt'),renderStock(rows,{slugs,fetchedAt:snapshot.fetchedAt,builtAt:manifest.builtAt,complete:snapshot.kind==='public-complete'&&snapshot.complete===true&&snapshot.expectedCount===rows.length}));
+ await writeFile(join(stage,'stock.txt'),stock);
  await mkdir(join(stage,'data'),{recursive:true});await writeFile(join(stage,'data/car-slugs.json'),JSON.stringify(slugs,null,2)+'\n');
  await writeFile(join(stage,'vehicle-pages-manifest.json'),JSON.stringify(manifest,null,2)+'\n');
  for(const page of pages){const html=await readFile(join(stage,page.file),'utf8');if(!html.includes('id="vehicleStructuredData"')||!html.includes('id="heroPrice">RM'))throw Error('Incomplete staged vehicle page.');}
