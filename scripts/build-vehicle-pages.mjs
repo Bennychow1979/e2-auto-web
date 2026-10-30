@@ -9,6 +9,7 @@ import {vehicleCopy} from '../vehicle-page-copy.mjs';
 import {descriptionFor} from '../vehicle-translations.mjs';
 import {enquiryURL,withVehicleLink} from '../referral.js';
 import {renderSitemap} from './build-sitemap.mjs';
+import {renderStock} from './build-stock.mjs';
 import {publicVehicleImageURL,probePublicImageGateway} from '../vehicle-public-image.mjs';
 import {stockCopy,stockRequestHTML,stockRequestText} from '../vehicle-stock-display.mjs';
 export const PUBLIC_FIELDS=['id','publication','brand','model','variant','year','plate','price','mileage','mileage_confirmed','engine_litres','transmission','fuel_type','body_type','stock_status','description','updated_at'];
@@ -147,6 +148,7 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  for(const page of pages){const file=join(stage,page.file);await mkdir(dirname(file),{recursive:true});await writeFile(file,page.html);}
  for(const file of previous.files||[])if(!files.includes(file))await unlink(join(stage,file)).catch(e=>{if(e.code!=='ENOENT')throw e;});
  await writeFile(join(stage,'sitemap.xml'),renderSitemap(rows,{staticPages:true,slugs,includeSold}));
+ await writeFile(join(stage,'stock.txt'),renderStock(rows,{slugs,fetchedAt:snapshot.fetchedAt,builtAt:manifest.builtAt,complete:snapshot.kind==='public-complete'&&snapshot.complete===true&&snapshot.expectedCount===rows.length}));
  await mkdir(join(stage,'data'),{recursive:true});await writeFile(join(stage,'data/car-slugs.json'),JSON.stringify(slugs,null,2)+'\n');
  await writeFile(join(stage,'vehicle-pages-manifest.json'),JSON.stringify(manifest,null,2)+'\n');
  for(const page of pages){const html=await readFile(join(stage,page.file),'utf8');if(!html.includes('id="vehicleStructuredData"')||!html.includes('id="heroPrice">RM'))throw Error('Incomplete staged vehicle page.');}

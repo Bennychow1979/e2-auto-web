@@ -66,7 +66,7 @@ jobs:
         run: |
           node supabase/tests/seo.mjs
           node supabase/tests/languages.mjs
-          node --test supabase/tests/pages-artifact.mjs
+          node --test supabase/tests/stock.mjs supabase/tests/pages-artifact.mjs
           python3 supabase/tests/pages-restore.py
 
       - name: Acquire fresh public inventory and deployed slug registry

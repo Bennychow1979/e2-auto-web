@@ -4,6 +4,7 @@ import {resolve,join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {publicRows} from './build-vehicle-pages.mjs';
 import {vehiclePath} from '../vehicle-routes.mjs';
+import {renderStock} from './build-stock.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const preserved=['customer.html','customer.js','my-e2.html','my-e2.js','customer-session.mjs','car-detail-demo.css','e2-data.js','e2-config.js','documents.html','documents.js','document-preview.js','privacy/index.html','verified-model-years.json','vendor/pdfjs/pdf.mjs','vendor/pdfjs/pdf.worker.mjs'];
 export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.now()}={}){
@@ -12,6 +13,7 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
  assert.equal(manifest.fetchedAt,snapshot.fetchedAt);assert.equal(manifest.files.length,rows.length*3);assert.equal(new Set(manifest.files).size,manifest.files.length);
  assert.deepEqual(manifest.vehicles,rows.map(v=>({id:v.id,updated_at:v.updated_at})));
  const registry=JSON.parse(await readFile(join(out,'data/car-slugs.json'),'utf8'));assert.deepEqual(registry,manifest.slugs);
+ assert.equal(await readFile(join(out,'stock.txt'),'utf8'),renderStock(rows,{slugs:registry,fetchedAt:snapshot.fetchedAt,builtAt:manifest.builtAt,complete:true}),'stock.txt must match the complete public snapshot and canonical routes');
  for(const file of preserved)assert.deepEqual(await readFile(join(out,file)),await readFile(join(source,file)),'Existing page/asset changed: '+file);
  // Pages settings own the current custom domain; main has no CNAME file.
  // Preserve one if a future reviewed source adds it.

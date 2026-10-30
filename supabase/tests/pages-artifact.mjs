@@ -15,9 +15,21 @@ test('Pages upload gate checks generated content and existing customer/PDF asset
  await t.test('a complete three-language artifact passes without a CNAME requirement',async()=>{
   const result=await verifyPagesArtifact(snapshot,out);assert.equal(result.pages,3);assert.equal(result.preservedFiles,15);
  });
+ await t.test('an initially fresh artifact that ages past 30 minutes cannot pass the upload gate',async()=>{
+  await assert.rejects(verifyPagesArtifact(snapshot,out,{now:Date.parse(snapshot.fetchedAt)+1800001}),/fresh public snapshot/);
+ });
  await t.test('customer initialization changes cannot pass the packaging gate',async()=>{
   const file=join(out,'customer.js'),original=await readFile(file);
   try{await writeFile(file,'broken customer initialization');await assert.rejects(verifyPagesArtifact(snapshot,out),/Existing page\/asset changed: customer.js/);}finally{await writeFile(file,original);}
+ });
+ await t.test('missing, truncated, stale, altered or privately extended stock blocks upload',async()=>{
+  const file=join(out,'stock.txt'),original=await readFile(file,'utf8');
+  try{
+   await unlink(file);await assert.rejects(verifyPagesArtifact(snapshot,out),/ENOENT/);
+   for(const changed of [original.split('\n').slice(0,-2).join('\n'),original.replace(snapshot.fetchedAt,'2000-01-01T00:00:00Z'),original.replace('34990','1'),original+'PRIVATE-CUSTOMER']){
+    await writeFile(file,changed);await assert.rejects(verifyPagesArtifact(snapshot,out),/stock.txt must match/);
+   }
+  }finally{await writeFile(file,original);}
  });
  await t.test('a missing PDF worker blocks upload',async()=>{
   const file=join(out,'vendor/pdfjs/pdf.worker.mjs'),saved=join(folder,'worker.mjs');await rename(file,saved);
