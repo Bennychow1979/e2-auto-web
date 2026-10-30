@@ -43,7 +43,13 @@ Reserved and Sold, using the exact rows and stable EN canonical links used by
 the public vehicle pages. The optional sitemap Sold exclusion does not hide
 Sold public listings from stock.txt. Draft/withdrawn vehicles are excluded.
 Each compact JSON Lines record allows only year, make, model, variant, plate,
-status, public price in MYR and canonical URL. Free-text descriptions, private
+status, public price in MYR and canonical URL. Vehicle lines are compact JSON
+arrays; the header's `columns` gives their field order once instead of repeating
+keys on every line. Header and footer remain JSON objects. This keeps the
+current inventory below the observed 20,000-character assistant fetch limit.
+Future inventory growth still requires checking the end marker/count and
+increasing the reader's fetch limit when necessary; never silently truncate.
+Free-text descriptions, private
 fields, customers, loans and photo metadata are not exported. JSON escaping
 keeps embedded newlines, tabs, quotes and markup inside a single data record.
 

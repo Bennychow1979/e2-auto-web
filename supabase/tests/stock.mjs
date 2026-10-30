@@ -11,7 +11,10 @@ const now = Date.parse('2026-10-30T12:00:00Z');
 const snapshot = vehicles => ({kind: 'public-complete', complete: true,
   expectedCount: vehicles.filter(v => v.publication === 'published').length,
   fetchedAt: new Date(now).toISOString(), vehicles});
-const parse = text => text.trim().split('\n').filter(l => !l.startsWith('#')).map(l => JSON.parse(l));
+const parse = text => {
+  const lines = text.trim().split('\n').filter(l => !l.startsWith('#')).map(l => JSON.parse(l));
+  return lines.map(value => Array.isArray(value) ? Object.fromEntries(lines[0].columns.map((key, i) => [key, value[i]])) : value);
+};
 
 test('freshness uses acquisition time with the existing 30-minute limit and one-minute future tolerance', () => {
   const input = snapshot([vehicleA]);
@@ -32,6 +35,7 @@ test('compact stock contains every public unit once, with exact facts, statuses 
   const slugs = createSlugMap(rows), options = {slugs, fetchedAt: new Date(now).toISOString(), builtAt: new Date(now).toISOString(), complete: true};
   const result = parse(renderStock(rows, options)), header = result.shift(), footer = result.pop();
   assert.equal(header.complete, true);
+  assert.deepEqual(header.columns, ['year', 'make', 'model', 'variant', 'plate', 'status', 'price_myr', 'url']);
   assert.equal(header.snapshot_at, options.fetchedAt);
   assert.deepEqual(header.counts, {Available: 1, Reserved: 1, Sold: 1});
   assert.equal(header.vehicles, 3); assert.equal(footer.vehicles, 3);
@@ -43,6 +47,16 @@ test('compact stock contains every public unit once, with exact facts, statuses 
   }
   assert.equal(renderStock([...rows].reverse(), options), renderStock(rows, options));
   assert.equal(parse(renderStock(rows, {...options, complete: false}))[0].complete, false);
+});
+
+test('119 representative records fit the observed 20,000-character reader limit without dropping fields or records', () => {
+  const rows = Array.from({length: 119}, (_, i) => ({...vehicleB,
+    id: 'aaaaaaaa-1111-4111-8111-' + String(i).padStart(12, '0'), plate: 'TEST' + i}));
+  const text = renderStock(rows, {slugs: createSlugMap(rows), fetchedAt: new Date(now).toISOString(), builtAt: new Date(now).toISOString(), complete: true});
+  assert(text.length < 20000);
+  const parsed = parse(text);
+  assert.equal(parsed.length, 121);assert.equal(parsed[0].vehicles, 119);assert.equal(parsed.at(-1).vehicles, 119);
+  assert(parsed.slice(1, -1).every(row => Object.keys(row).length === 8));
 });
 
 test('quotes, line breaks, delimiters, Unicode and markup remain one data record; private fields are excluded', () => {
