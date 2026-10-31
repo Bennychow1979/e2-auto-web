@@ -8,16 +8,17 @@ export function setupVehicleLifecycle({db,check,esc,friendlyError,getCars,getRol
  dialog.innerHTML='<form><div class="lifecycleHeading"><h2 id="lifecycleTitle">Vehicle record / 车辆记录</h2><button type="button" data-close aria-label="Close / 关闭">×</button></div><div data-details></div><label data-reason>Reason / 原因<textarea maxlength="500" rows="3" required></textarea></label><label data-plate hidden>Type the exact plate to permanently delete / 输入完整车牌确认永久删除<input autocomplete="off"></label><p data-message role="status" aria-live="polite"></p><button type="submit" data-confirm>Confirm / 确认</button></form>';
  document.body.append(dialog);
  const find=s=>dialog.querySelector(s),message=(text,error=false)=>{find('[data-message]').textContent=text;find('[data-message]').classList.toggle('error',error);};
- const labels={active:'Stock / 库存',trash:'Recycle bin / 回收站',archived:'Archived / 已归档',purging:'Deletion incomplete / 删除待完成'};
+ const labels={active:'Stock / 库存',draft:'Draft / 草稿',trash:'Recycle bin / 回收站',archived:'Archived / 已归档',purging:'Deletion incomplete / 删除待完成'};
  const state=c=>c.lifecycle_state||'active';
+ const matchesView=(c,target)=>target==='draft'?state(c)==='active'&&c.publication==='draft':state(c)===target||(target==='trash'&&state(c)==='purging');
  function lock(value){busy=value;dialog.querySelectorAll('button,input,textarea').forEach(e=>e.disabled=value);}
  function reset(){ticket++;selected=null;view='active';lock(false);if(dialog.open)dialog.close();}
  function render(){
   tabs.hidden=!manager();if(!manager())view='active';
-  tabs.innerHTML=['active','trash','archived'].map(s=>`<button type="button" data-view="${s}" aria-pressed="${view===s}">${labels[s]} (${getCars().filter(c=>state(c)===s||(s==='trash'&&state(c)==='purging')).length})</button>`).join('');
+  tabs.innerHTML=['active','draft','trash','archived'].map(s=>`<button type="button" data-view="${s}" aria-pressed="${view===s}">${labels[s]} (${getCars().filter(c=>matchesView(c,s)).length})</button>`).join('');
   tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{view=b.dataset.view;onViewChange();});
  }
- const filter=rows=>rows.filter(c=>state(c)===view||(view==='trash'&&state(c)==='purging'));
+ const filter=rows=>rows.filter(c=>matchesView(c,view));
  function actions(c){if(!manager())return '<span>View only</span>';const s=state(c);return '<div class="lifecycleActions">'+(s==='active'?`<button class="primary" data-edit="${c.id}">Manage vehicle ↗</button><button data-life="remove" data-id="${c.id}">Remove / 移除</button>`:(s!=='purging'?`<button data-life="restore" data-id="${c.id}">Restore as draft / 恢复为草稿</button>`:'')+(['trash','purging'].includes(s)&&getRole()==='super_admin'?`<button class="danger" data-life="purge" data-id="${c.id}">${s==='purging'?'Retry deletion / 重试删除':'Permanently delete / 永久删除'}</button>`:''))+'</div>';}
  function badge(c){return state(c)==='active'?(c.publication==='published'?'Published · '+c.stock_status:'Draft · private'):labels[state(c)];}
  async function open(id,op){

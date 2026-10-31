@@ -7,7 +7,7 @@ import {setupYearReference} from './model-year-reference.mjs?v=verified-spec-bat
 import {db,configured,check,esc,rm,mileageText,getVehicles,photoURLs,retryPhotos,compressPhoto,friendlyError} from './e2-data.js?v=ops-1';
 import {benefitsHTML} from './vehicle-benefits.mjs';
 import {setupBenefitsEditor} from './vehicle-benefits-editor.mjs?v=1';
-import {setupVehicleLifecycle} from './vehicle-lifecycle.mjs?v=1';
+import {setupVehicleLifecycle} from './vehicle-lifecycle.mjs?v=draft-tab-1';
 const MAX_PHOTOS=30;
 const completeVehicle=car=>car&&['brand','model','year','engine_litres','transmission','fuel_type','price'].every(key=>car[key]!=null&&String(car[key]).trim()!=='');
 const $=id=>document.getElementById(id), form=$('vehicleForm'), fields=$('vehicleFields');
