@@ -68,7 +68,8 @@ function selectOptions(name,choices,selected=''){
   const select=form.elements.namedItem(name), manual=form.elements.namedItem(name+'Manual');
   const items=[...new Set(choices.filter(Boolean))].sort();
   if(selected&&!items.includes(selected))items.push(selected);
-  select.innerHTML='<option value="">Select '+name+'</option>'+items.map(v=>'<option>'+esc(v)+'</option>').join('')+'<option value="__manual__">Other / enter manually</option>';
+  const fuelLabels={PETROL:'Petrol',DIESEL:'Diesel',ELECTRIC:'Electric',HYBRID:'Hybrid',PHEV:'PHEV'};
+  select.innerHTML='<option value="">'+(name==='fuel_type'?'Not entered / 尚未填写':'Select '+name)+'</option>'+items.map(v=>'<option value="'+esc(v)+'">'+esc(name==='fuel_type'?(fuelLabels[v]||v):v)+'</option>').join('')+'<option value="__manual__">'+(name==='fuel_type'?'Add new / 新增':'Other / enter manually')+'</option>';
   select.value=selected;manual.value='';manual.hidden=true;manual.required=false;manual.disabled=true;
 }
 function choices(name){const all=[...base,...cars];if(name==='brand')return all.map(c=>c.brand);if(name==='model')return all.filter(c=>c.brand===identity('brand')).map(c=>c.model);return all.filter(c=>c.brand===identity('brand')&&c.model===identity('model')).map(c=>c.variant)}
@@ -77,7 +78,7 @@ function identityChanged(name){const select=form.elements.namedItem(name),manual
   if(name==='brand'||name==='model')yearSpecSelect.refresh();
   form.elements.namedItem('model').disabled=!identity('brand');form.elements.namedItem('variant').disabled=!identity('model');
 }
-['brand','model','variant'].forEach(name=>{form.elements.namedItem(name).addEventListener('change',()=>identityChanged(name));form.elements.namedItem(name+'Manual').addEventListener('input',()=>identityChanged(name))});
+['brand','model','variant','fuel_type'].forEach(name=>{form.elements.namedItem(name).addEventListener('change',()=>identityChanged(name));form.elements.namedItem(name+'Manual').addEventListener('input',()=>identityChanged(name))});
 form.addEventListener('input',()=>{dirty=true;if(dispatchDraft)message('editorMessage','');vehicleTranslations.markDirty();setBusy(false);$('saveHint').textContent=dispatchDraft?'Private draft · details await import / 车辆草稿 · 等待导入资料':'Unsaved changes · Save draft before publishing or previewing.'});
 form.addEventListener('change',()=>{dirty=true;vehicleTranslations.markDirty();setBusy(false)});
 async function refresh(){
@@ -120,6 +121,7 @@ function populate(car){
   form.reset();current=car;dirty=false;$('importReview').hidden=true;$('importReview').textContent='';
   drivePicker.reset();
   selectOptions('brand',choices('brand'),car?.brand||'');selectOptions('model',choices('model'),car?.model||'');
+  selectOptions('fuel_type',['PETROL','DIESEL','ELECTRIC','HYBRID','PHEV',...cars.map(c=>c.fuel_type)],car?(car.fuel_type||''):'PETROL');
   form.elements.namedItem('model').disabled=!car;form.elements.namedItem('variant').disabled=!car;
   for(const name of ['plate','year','engine_litres','transmission','fuel_type','mileage','price','body_type','stock_status','description'])if(car)form.elements.namedItem(name).value=car[name]??'';
   if(car?.engine_litres!=null)form.elements.namedItem('engine_litres').value=Number(car.engine_litres).toFixed(1);
@@ -148,8 +150,10 @@ form.onsubmit=async event=>{
   const mileage=value('mileage')===''?null:Number(value('mileage'));
   const confirmed=form.elements.namedItem('mileage_confirmed').checked;
   if(confirmed&&mileage===null){editorError(new Error('Enter the mileage before marking it confirmed.'));return}
+  const fuelType=identity('fuel_type').trim().replace(/\s+/g,' ').toUpperCase();
+  if(!dispatchDraft&&((value('fuel_type')==='__manual__'&&!fuelType)||fuelType.length>40||/[\x00-\x1f\x7f]/.test(fuelType)||fuelType==='__MANUAL__')){editorError(new Error('Enter a fuel type of 1–40 characters. / 请填写 1–40 字的燃料类型。'));return;}
   let benefitData;try{benefitData=benefitsEditor.read()}catch(error){editorError(error);return}
-  const data=dispatchDraft?{plate:value('plate').toUpperCase().replace(/\s/g,''),import_pending:true}:{...benefitData,plate:value('plate').toUpperCase().replace(/\s/g,''),brand:identity('brand')||null,model:identity('model')||null,variant:identity('variant'),year:value('year')===''?null:Number(value('year')),engine_litres:identity('engine_litres')===''?null:Number(identity('engine_litres')),transmission:value('transmission')||null,fuel_type:value('fuel_type')||null,mileage,mileage_confirmed:confirmed,price:value('price')===''?null:Number(value('price')),body_type:value('body_type'),stock_status:value('stock_status'),description:value('description').trim()};
+  const data=dispatchDraft?{plate:value('plate').toUpperCase().replace(/\s/g,''),import_pending:true}:{...benefitData,plate:value('plate').toUpperCase().replace(/\s/g,''),brand:identity('brand')||null,model:identity('model')||null,variant:identity('variant'),year:value('year')===''?null:Number(value('year')),engine_litres:identity('engine_litres')===''?null:Number(identity('engine_litres')),transmission:value('transmission')||null,fuel_type:fuelType||null,mileage,mileage_confirmed:confirmed,price:value('price')===''?null:Number(value('price')),body_type:value('body_type'),stock_status:value('stock_status'),description:value('description').trim()};
   const saveEpoch=authEpoch;setBusy(true);message('editorMessage','Saving vehicle details…');
   try{
     const saved=check(await (current?db.from('vehicles').update(data).eq('id',current.id).eq('updated_at',current.updated_at):db.from('vehicles').insert({...data,id:crypto.randomUUID(),publication:'draft'})).select().maybeSingle());

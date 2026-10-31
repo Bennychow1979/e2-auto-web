@@ -18,6 +18,7 @@ export async function startPreview({port=0,seed=true,showcase=false,lifecycle=fa
  await db.exec('reset role');
  await db.exec(await readFile(resolve(root,'supabase/migrations/202610190001_vehicle_benefits.sql'),'utf8'));
  await db.exec(await readFile(resolve(root,'supabase/migrations/202610210004_plate_drafts.sql'),'utf8'));
+ await db.exec(await readFile(resolve(root,'supabase/migrations/202611010001_custom_fuel_types.sql'),'utf8'));
  if(lifecycle){
   for(const f of ['202609180001_drive_photos','202609210001_vehicle_import','202609210003_plate_only_import','202610010001_vehicle_translation','202610210005_enrich_plate_drafts','202610220001_vehicle_recycle','202610220002_inspection_statuses','202610220003_account_dispatch'])await db.exec(await readFile(resolve(root,'supabase/migrations/'+f+'.sql'),'utf8'));
  }
@@ -66,6 +67,7 @@ export async function startPreview({port=0,seed=true,showcase=false,lifecycle=fa
   let value,mode='select',filters={};const query={
    select:()=>query,eq:(key,v)=>{filters[key]=v;return query;},order:()=>query,limit:()=>query,
    insert:row=>{value=row;mode='insert';return query;},
+   update:row=>{value=row;mode='update';return query;},
    maybeSingle:()=>query,
    then:(resolve,reject)=>call('table',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({table,mode,value,filters})}).then(resolve,reject)
   };return query;
@@ -91,9 +93,13 @@ export async function startPreview({port=0,seed=true,showcase=false,lifecycle=fa
       const {table,mode,value,filters={}}=JSON.parse(bytes);
       if(lifecycle&&['e2_inspection_photos','e2_vehicle_inspection_events'].includes(table)&&mode==='select')return {data:(await db.query('select * from public.'+table+' where inspection_id=$1 order by created_at desc',[filters.inspection_id])).rows};
       if(table==='staff_memberships'&&mode==='select')return {data:(await db.query('select role,active from staff_memberships where user_id=auth.uid()')).rows[0]||null};
-      if(table==='vehicles'&&mode==='insert'){
+      if(table==='vehicles'&&['insert','update'].includes(mode)){
        const allowedFields=new Set(['id','plate','brand','model','variant','year','engine_litres','transmission','fuel_type','mileage','mileage_confirmed','price','body_type','stock_status','description','publication','import_pending',...benefitFields]);
-       const keys=Object.keys(value);if(value.publication!=='draft'||keys.some(k=>!allowedFields.has(k)))throw Error('Only draft vehicle creation is supported');
+       const keys=Object.keys(value);if((mode==='insert'&&value.publication!=='draft')||keys.some(k=>!allowedFields.has(k)))throw Error('Only draft vehicle creation is supported');
+       if(mode==='update'){
+        if(!filters.id||!filters.updated_at)throw Error('Preview updates require a vehicle and revision');
+        return {data:(await db.query('update public.vehicles set '+keys.map((k,i)=>'"'+k+'"=$'+(i+1)).join(',')+' where id=$'+(keys.length+1)+' and updated_at=$'+(keys.length+2)+' returning *',[...keys.map(k=>value[k]),filters.id,filters.updated_at])).rows[0]||null};
+       }
        const columns=keys.map(k=>'"'+k+'"').join(',');
        return {data:(await db.query(`insert into public.vehicles (${columns}) values (${keys.map((k,i)=>'$'+(i+1)).join(',')}) returning *`,keys.map(k=>value[k]))).rows[0]};
       }
