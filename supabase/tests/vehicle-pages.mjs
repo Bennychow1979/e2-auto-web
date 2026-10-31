@@ -66,11 +66,12 @@ test('slugs remain stable across edits, collisions, missing plates and withdrawa
  const changed=createSlugMap([{...vehicleA,price:12345,brand:'Changed',plate:'NEW'}],first);assert.deepEqual(changed,first);
  assert(createSlugMap([{...vehicleA,plate:null}])[vehicleA.id].endsWith(vehicleA.id.slice(0,8)));assert.throws(()=>createSlugMap([],{[vehicleA.id]:'same',[vehicleB.id]:'same'}));
 });
-test('complete inventory pagination fails closed on error, truncation, empty or concurrent changes',async()=>{
+test('complete inventory pagination confirms zero and fails closed on error, truncation or concurrent changes',async()=>{
  const config={supabaseUrl:'https://synthetic-vehicle.supabase.co',publishableKey:'sb_publishable_synthetic'};let calls=0;
  const response=(rows,count=rows.length)=>({ok:true,headers:{get:()=> '0-'+(rows.length-1)+'/'+count},json:async()=>rows});
  const result=await fetchPublicInventory(config,async()=>{calls++;return response([vehicleA,vehicleB])});assert.equal(calls,2);assert.equal(result.expectedCount,2);assert(result.complete);
- await assert.rejects(fetchPublicInventory(config,async()=>response([],0)));await assert.rejects(fetchPublicInventory(config,async()=>response([vehicleA],2)));await assert.rejects(fetchPublicInventory(config,async()=>({ok:false})));
+ const empty=await fetchPublicInventory(config,async()=>response([],0));assert.equal(empty.expectedCount,0);assert.equal(empty.confirmedReads,2);
+ await assert.rejects(fetchPublicInventory(config,async()=>response([vehicleA],2)));await assert.rejects(fetchPublicInventory(config,async()=>({ok:false})));
  calls=0;await assert.rejects(fetchPublicInventory(config,async()=>response([{...vehicleA,price:calls++?1:2}])));
  const many=Array.from({length:201},(_,i)=>({...vehicleA,id:'aaaaaaaa-1111-4111-8111-'+String(i).padStart(12,'0')})),offsets=[];
  const paged=await fetchPublicInventory(config,async url=>{const offset=Number(url.searchParams.get('offset'));offsets.push(offset);return response(many.slice(offset,offset+200),201)});assert.equal(paged.vehicles.length,201);assert.deepEqual(offsets,[0,200,0,200]);

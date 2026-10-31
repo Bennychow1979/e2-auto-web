@@ -1,6 +1,7 @@
 import {readFile,writeFile,mkdir,readdir,cp,unlink,mkdtemp,rename,lstat} from 'node:fs/promises';
 import {resolve,join,sep,dirname} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
+import {createHash} from 'node:crypto';
 import {LANGUAGES,languageTags,escapeHTML,t} from '../i18n.mjs';
 import {localizedPage} from './build-languages.mjs';
 import {vehicleMetadata,vehicleStructuredData,validVehicleId,canonicalVehicleURL} from '../vehicle-seo.mjs';
@@ -10,6 +11,7 @@ import {descriptionFor} from '../vehicle-translations.mjs';
 import {enquiryURL,withVehicleLink} from '../referral.js';
 import {renderSitemap} from './build-sitemap.mjs';
 import {renderStock} from './build-stock.mjs';
+import {inventoryReceipt} from './inventory-refresh-receipt.mjs';
 import {publicVehicleImageURL,probePublicImageGateway} from '../vehicle-public-image.mjs';
 import {stockCopy,stockRequestHTML,stockRequestText} from '../vehicle-stock-display.mjs';
 export const PUBLIC_FIELDS=['id','publication','brand','model','variant','year','plate','price','mileage','mileage_confirmed','engine_litres','transmission','fuel_type','body_type','stock_status','description','updated_at'];
@@ -45,8 +47,7 @@ export async function fetchPublicSample(config,ids,request=fetch){
  const vehicles=[];for(const id of ids){const url=new URL(config.supabaseUrl+'/rest/v1/vehicles');url.search=new URLSearchParams({select:PUBLIC_FIELDS.join(','),publication:'eq.published',id:'eq.'+id});const r=await request(url,{headers:{apikey:config.publishableKey},credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('Public inventory unavailable ('+r.status+'); keep the previous build.');const rows=await r.json();if(!Array.isArray(rows)||rows.some(row=>row.id.toLowerCase()!==id.toLowerCase()||row.publication!=='published'))throw Error('Unexpected public inventory result.');vehicles.push(...rows);}
  return {kind:'public-sample',fetchedAt:new Date().toISOString(),vehicles};
 }
-// Draft acquisition path for a future approved rebuild. Not called by the CLI.
-// Two complete reads must agree; count changes, truncation and zero rows fail closed.
+// Two complete reads must agree, including an explicitly counted zero inventory.
 export async function fetchPublicInventory(config,request=fetch){
  if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(config?.supabaseUrl||'')||!/^sb_publishable_[A-Za-z0-9_-]+$/.test(config?.publishableKey||''))throw Error('Anonymous public inventory configuration required.');
  async function readComplete(){
@@ -56,14 +57,14 @@ export async function fetchPublicInventory(config,request=fetch){
    const response=await request(url,{headers:{apikey:config.publishableKey,Prefer:'count=exact'},credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(20000)});
    if(!response.ok)throw Error('Public inventory read failed; preserve the previous artifact.');
    const count=Number(/\/(\d+)$/.exec(response.headers.get('content-range')||'')?.[1]);
-   if(!Number.isInteger(count)||count<1||count>20000||(expected!==undefined&&count!==expected))throw Error('Inventory count is empty, unavailable or changed.');expected=count;
+   if(!Number.isInteger(count)||count<0||count>20000||(expected!==undefined&&count!==expected))throw Error('Inventory count is unavailable or changed.');expected=count;
    const rows=await response.json();if(!Array.isArray(rows)||rows.some(row=>row.publication!=='published')||rows.length!==Math.min(200,expected-offset))throw Error('Inventory response is incomplete.');vehicles.push(...rows);
    if(vehicles.length===expected){const envelope={kind:'public-complete',complete:true,expectedCount:expected,fetchedAt:new Date().toISOString(),vehicles};publicRows(envelope);return envelope;}
   }
   throw Error('Inventory pagination did not finish.');
  }
  const first=await readComplete(),second=await readComplete();
- if(JSON.stringify(first.vehicles)!==JSON.stringify(second.vehicles))throw Error('Inventory changed during snapshot acquisition; rebuild later.');return second;
+ if(JSON.stringify(first.vehicles)!==JSON.stringify(second.vehicles))throw Error('Inventory changed during snapshot acquisition; rebuild later.');return {...second,confirmedReads:2};
 }
 function content(html,id,value){const re=new RegExp('(<(\\w+)\\b[^>]*\\bid="'+id+'"[^>]*>)[\\s\\S]*?(</\\2>)');if(!re.test(html))throw Error('Missing template field: '+id);return html.replace(re,(_,open,tag,close)=>open+value+close);}
 function rootLinks(html,lang){const base='https://e2auto.my/'+(lang==='en'?'':lang+'/')+'car.html';return html.replace(/\b(href|src)="([^"#][^"]*)"/g,(whole,attr,value)=>{if(/^(?:[a-z]+:|\/)/i.test(value))return whole;const u=new URL(value,base);return attr+'="'+u.pathname+u.search+u.hash+'"';});}
@@ -103,7 +104,7 @@ export function renderVehiclePage(template,car,lang,fetchedAt,slugs=createSlugMa
 export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSold=true,release=false,imageRequest=fetch}={}){
  const rows=publicRows(snapshot,{now}),out=resolve(output),parent=dirname(out);
  if(out===resolve(root)||resolve(root).startsWith(out+sep))throw Error('Use a separate generated output folder.');
- if(!rows.length)throw Error('Empty public inventory requires separate review; existing output is unchanged.');
+ if(!rows.length&&!(snapshot.kind==='public-complete'&&snapshot.complete===true&&snapshot.expectedCount===0&&snapshot.confirmedReads===2&&snapshot.vehicles.length===0))throw Error('Empty public inventory requires two confirmed complete reads; existing output is unchanged.');
  if(snapshot.kind==='public-complete'&&(!snapshot.complete||snapshot.expectedCount!==rows.length))throw Error('Incomplete inventory snapshot.');
  const images=new Map((snapshot.publicPhotos||[]).map(row=>[row.vehicleId,row]));
  if(snapshot.publicPhotos!==undefined&&(!Array.isArray(snapshot.publicPhotos)||snapshot.publicPhotos.length!==images.size||images.size!==rows.length||rows.some(row=>!images.has(row.id))||[...images.values()].some(row=>row.photoId===null?row.source!==null:!validVehicleId(row.photoId)||!['drive','upload'].includes(row.source))))throw Error('Invalid or incomplete public photo coverage.');
@@ -126,9 +127,12 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  for(const saved of [snapshot.priorSlugs||{},previous.slugs||{}]){createSlugMap([],saved);for(const [id,slug] of Object.entries(saved)){if(registry[id]&&registry[id]!==slug)throw Error('Saved slug identity cannot change.');registry[id]=slug;}}
  const slugs=createSlugMap(rows,registry),publicSlugs=Object.fromEntries(rows.map(car=>[car.id,slugs[car.id]]));
  const stock=renderStock(rows,{slugs,fetchedAt:snapshot.fetchedAt,builtAt:new Date(now).toISOString(),complete:snapshot.kind==='public-complete'&&snapshot.complete===true&&snapshot.expectedCount===rows.length});
+ const sitemap=renderSitemap(rows,{staticPages:true,slugs,includeSold});
  const template=await readFile(join(root,'car.html'),'utf8'),pages=[];
  for(const car of rows)for(const lang of LANGUAGES)pages.push({file:vehiclePath(car.id,lang,slugs).slice(1)+'index.html',html:renderVehiclePage(template,car,lang,snapshot.fetchedAt,publicSlugs,{imageOrigin:snapshot.publicImageOrigin,imageAvailable:!!images.get(car.id)?.photoId})});
  const files=pages.map(p=>p.file),manifest={version:1,kind:snapshot.kind||'local-snapshot',fetchedAt:snapshot.fetchedAt,builtAt:new Date(now).toISOString(),includeSoldInSitemap:includeSold,slugs,files,imageVehicles:imageCars.length,imageGatewayVerified:gatewayVerified,imageGatewayVersion:gatewayVerified?'v2':null,imageGatewayCheck:gatewayVerified?'HEAD':null,releaseArtifact:release,vehicles:rows.map(v=>({id:v.id,updated_at:v.updated_at}))};
+ if(snapshot.inventoryRefresh)manifest.inventoryRefresh=inventoryReceipt(snapshot.inventoryRefresh.revision,snapshot.inventoryRefresh.dispatch);
+ manifest.publicationHashes={stock:createHash('sha256').update(stock).digest('hex'),sitemap:createHash('sha256').update(sitemap).digest('hex')};
  // Construct and validate a separate artifact before replacing the previous one.
  // Only the explicit generated output can be renamed; backups are retained.
  await mkdir(parent,{recursive:true});const stage=await mkdtemp(join(parent,'.vehicle-build-'));
@@ -148,7 +152,7 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  for(const lang of LANGUAGES)if(lang!=='en')await writeFile(join(stage,lang,'plates.html'),localizedPage(await readFile(join(root,'plates.html'),'utf8'),'plates.html',lang));
  for(const page of pages){const file=join(stage,page.file);await mkdir(dirname(file),{recursive:true});await writeFile(file,page.html);}
  for(const file of previous.files||[])if(!files.includes(file))await unlink(join(stage,file)).catch(e=>{if(e.code!=='ENOENT')throw e;});
- await writeFile(join(stage,'sitemap.xml'),renderSitemap(rows,{staticPages:true,slugs,includeSold}));
+ await writeFile(join(stage,'sitemap.xml'),sitemap);
  await writeFile(join(stage,'stock.txt'),stock);
  await mkdir(join(stage,'data'),{recursive:true});await writeFile(join(stage,'data/car-slugs.json'),JSON.stringify(slugs,null,2)+'\n');
  await writeFile(join(stage,'vehicle-pages-manifest.json'),JSON.stringify(manifest,null,2)+'\n');

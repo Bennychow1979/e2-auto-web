@@ -45,3 +45,10 @@ test('Pages upload gate checks generated content and existing customer/PDF asset
   await mkdir(join(out,'supabase'));await assert.rejects(verifyPagesArtifact(snapshot,out),/Build-only content/);
  });
 });
+
+test('confirmed zero inventory produces a valid full Pages artifact',async()=>{
+ const out=join(await mkdtemp(join(tmpdir(),'e2-empty-release-')),'site');
+ const snapshot={kind:'public-complete',complete:true,confirmedReads:2,expectedCount:0,fetchedAt:new Date().toISOString(),vehicles:[],publicPhotos:[],publicImageOrigin:'https://synthetic.supabase.co'};
+ await buildVehicleSite(snapshot,out,{release:true});
+ assert.equal((await verifyPagesArtifact(snapshot,out)).vehicles,0);
+});

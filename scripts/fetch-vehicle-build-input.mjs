@@ -4,6 +4,7 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import vm from 'node:vm';
 import {fetchPublicInventory,createSlugMap} from './build-vehicle-pages.mjs';
 import {fetchPublicPhotoCoverage} from './vehicle-public-images.mjs';
+import {inventoryReceipt} from './inventory-refresh-receipt.mjs';
 export async function readPriorSlugs({bootstrap=false,seed={},request=fetch}={}){
  createSlugMap([],seed);
  const response=await request('https://e2auto.my/data/car-slugs.json',{credentials:'omit',cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
@@ -23,6 +24,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const context={window:{}};vm.runInNewContext(await readFile(new URL('../e2-config.js',import.meta.url),'utf8'),context);
  const seed=JSON.parse(await readFile(new URL('../data/car-slugs.json',import.meta.url),'utf8'));
  const snapshot=await fetchBuildInput(context.window.E2_CONFIG,{bootstrap:mode==='--bootstrap',seed});
+ const receipt=inventoryReceipt(process.env.INVENTORY_REVISION,process.env.INVENTORY_DISPATCH);
+ if(receipt)snapshot.inventoryRefresh=receipt;
  await writeFile(output,JSON.stringify(snapshot,null,2)+'\n');
  console.log(JSON.stringify({published:snapshot.vehicles.length,withMainImage:snapshot.publicPhotos.filter(p=>p.photoId).length,fetchedAt:snapshot.fetchedAt,photoBytesDownloaded:0}));
 }

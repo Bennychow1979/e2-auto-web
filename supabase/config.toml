@@ -20,3 +20,8 @@ verify_jwt = false
 # Database-created one-use dispatch capabilities are verified in the handler.
 [functions.e2-viewing-notify]
 verify_jwt = false
+
+# Proposed activation requires approval; one-use database capabilities are checked
+# before any GitHub action. No browser/anonymous dispatch path is accepted.
+[functions.e2-inventory-refresh]
+verify_jwt = false

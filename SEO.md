@@ -30,10 +30,11 @@ pass before that artifact is uploaded and deployed to GitHub Pages.
 Neither path requires a service-role key or staff session.
 
 The sitemap refreshes on a code deployment or manual deployment workflow run.
-Database-only inventory changes do not trigger a Pages build automatically;
-new vehicles can still be discovered through the live showroom links. Connect
-inventory publication events to a rebuild if immediate sitemap refreshes are
-required. Do not commit short-lived signed photo URLs to a sitemap.
+The change-driven database outbox/worker implementation is prepared but requires
+separate production activation; see `supabase/INVENTORY-REFRESH.md`. Until then,
+database-only changes do not automatically rebuild Pages. Once activated, changes
+trigger the same complete artifact pipeline, with queue/build/deployment latency;
+this is not immediate suppression. Do not commit signed photo URLs to a sitemap.
 
 ## Compact inventory for assistants: stock.txt
 
@@ -73,16 +74,18 @@ read, missing footer or failed fetch is not evidence of the full current stock.
 Do not fall back to a remembered short list while claiming it is exhaustive.
 
 The existing acquisition performs two matching, paginated, exact-count reads.
-Stale/future, incomplete and empty snapshots fail closed, preserving the prior
-artifact; an empty inventory still needs separate review under existing policy.
+Stale/future and incomplete snapshots fail closed, preserving the prior artifact.
+Two matching complete reads with explicit exact count zero may publish an empty
+inventory, removing all vehicle pages and sitemap entries together. Unconfirmed
+empty inputs and failed/malformed reads cannot erase the prior artifact.
 The upload gate requires stock.txt to match the public snapshot byte-for-byte,
 so missing, truncated, changed, stale or extra private content blocks publication.
 
-Freshness remains tied to the existing Pages workflow: pushes to main or manual
-workflow dispatch. Database-only changes do not automatically refresh stock.txt;
-`data/inventory-refresh-policy.json` remains disabled. This change does not
-activate a schedule, webhook, credentials or integration permissions. The first
-normal authorized deployment containing this code will publish stock.txt.
+Automatic delivery remains disabled until the owner approves and activates the
+database outbox, worker credential and scheduler described in the runbook. The
+legacy `data/inventory-refresh-policy.json` is only an inert planner prototype;
+the new runtime switch is the private `e2_inventory_refresh.enabled` database row.
+Repository changes alone do not activate database schedules or Edge credentials.
 The explicit legacy `restore_previous` workflow restores an older artifact
 without stock.txt; consumers must treat its absence as unavailable inventory.
 

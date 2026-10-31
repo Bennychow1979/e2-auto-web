@@ -1,4 +1,5 @@
 name: Deploy E2 Auto to GitHub Pages
+run-name: ${{ inputs.inventory_dispatch && format('Inventory refresh {0} {1}', inputs.inventory_revision, inputs.inventory_dispatch) || 'Deploy E2 Auto' }}
 
 on:
   push:
@@ -6,6 +7,14 @@ on:
       - main
   workflow_dispatch:
     inputs:
+      inventory_revision:
+        description: 'Database outbox revision (worker only; leave blank for manual releases)'
+        type: string
+        default: ''
+      inventory_dispatch:
+        description: 'Database outbox dispatch UUID (worker only)'
+        type: string
+        default: ''
       bootstrap_registry:
         description: 'First static release only: use reviewed slug seed if the deployed registry is 404'
         type: boolean
@@ -22,7 +31,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -66,13 +75,15 @@ jobs:
         run: |
           node supabase/tests/seo.mjs
           node supabase/tests/languages.mjs
-          node --test supabase/tests/stock.mjs supabase/tests/pages-artifact.mjs
+          node --test supabase/tests/stock.mjs supabase/tests/pages-artifact.mjs supabase/tests/inventory-refresh-worker.mjs
           python3 supabase/tests/pages-restore.py
 
       - name: Acquire fresh public inventory and deployed slug registry
         if: ${{ !inputs.restore_previous }}
         env:
           BOOTSTRAP: ${{ inputs.bootstrap_registry || false }}
+          INVENTORY_REVISION: ${{ inputs.inventory_revision || '' }}
+          INVENTORY_DISPATCH: ${{ inputs.inventory_dispatch || '' }}
         run: |
           args=()
           if [ "$BOOTSTRAP" = true ]; then args+=(--bootstrap); fi
@@ -109,6 +120,15 @@ jobs:
           path: _site
           # Both branches produce one checked artifact directory.
 
-      - name: Deploy to GitHub Pages
+      - name: Check public inventory immediately before deployment
+        # Re-read after upload, immediately before the deployment request.
+        if: ${{ !inputs.restore_previous }}
+        run: node scripts/verify-inventory-current.mjs "$RUNNER_TEMP/e2-public-inventory.json"
+
+      - name: Publish verified artifact to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify live publication after CDN propagation
+        if: ${{ !inputs.restore_previous }}
+        run: node scripts/verify-live-publication.mjs _site

@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import {readFile,lstat,readdir} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
+import {createHash} from 'node:crypto';
 import {publicRows} from './build-vehicle-pages.mjs';
 import {vehiclePath} from '../vehicle-routes.mjs';
 import {renderStock} from './build-stock.mjs';
+import {inventoryReceipt} from './inventory-refresh-receipt.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const preserved=['customer.html','customer.js','my-e2.html','my-e2.js','customer-session.mjs','car-detail-demo.css','e2-data.js','e2-config.js','documents.html','documents.js','document-preview.js','privacy/index.html','verified-model-years.json','vendor/pdfjs/pdf.mjs','vendor/pdfjs/pdf.worker.mjs'];
 export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.now()}={}){
@@ -12,6 +14,7 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
  assert.equal(manifest.releaseArtifact,true);assert.equal(manifest.imageGatewayVersion,'v2');assert.equal(manifest.imageGatewayCheck,'HEAD');assert.equal(manifest.imageGatewayVerified,true);
  assert.equal(manifest.fetchedAt,snapshot.fetchedAt);assert.equal(manifest.files.length,rows.length*3);assert.equal(new Set(manifest.files).size,manifest.files.length);
  assert.deepEqual(manifest.vehicles,rows.map(v=>({id:v.id,updated_at:v.updated_at})));
+ assert.deepEqual(manifest.inventoryRefresh,snapshot.inventoryRefresh?inventoryReceipt(snapshot.inventoryRefresh.revision,snapshot.inventoryRefresh.dispatch):undefined);
  const registry=JSON.parse(await readFile(join(out,'data/car-slugs.json'),'utf8'));assert.deepEqual(registry,manifest.slugs);
  assert.equal(await readFile(join(out,'stock.txt'),'utf8'),renderStock(rows,{slugs:registry,fetchedAt:snapshot.fetchedAt,builtAt:manifest.builtAt,complete:true}),'stock.txt must match the complete public snapshot and canonical routes');
  for(const file of preserved)assert.deepEqual(await readFile(join(out,file)),await readFile(join(source,file)),'Existing page/asset changed: '+file);
@@ -42,6 +45,7 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
  }
  for(const file of ['sales-team.js','sales-team.css','sales-team-data.mjs','sales-team-motion.mjs','sales-team-navigation.mjs','sales-team-translations.mjs'])assert.deepEqual(await readFile(join(out,file)),await readFile(join(source,file)),'Team module preserved: '+file);
  const sitemap=await readFile(join(out,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,rows.length*3+10);
+ for(const [name,file] of [['stock','stock.txt'],['sitemap','sitemap.xml']])assert.equal(manifest.publicationHashes?.[name],createHash('sha256').update(await readFile(join(out,file))).digest('hex'),'Publication hash mismatch: '+name);
  return {vehicles:rows.length,pages:manifest.files.length,preservedFiles:preserved.length,publicImageVersion:'v2',photoBytesDownloaded:0,artifactVerified:true};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){

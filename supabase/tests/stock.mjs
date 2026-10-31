@@ -112,3 +112,19 @@ test('same build updates stock, pages and sitemap; rejected snapshots preserve p
     assert.equal(await readFile(join(out, 'stock.txt'), 'utf8'), text);
   }
 });
+
+test('two confirmed complete zero reads replace old stock and remove every withdrawn page',async()=>{
+ const out=join(await mkdtemp(join(tmpdir(),'e2-stock-zero-')),'site');
+ const prior=await buildVehicleSite(snapshot([vehicleA,vehicleB]),out,{now});
+ const input={...snapshot([]),confirmedReads:2,publicPhotos:[],publicImageOrigin:'https://synthetic.supabase.co',
+  inventoryRefresh:{revision:'10',dispatch:'aaaaaaaa-1111-4111-8111-111111111111'}};
+ const result=await buildVehicleSite(input,out,{now,release:true});
+ assert.equal(result.files.length,0);assert.deepEqual(result.inventoryRefresh,input.inventoryRefresh);
+ const rows=parse(await readFile(join(out,'stock.txt'),'utf8'));assert.equal(rows.length,2);
+ assert.equal(rows[0].complete,true);assert.equal(rows[0].vehicles,0);assert.equal(rows[1].vehicles,0);
+ assert.deepEqual(rows[0].counts,{Available:0,Reserved:0,Sold:0});
+ const xml=await readFile(join(out,'sitemap.xml'),'utf8');assert(!xml.includes('/cars/'));
+ for(const file of prior.files)await assert.rejects(access(join(out,file)));
+ // Keep stable slug history, never turn it back into an advertised vehicle.
+ assert.deepEqual(result.slugs,prior.slugs);
+});
