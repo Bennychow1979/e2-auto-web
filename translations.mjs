@@ -3,6 +3,12 @@
 import {bookingTranslations} from './booking-translations.mjs';
 import {salesTeamTranslations} from './sales-team-translations.mjs';
 export const translations = {
+  'Save {car} as favourite':['Simpan {car} sebagai kegemaran','收藏 {car}'],
+  'Remove {car} from favourites':['Buang {car} daripada kegemaran','取消收藏 {car}'],
+  'Save your favourite cars':['Simpan kereta kegemaran anda','收藏你喜欢的车辆'],
+  'Sign in or create an account to save this car to your favourites.':['Log masuk atau daftar akaun untuk menyimpan kereta ini sebagai kegemaran.','请登录或注册账户，将这辆车加入收藏。'],
+  'Create account':['Daftar akaun','注册账户'],
+  'Close favourite reminder':['Tutup peringatan kegemaran','关闭收藏提醒'],
   'Vehicle display':['Paparan kenderaan','车辆展示方式'],
   'List':['Senarai','列表'],
   'Large photos':['Foto besar','大图卡片'],
