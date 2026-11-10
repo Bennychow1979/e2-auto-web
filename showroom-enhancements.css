@@ -11,18 +11,42 @@
 .showroomAddress{font-style:normal;font-size:1rem;line-height:1.7;margin:0 0 28px;overflow-wrap:break-word}
 .showroomAddress strong{font-weight:600}
 
+/* A separate vehicle link keeps the favourite button out of a nested link. */
+#filterResults .sampleRow{position:relative}
+#filterResults .sampleInfo{position:relative;padding-right:54px}
+#filterResults .rowVehicleLink{position:absolute;inset:0;z-index:1;border-radius:inherit}
+#filterResults .rowVehicleLink:focus-visible{outline:3px solid #9c7b2e;outline-offset:3px}
+#filterResults .rowFavourite{position:absolute;right:0;top:0;z-index:2;display:grid;place-items:center;width:44px;height:44px;padding:10px;border:1px solid #d7d8d2;border-radius:50%;background:#fafaf7;color:#686d64;cursor:pointer}
+#filterResults .rowFavourite svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#filterResults .rowFavourite[aria-pressed=true]{color:#c12c60;border-color:#edbbcd;background:#fff1f6}
+#filterResults .rowFavourite[aria-pressed=true] svg{fill:currentColor}
+#filterResults .rowFavourite:disabled{cursor:wait;opacity:.6}
+#filterResults[data-view=cards] .rowFavourite{right:16px;top:16px}
+.showroomSaveStatus{font-size:.875rem;line-height:1.6;color:#636861}
+.showroomSaveStatus:empty{display:none}
+#saveAccountDialog{position:fixed;inset:0;margin:auto;width:min(440px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid #d7d8d2;border-radius:24px;padding:32px;background:#fafaf7;color:#111214}
+#saveAccountDialog::backdrop{background:rgba(17,18,20,.5)}
+#saveAccountDialog[open]{display:block}
+#closeSaveAccount{position:absolute;right:12px;top:12px;width:44px;height:44px;border:0;border-radius:50%;background:transparent;font:inherit;font-size:1.75rem;cursor:pointer}
+.saveDialogHeart{font-size:2.5rem;color:#c12c60}
+#saveAccountTitle{font-size:1.65rem;line-height:1.2;margin:16px 0}
+#saveAccountDescription{font-size:1rem;line-height:1.6;color:#636861}
+.saveAccountActions{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+.saveAccountActions a{flex:1;min-width:120px;min-height:46px;padding:12px;border:1px solid #111214;border-radius:999px;text-align:center;text-decoration:none;font-size:.875rem;color:#111214}
+.saveAccountActions a:first-child{background:#111214;color:#fff}
+
 /* Both views show the entire source photograph, including portrait photos. */
 .inventoryViewSwitch{display:inline-flex;gap:4px;padding:4px;border:1px solid #d7d8d2;border-radius:999px;background:#fafaf7}
 .inventoryViewSwitch button{min-height:44px;padding:8px 16px;border:0;border-radius:999px;background:transparent;color:#555b50;font:inherit;font-size:.8125rem;cursor:pointer}
 .inventoryViewSwitch button[aria-pressed=true]{background:#111214;color:#fff}
 .inventoryViewSwitch button:focus-visible{outline:2px solid #9c7b2e;outline-offset:3px}
 #filterResults .sampleRow>img{object-fit:contain;background:#e9eae5}
-#filterResults .sampleRow>span:nth-child(2){min-width:0}
+#filterResults .sampleRow>.sampleInfo{min-width:0}
 #filterResults[data-view=cards]{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:20px}
 #filterResults[data-view=cards] .sampleRow{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0 0 20px;border:1px solid #d7d8d2;border-radius:20px;overflow:hidden;background:#fafaf7}
 #filterResults[data-view=cards] .sampleRow:hover{background:#eeefeb}
 #filterResults[data-view=cards] .sampleRow>img,#filterResults[data-view=cards] .sampleRow>.noPhoto{width:100%;height:auto;aspect-ratio:4/3;border-radius:0;flex:none}
-#filterResults[data-view=cards] .sampleRow>span:nth-child(2){padding:18px 18px 14px}
+#filterResults[data-view=cards] .sampleRow>.sampleInfo{padding:18px 72px 14px 18px}
 #filterResults[data-view=cards] .sampleRow h3{font-size:1.4rem;line-height:1.2}
 #filterResults[data-view=cards] .sampleRow .rowMoney{margin-top:auto;padding:0 48px 0 18px;white-space:normal}
 #filterResults[data-view=cards] .rowGo{position:absolute;right:18px;bottom:22px}
@@ -30,7 +54,7 @@
 @media(max-width:680px){
   #filterResults .sampleRow{grid-template-columns:minmax(0,40%) minmax(0,1fr);column-gap:14px;row-gap:10px;padding:18px 0}
   #filterResults .sampleRow>img,#filterResults .sampleRow>.noPhoto{width:100%;height:auto;min-height:0;aspect-ratio:4/3;grid-column:1;grid-row:1/3;border-radius:12px}
-  #filterResults .sampleRow>span:nth-child(2){grid-column:2;grid-row:1}
+  #filterResults .sampleRow>.sampleInfo{grid-column:2;grid-row:1}
   #filterResults .sampleRow h3{font-size:1.15rem;line-height:1.2}
   #filterResults .sampleRow .rowMoney{grid-column:2;grid-row:2;white-space:normal}
   #filterResults .rowGo{display:none}

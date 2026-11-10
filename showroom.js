@@ -4,9 +4,11 @@ import {showroomVehicleLinks,showroomContactAction} from './showroom-referral.mj
 import {createShowroomFlow} from './showroom-flow.js?v=languages-1';
 import {esc,rm,getVehicles,photoURLs,friendlyError} from './e2-data.js?v=drive-2';
 import {emptyFilters,readPreferences,savePreferences,sortedCars} from './showroom-preferences.mjs';
+import {setupShowroomSave} from './showroom-save.js?v=1';
 const $=id=>document.getElementById(id), blank=emptyFilters;
 let preferenceStorage;try{preferenceStorage=window.sessionStorage}catch{}
 const saved=readPreferences(preferenceStorage);
+const paintFavourites=setupShowroomSave();
 // Keep layout independent of search/filter preferences, including language changes.
 let view='list';
 try{if(window.localStorage.getItem('e2-showroom-view')==='cards')view='cards'}catch{}
@@ -44,7 +46,8 @@ function chipText(k,v){return ({q:t('Search: {value}',{value:v}),budget:t('Under
 function render(){
   const found=sortedCars(cars.filter(c=>matches(c,state)),sort);
   savePreferences(preferenceStorage,state,sort);
-  $('filterResults').innerHTML=found.map(c=>'<a class="sampleRow" href="'+esc(vehicleHref(c.id))+'">'+(c.cover?'<img src="'+esc(c.cover)+'" alt="'+esc(c.brand+' '+c.model)+'" loading="lazy">':'<span class="noPhoto">'+esc(t('Photo unavailable'))+'</span>')+'<span><span class="sampleLabel">'+esc(c.plate+' · '+t(c.stock_status))+'</span><h3>'+esc(c.brand+' '+c.model)+'</h3><span class="sampleMeta">'+esc([c.year,c.variant,t(c.transmission)].filter(Boolean).join(' · '))+'</span>'+benefitsHTML(c)+'<span class="sampleMeta">'+esc(mileageText(c))+'</span></span><span class="rowMoney">'+rm(c.price)+'<small>'+esc(t('Selling price'))+'</small></span><span class="rowGo" aria-hidden="true">↗</span></a>').join('');
+  $('filterResults').innerHTML=found.map(c=>'<article class="sampleRow">'+(c.cover?'<img src="'+esc(c.cover)+'" alt="'+esc(c.brand+' '+c.model)+'" loading="lazy">':'<span class="noPhoto">'+esc(t('Photo unavailable'))+'</span>')+'<div class="sampleInfo"><button class="rowFavourite" type="button" data-save-vehicle="'+esc(c.id)+'" data-car-name="'+esc(c.brand+' '+c.model+' · '+c.plate)+'" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg></button><span class="sampleLabel">'+esc(c.plate+' · '+t(c.stock_status))+'</span><h3>'+esc(c.brand+' '+c.model)+'</h3><span class="sampleMeta">'+esc([c.year,c.variant,t(c.transmission)].filter(Boolean).join(' · '))+'</span>'+benefitsHTML(c)+'<span class="sampleMeta">'+esc(mileageText(c))+'</span></div><span class="rowMoney">'+rm(c.price)+'<small>'+esc(t('Selling price'))+'</small></span><span class="rowGo" aria-hidden="true">↗</span><a class="rowVehicleLink" href="'+esc(vehicleHref(c.id))+'" aria-label="'+esc(t('View this car ↗')+' · '+c.brand+' '+c.model+' · '+c.plate)+'"></a></article>').join('');
+  paintFavourites();
   $('resultCount').textContent=t('{count} cars to explore',{count:found.length});$('emptyResults').hidden=found.length>0||!cars.length;
   $('activeFilters').replaceChildren();
   Object.entries(state).filter(([,v])=>v).forEach(([key,val])=>{const b=document.createElement('button');b.type='button';b.className='filterChip';b.textContent=chipText(key,val)+' ×';b.setAttribute('aria-label',t('Remove {value}',{value:chipText(key,val)}));b.onclick=()=>{state[key]='';clearDependents(state,key);sync();render()};$('activeFilters').append(b)});
