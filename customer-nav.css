@@ -1,1 +1,4 @@
 .galleryNav nav .navLogin,.nav nav .navLogin{min-width:0;max-width:210px}.navLogin>span{min-width:0;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.navLogin>svg{flex-shrink:0}@media(max-width:700px){.galleryNav nav .navLogin,.nav nav .navLogin{max-width:126px}.navLogin>span{max-width:82px}}@media(max-width:360px){.galleryNav nav .navLogin,.nav nav .navLogin{max-width:104px}.navLogin>span{max-width:62px}}
+.galleryNav nav .navPartner.navFavourite{display:inline-flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;min-width:64px;min-height:48px;padding:5px 10px;border:0;border-radius:12px;background:transparent;color:#30322e;font-size:.75rem;line-height:1.15}
+.galleryNav nav .navFavourite svg{display:block;width:20px;height:20px;fill:currentColor;flex-shrink:0}
+.galleryNav nav .navFavourite:hover{background:#e9eae5}
