@@ -3,6 +3,9 @@
 import {bookingTranslations} from './booking-translations.mjs';
 import {salesTeamTranslations} from './sales-team-translations.mjs';
 export const translations = {
+  'Vehicle display':['Paparan kenderaan','车辆展示方式'],
+  'List':['Senarai','列表'],
+  'Large photos':['Foto besar','大图卡片'],
   ...salesTeamTranslations,
   ...bookingTranslations,
   'PETROL':['Petrol','汽油'], 'DIESEL':['Diesel','柴油'], 'HYBRID':['Hibrid','混合动力'], 'ELECTRIC':['Elektrik','纯电动'],

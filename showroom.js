@@ -7,6 +7,17 @@ import {emptyFilters,readPreferences,savePreferences,sortedCars} from './showroo
 const $=id=>document.getElementById(id), blank=emptyFilters;
 let preferenceStorage;try{preferenceStorage=window.sessionStorage}catch{}
 const saved=readPreferences(preferenceStorage);
+// Keep layout independent of search/filter preferences, including language changes.
+let view='list';
+try{if(window.localStorage.getItem('e2-showroom-view')==='cards')view='cards'}catch{}
+function setView(next){
+  view=next==='cards'?'cards':'list';
+  $('filterResults').dataset.view=view;
+  document.querySelectorAll('[data-inventory-view]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.inventoryView===view)));
+  try{window.localStorage.setItem('e2-showroom-view',view)}catch{}
+}
+document.querySelectorAll('[data-inventory-view]').forEach(button=>button.addEventListener('click',()=>setView(button.dataset.inventoryView)));
+setView(view);
 let referralStorage;try{referralStorage=window.localStorage}catch{}
 const vehicleHref=showroomVehicleLinks({enabled:window.E2_CONFIG?.partnerReferrals,storage:referralStorage,search:location.search});
 const bookingReferral=new URL(vehicleHref(''),location.href).searchParams.get('ref');
