@@ -36,7 +36,6 @@ async function hydrate(session){
   }catch(error){if(run===epoch){gate();note('customerAuthMessage',error.message||'Could not load your account. Please try again.',true)}}
 }
 $('showSignIn').onclick=()=>mode(false);$('showRegister').onclick=()=>mode(true);
-if(new URLSearchParams(location.search).get('mode')==='register')mode(true);
 login.onsubmit=async event=>{event.preventDefault();if(busy)return;lock(true);note('customerAuthMessage','Signing in…');try{clearRecovery();const result=check(await db.auth.signInWithPassword({email:login.elements.email.value.trim(),password:login.elements.password.value}));login.elements.password.value='';await hydrate(result.session)}catch{note('customerAuthMessage','Could not sign in. Check your email and password, and confirm your email first.',true)}finally{lock(false)}};
 register.onsubmit=async event=>{
  event.preventDefault();if(busy||Date.now()<emailWait)return;
