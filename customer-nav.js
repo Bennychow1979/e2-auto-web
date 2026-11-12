@@ -1,4 +1,4 @@
-import {accountURL} from './customer-language.mjs';
+import {accountURL} from './customer-language.mjs?v=flow-20261113';
 import {t,language} from './i18n.mjs';
 import {customerDB as db,check} from './customer-data.js?v=customer-1';
 

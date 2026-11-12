@@ -29,7 +29,7 @@ for(const path of ['/customer.html','/my-e2.html'])for(const order of ['refresh-
 });
 for(const old of compareBaseline?[true,false]:[false])test(`${old?'production baseline reproduces gate':'candidate keeps session'}: Continue application with early refresh`,async({page,fixture},testInfo)=>{
  await fixture({order:'refresh-first',path:'/my-e2.html'});if(old)await page.route('**/my-e2.js*',route=>route.fulfill({contentType:'text/javascript',body:before['my-e2.js']}));
- await page.goto('/customer.html');await ready(page,'/customer.html');await page.locator('#customerAccount a[href="my-e2.html"]').click();await expect(page).toHaveURL(/\/my-e2.html$/);if(old)await gated(page,'/my-e2.html');else await ready(page,'/my-e2.html');
+ await page.goto('/customer.html');await ready(page,'/customer.html');await page.locator('#customerAccount').getByRole('link',{name:'Continue application ↗',exact:true}).click();await expect(page).toHaveURL(url=>url.pathname==='/my-e2.html'&&url.searchParams.get('lang')==='en');if(old)await gated(page,'/my-e2.html');else await ready(page,'/my-e2.html');
  const state=await page.evaluate(()=>window.__customerFixture.snapshot());expect(state.sessions['e2-customer-auth']).toBe(alice);expect(state.calls.filter(x=>/^rpc:e2_(?:start|save|submit)_/.test(x.op))).toEqual([]);
  await page.screenshot({path:testInfo.outputPath('continue-'+(old?'baseline':'fixed')+'.png'),fullPage:true});
 });
