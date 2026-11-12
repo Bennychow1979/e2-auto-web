@@ -170,7 +170,7 @@ test('signout during upload or download prevents stale document UI returning',as
 });
 
 test('login through new draft, save/reload, upload, submit and updated progress',async({page,fixture})=>{
-  await fixture({session:false});await page.goto('/customer.html');await login(page);await expect(page.locator('#customerAccount')).toBeVisible();await page.locator('#customerAccount a[href="my-e2.html"]').click();
+  await fixture({session:false});await page.goto('/customer.html');await login(page);await expect(page.locator('#customerAccount')).toBeVisible();await page.locator('#customerAccount').getByRole('link',{name:'Continue application ↗',exact:true}).click();
   await page.locator('#main [data-page=choose]').click();await page.locator('[data-start]').click();await page.locator('#startForm input[type=checkbox]').check();await page.locator('#startForm [type=submit]').click();
   await expect(page.locator('#loanForm')).toBeVisible();const appId=new URL(page.url()).searchParams.get('application');
   await page.locator('#field_deposit').fill('8000');await page.locator('#field_tenure').selectOption('5 years');await page.locator('#saveDraft').click();await expect(page.locator('#toast')).toContainText('has been saved');await page.reload();await expect(page.locator('#field_deposit')).toHaveValue('8000');
