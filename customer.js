@@ -1,3 +1,4 @@
+import {ct} from './customer-language.mjs';
 import {takeLoan} from './loan-intent.js';
 import {pendingSave} from './saved-intent.js';
 import {customerDB as db,check,fields} from './customer-data.js?v=customer-1';
@@ -9,8 +10,8 @@ const sessionIdentity=createSessionIdentity();
 try{recovery=sessionStorage.getItem('e2-customer-recovery')==='1'}catch{}
 let emailWait=0;try{const n=Number(sessionStorage.getItem('e2-customer-email-wait'));if(n>Date.now()&&n<Date.now()+61000)emailWait=n}catch{}
 const redirect=()=>new URL('customer.html',location.href).href;
-function note(id,text,bad=false){$(id).textContent=text;$(id).classList.toggle('error',bad)}
-function mailControls(){const left=Math.max(0,Math.ceil((emailWait-Date.now())/1000));$('customerForgot').disabled=busy||left>0;$('customerResend').disabled=busy||left>0;$('customerResend').textContent=left?'Try again in '+left+'s':'Resend confirmation';register.querySelector('[type=submit]').disabled=busy||left>0}
+function note(id,text,bad=false){$(id).textContent=ct(text);$(id).classList.toggle('error',bad)}
+function mailControls(){const left=Math.max(0,Math.ceil((emailWait-Date.now())/1000));$('customerForgot').disabled=busy||left>0;$('customerResend').disabled=busy||left>0;$('customerResend').textContent=left?ct('Try again in {seconds}s',{seconds:left}):ct('Resend confirmation');register.querySelector('[type=submit]').disabled=busy||left>0}
 function lock(value){busy=value;document.querySelectorAll('form input,form select,form button,#showSignIn,#showRegister,#customerSignOut').forEach(el=>el.disabled=value);mailControls()}
 function waitForMail(){emailWait=Date.now()+60000;try{sessionStorage.setItem('e2-customer-email-wait',String(emailWait))}catch{}mailControls()}
 setInterval(mailControls,1000);
@@ -56,8 +57,8 @@ $('customerForgot').onclick=()=>requestEmail('reset');$('customerResend').onclic
 $('customerPassword').onsubmit=async event=>{event.preventDefault();if(busy)return;const form=event.currentTarget;if(form.elements.password.value!==form.elements.confirm.value){note('customerRecoveryMessage','The passwords do not match.',true);return}lock(true);try{check(await db.auth.updateUser({password:form.elements.password.value}));form.reset();clearRecovery();check(await db.auth.signOut({scope:'local'}));gate();note('customerAuthMessage','Password saved. Sign in with your new password.')}catch{note('customerRecoveryMessage','Could not save your password. Request a new reset email and try again.',true)}finally{lock(false)}};
 profile.oninput=()=>{dirty=true};
 profile.onsubmit=async event=>{event.preventDefault();if(busy||!user)return;const run=epoch;lock(true);try{const details=Object.fromEntries(fields.map(k=>[k,profile.elements[k].value.trim()]));details.phone=normalizeWhatsApp(details.phone);const data=check(await db.rpc('e2_save_customer_profile',{details,expected_revision:saved?.revision||0,accept_privacy:profile.elements.privacy.checked}));if(run!==epoch)return;saved=Array.isArray(data)?data[0]:data;fillProfile();note('customerProfileMessage','Your details have been saved.')}catch(e){if(run===epoch)note('customerProfileMessage',e.code==='23514'?'Check your name, phone number and budget range.':e.message||'Could not save your details.',true)}finally{lock(false)}};
-$('reloadCustomer').onclick=async()=>{if(busy||(dirty&&!confirm('Discard unsaved changes and reload?')))return;lock(true);try{await hydrate(check(await db.auth.getSession()).session)}finally{lock(false)}};
-$('customerSignOut').onclick=async()=>{if(busy||(dirty&&!confirm('Discard unsaved changes and sign out?')))return;lock(true);try{check(await db.auth.signOut({scope:'local'}));clearRecovery();gate()}catch{note('customerProfileMessage','Could not sign out. Please try again.',true)}finally{lock(false)}};
+$('reloadCustomer').onclick=async()=>{if(busy||(dirty&&!confirm(ct('Discard unsaved changes and reload?'))))return;lock(true);try{await hydrate(check(await db.auth.getSession()).session)}finally{lock(false)}};
+$('customerSignOut').onclick=async()=>{if(busy||(dirty&&!confirm(ct('Discard unsaved changes and sign out?'))))return;lock(true);try{check(await db.auth.signOut({scope:'local'}));clearRecovery();gate()}catch{note('customerProfileMessage','Could not sign out. Please try again.',true)}finally{lock(false)}};
 window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue=''}});
 if(!db){lock(true);note('customerAuthMessage','Customer accounts are being prepared. Please try again later.',true)}else{
  // Track session identity before profile hydration completes. A different login

@@ -6,3 +6,5 @@ function update(){for(const link of links){
   link.setAttribute('aria-current',lang===language?'page':'false');
 }}
 update();window.addEventListener('hashchange',update);
+
+try{localStorage.setItem('e2-customer-language',language)}catch{}

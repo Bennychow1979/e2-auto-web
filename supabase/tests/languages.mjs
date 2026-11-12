@@ -53,7 +53,7 @@ for(const lang of ['ms','zh']){
   const html=localizedPage(readFileSync(new URL(file,root),'utf8'),file,lang);
   assert(html.includes('lang="'+(lang==='zh'?'zh-Hans':'ms')+'"'));
   assert(html.includes('src="../'+(file==='car.html'?'car':'showroom')+'.js?'));
-  assert(html.includes('href="../customer.html"'));
+  assert(html.includes('href="../customer.html?lang='+lang+'"'));
   assert(html.includes('aria-current="page">'+(lang==='ms'?'BM':'华语')+'</a>'));
   if(file==='car.html'){
    assert(html.includes('<option value="Morning">'+t('Morning',{},lang)+'</option>'));
