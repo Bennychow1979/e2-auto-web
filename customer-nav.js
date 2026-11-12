@@ -1,3 +1,4 @@
+import {accountURL} from './customer-language.mjs';
 import {t,language} from './i18n.mjs';
 import {customerDB as db,check} from './customer-data.js?v=customer-1';
 
@@ -9,7 +10,7 @@ function paint(name=null){
  for(const link of links){
   const label=link.querySelector('span');
   if(label)label.textContent=name||t('Sign in');
-  link.href='/customer.html';
+  link.href=accountURL('/customer.html',language);
   link.setAttribute('aria-label',name?t('Open profile for {name}',{name}):t('Sign in to your E2 account'));
   link.title=name?'E2 · '+name:t('Sign in');
  }
@@ -17,7 +18,7 @@ function paint(name=null){
   const {link}=original;
   link.classList.toggle('navFavourite',!!name);
   if(name){
-   link.href='/saved.html';
+   link.href=accountURL('/saved.html',language);
    link.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg><span></span>';
    link.querySelector('span').textContent=favouriteLabel;
    link.setAttribute('aria-label',favouriteLabel);link.title=t('Saved cars');

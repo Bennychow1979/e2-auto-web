@@ -35,6 +35,7 @@ export function localizedPage(source,file,lang){
    if(url.searchParams.has('text'))url.searchParams.set('text',t(url.searchParams.get('text'),{},lang));
    return attr+'="'+escapeHTML(url.href)+'"';
   }
+  if(attr==='href' && /^\/?(customer|saved)\.html(?:[?#]|$)/.test(value)){const url=new URL(value.replace(/&amp;/g,'&'),'https://e2auto.my/');url.searchParams.set('lang',lang);return attr+'="..'+escapeHTML(url.pathname+url.search+url.hash)+'"';}
   if(/^(?:[a-z]+:|\/)/i.test(value))return whole;
   const path=value.split(/[?#]/)[0];
   if(attr==='href' && publicPageNames.has(path))return attr+'="'+value+'"';

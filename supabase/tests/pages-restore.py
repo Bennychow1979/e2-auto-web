@@ -1,5 +1,6 @@
 """Local checks for the fixed Pages rollback, without network or deployment."""
 import importlib.util
+import hashlib
 from pathlib import Path
 import tempfile
 import unittest
@@ -19,7 +20,9 @@ class RestoreTests(unittest.TestCase):
             self.assertEqual(result['restoredTreeSHA256'], 'c82dd669144b93a6bb0c89da303faa8f0a9cff5d745c89f61e9e2993c6330f2b')
             self.assertFalse(result['rebuilt'])
             self.assertFalse(result['deployed'])
-            for name in ['customer.js', 'customer-session.mjs', 'my-e2.js', 'car-detail-demo.css']:
+            # Verify the frozen recovery copy independently of current UI translations.
+            self.assertEqual(hashlib.sha256((out / 'customer.js').read_bytes()).hexdigest(), 'cc62c21f11b8fcd7508df89c76cfb9638a8336ce745f6f1a9221103fbf3b21bc')
+            for name in ['customer-session.mjs', 'my-e2.js', 'car-detail-demo.css']:
                 self.assertEqual((out / name).read_bytes(), (ROOT / name).read_bytes())
 
     def test_existing_output_is_never_overwritten(self):
