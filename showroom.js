@@ -3,11 +3,13 @@ import {t,localizedMileage as mileageText} from './i18n.mjs';
 import {showroomVehicleLinks,showroomContactAction} from './showroom-referral.mjs?v=contact-1';
 import {createShowroomFlow} from './showroom-flow.js?v=languages-1';
 import {esc,rm,getVehicles,photoURLs,friendlyError} from './e2-data.js?v=drive-2';
+import {budgets,matchesBudget} from './vehicle-discovery.mjs';
 import {emptyFilters,readPreferences,savePreferences,sortedCars} from './showroom-preferences.mjs';
 import {setupShowroomSave} from './showroom-save.js?v=1';
 const $=id=>document.getElementById(id), blank=emptyFilters;
 let preferenceStorage;try{preferenceStorage=window.sessionStorage}catch{}
 const saved=readPreferences(preferenceStorage);
+if(saved.filters.budget&&!budgets.some(b=>b.slug===saved.filters.budget))saved.filters.budget='';
 const paintFavourites=setupShowroomSave();
 // Keep layout independent of search/filter preferences, including language changes.
 let view='list';
@@ -41,8 +43,8 @@ if(vehicleHref.hasReferral){
 let cars=[],state=saved.filters,draft={...state},sort=saved.sort;
 const advanced=['brand','model','variant','engine','yearFrom','yearTo','transmission'];
 const normalize=s=>String(s).toLowerCase().replace(/\s/g,'');
-const matches=(c,s)=>(!s.q||normalize(c.brand+c.model+c.variant+c.plate).includes(normalize(s.q)))&&(!s.budget||Number(c.price)<Number(s.budget))&&(!s.body||c.body_type===s.body)&&(!s.brand||c.brand===s.brand)&&(!s.model||c.model===s.model)&&(!s.variant||c.variant===s.variant)&&(!s.engine||Number(c.engine_litres)===Number(s.engine))&&(!s.yearFrom||c.year>=Number(s.yearFrom))&&(!s.yearTo||c.year<=Number(s.yearTo))&&(!s.transmission||c.transmission===s.transmission);
-function chipText(k,v){return ({q:t('Search: {value}',{value:v}),budget:t('Under {value}',{value:rm(v)}),body:t(v),brand:v,model:t('Model: {value}',{value:v}),variant:t('Spec: {value}',{value:v}),engine:v+' L',yearFrom:t('From {value}',{value:v}),yearTo:t('To {value}',{value:v}),transmission:t(v)})[k]}
+const matches=(c,s)=>(!s.q||normalize(c.brand+c.model+c.variant+c.plate).includes(normalize(s.q)))&&matchesBudget(c.price,s.budget)&&(!s.body||c.body_type===s.body)&&(!s.brand||c.brand===s.brand)&&(!s.model||c.model===s.model)&&(!s.variant||c.variant===s.variant)&&(!s.engine||Number(c.engine_litres)===Number(s.engine))&&(!s.yearFrom||c.year>=Number(s.yearFrom))&&(!s.yearTo||c.year<=Number(s.yearTo))&&(!s.transmission||c.transmission===s.transmission);
+function chipText(k,v){return ({q:t('Search: {value}',{value:v}),budget:t(budgets.find(b=>b.slug===v)?.label||'Any price'),body:t(v),brand:v,model:t('Model: {value}',{value:v}),variant:t('Spec: {value}',{value:v}),engine:v+' L',yearFrom:t('From {value}',{value:v}),yearTo:t('To {value}',{value:v}),transmission:t(v)})[k]}
 function render(){
   const found=sortedCars(cars.filter(c=>matches(c,state)),sort);
   savePreferences(preferenceStorage,state,sort);
@@ -85,7 +87,7 @@ async function load(){
     $('publicState').hidden=!!cars.length;$('publicState').textContent=cars.length?'':t('New vehicles are being prepared. Contact E2 for current availability.');
     $('galleryTrack').innerHTML=cars.slice(0,8).map((c,i)=>'<a class="galleryCard" href="'+esc(vehicleHref(c.id))+'"><span class="cardTop"><span>'+String(i+1).padStart(2,'0')+' / '+esc(c.brand)+'</span><span class="sampleTag">'+esc(t(c.stock_status))+'</span></span><span class="photo">'+(c.cover?'<img src="'+esc(c.cover)+'" alt="'+esc(c.brand+' '+c.model)+'" '+(i?'loading="lazy"':'fetchpriority="high"')+'>':'<span class="noPhoto">'+esc(t('Photo unavailable'))+'</span>')+'</span><span class="cardCaption"><span><span class="cardYear">'+esc([c.year,c.variant].filter(Boolean).join(' · '))+'</span><strong>'+esc(c.brand+' '+c.model)+'</strong>'+benefitsHTML(c)+'</span><span class="samplePrice">'+rm(c.price)+'<small>'+esc(t('View this car ↗'))+'</small></span></span></a>').join('');
     galleryFlow.refresh();
-    options('brandFilter',cars.map(c=>c.brand),'All brands');options('bodyFilter',cars.map(c=>c.body_type),'All types');options('yearFrom',cars.map(c=>c.year),'Any year');options('yearTo',cars.map(c=>c.year),'Any year');options('transmissionFilter',cars.map(c=>c.transmission),'Any transmission');options('engineFilter',cars.map(c=>c.engine_litres===null||c.engine_litres===undefined?'':Number(c.engine_litres).toFixed(1)),'Any engine size');draft={...state};loadDraft();sync();render();shownSignature=cars.every(c=>!c.photos.length||c.cover)?signature:'';
+    options('brandFilter',cars.map(c=>c.brand),'All brands');options('bodyFilter',['Sedan','Hatchback','SUV','MPV','Pickup'],'All types');options('yearFrom',cars.map(c=>c.year),'Any year');options('yearTo',cars.map(c=>c.year),'Any year');options('transmissionFilter',cars.map(c=>c.transmission),'Any transmission');options('engineFilter',cars.map(c=>c.engine_litres===null||c.engine_litres===undefined?'':Number(c.engine_litres).toFixed(1)),'Any engine size');draft={...state};loadDraft();sync();render();shownSignature=cars.every(c=>!c.photos.length||c.cover)?signature:'';
   }catch(error){shownSignature='';document.querySelectorAll('.vehicleBenefits').forEach(node=>node.remove());$('publicState').hidden=false;$('publicState').textContent=t(friendlyError(error));$('resultCount').textContent=t('Inventory temporarily unavailable');$('emptyResults').hidden=true;document.querySelector('.galleryControls').hidden=true;}
 }
 await load();

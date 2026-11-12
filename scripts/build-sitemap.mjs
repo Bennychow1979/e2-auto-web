@@ -3,10 +3,11 @@ import {runInNewContext} from 'node:vm';
 import {pathToFileURL} from 'node:url';
 import {SITE_URL, validVehicleId, canonicalVehicleURL} from '../vehicle-seo.mjs';
 import {LANGUAGES,languageTags} from '../i18n.mjs';
+import {categoryPath} from '../vehicle-discovery.mjs';
 
 const escapeXML = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 
-export function renderSitemap(rows,{staticPages=false,slugs,includeSold=true}={}) {
+export function renderSitemap(rows,{staticPages=false,slugs,includeSold=true,categories=[]}={}) {
   const seen = new Set();
   const alternatives = urls => [...LANGUAGES.map(lang=>'<xhtml:link rel="alternate" hreflang="'+languageTags[lang]+'" href="'+escapeXML(urls[lang])+'"/>'),'<xhtml:link rel="alternate" hreflang="x-default" href="'+escapeXML(urls.en)+'"/>'].join('');
   const homes=Object.fromEntries(LANGUAGES.map(lang=>[lang,SITE_URL+(lang==='en'?'':lang+'/')]));
@@ -29,6 +30,7 @@ export function renderSitemap(rows,{staticPages=false,slugs,includeSold=true}={}
     const urls=Object.fromEntries(LANGUAGES.map(lang=>[lang,canonicalVehicleURL(row.id,lang,{staticPages,slugs})]));
     for(const lang of LANGUAGES)entries.push('  <url><loc>'+escapeXML(urls[lang])+'</loc>'+lastmod+alternatives(urls)+'</url>');
   }
+  for(const category of categories){const urls=Object.fromEntries(LANGUAGES.map(lang=>[lang,new URL(categoryPath(category.slug,lang),SITE_URL).href]));for(const lang of LANGUAGES)entries.push('  <url><loc>'+escapeXML(urls[lang])+'</loc>'+alternatives(urls)+'</url>');}
   if (entries.length > 50000) throw new Error('Inventory needs a sitemap index before deployment.');
   return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' + entries.join('\n') + '\n</urlset>\n';
 }

@@ -3,6 +3,17 @@
 import {bookingTranslations} from './booking-translations.mjs';
 import {salesTeamTranslations} from './sales-team-translations.mjs';
 export const translations = {
+  'Used Cars in Batu Caves, KL & Selangor':['Kereta Terpakai di Batu Caves, KL & Selangor','Batu Caves 二手车｜吉隆坡 雪兰莪'],
+  'Elevate Your Drive, Elevate Your Dreams':['Pemanduan Lebih Hebat, Impian Lebih Tinggi','驾驭更好，梦想更远'],
+  'Under RM30,000':['Bawah RM30,000','RM30,000 以下'],
+  'RM30,000–50,000':['RM30,000–50,000','RM30,000–50,000'],
+  'RM50,000–80,000':['RM50,000–80,000','RM50,000–80,000'],
+  'RM80,000 and above':['RM80,000 dan ke atas','RM80,000 及以上'],
+  'Opening hours':['Waktu operasi','营业时间'],
+  'Monday–Saturday: 9:30am–6:30pm':['Isnin–Sabtu: 9:30 pagi–6:30 petang','周一至周六：9:30am–6:30pm'],
+  'Sunday: 10am–5pm':['Ahad: 10 pagi–5 petang','周日：10am–5pm'],
+  'Available cars of the same model or a similar price':['Kereta tersedia dengan model sama atau harga hampir sama','同款／相近价位的在售车'],
+
   'Save {car} as favourite':['Simpan {car} sebagai kegemaran','收藏 {car}'],
   'Remove {car} from favourites':['Buang {car} daripada kegemaran','取消收藏 {car}'],
   'Save your favourite cars':['Simpan kereta kegemaran anda','收藏你喜欢的车辆'],

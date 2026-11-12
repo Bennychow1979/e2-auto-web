@@ -1,3 +1,5 @@
+import {vehiclePath} from './vehicle-routes.mjs';
+import {customerLanguage} from './customer-language.mjs?v=flow-20261113';
 import {db,customer,savedRows,setSaved} from './saved-data.js';
 import {pendingSave,clearSave} from './saved-intent.js';
 import {getVehicles,coverURL,esc,rm} from './e2-data.js';
@@ -7,7 +9,7 @@ const $=id=>document.getElementById(id);let epoch=0,busy=false;
 function savedCard(row,c){
  const name=c?c.brand+' '+c.model:ct('unavailable vehicle');
  const details=c?'<p>'+ct('PLATE')+' · '+esc(c.plate)+'</p><p class="price">'+rm(c.price)+'</p>':'';
- const link=c?'<a href="'+esc(accountURL('car.html?id='+encodeURIComponent(c.id)))+'">'+ct('View car ↗')+'</a>':'<a href="'+esc(accountURL('showroom.html#cars'))+'">'+ct('Explore cars ↗')+'</a>';
+ const link=c?'<a href="'+esc(accountURL(vehiclePath(c.id,customerLanguage)))+'">'+ct('View car ↗')+'</a>':'<a href="'+esc(accountURL('showroom.html#cars'))+'">'+ct('Explore cars ↗')+'</a>';
  return '<article class="savedCard"><div class="savedImage" data-cover="'+row.vehicle_id+'">'+ct(c?'Photo unavailable':'No longer listed')+'</div><div class="savedDetails"><span class="savedStatus">'+esc(ct(c?.stock_status||'Unavailable'))+'</span><h3>'+esc(c?name:ct('Vehicle no longer listed'))+'</h3><p>'+esc(c?[c.year,c.variant].filter(Boolean).join(' · '):ct('This vehicle is no longer on the public showroom.'))+'</p>'+details+'<div class="savedActions">'+link+'<button class="quiet" data-remove="'+row.vehicle_id+'" aria-label="'+esc(ct('Remove {car} from saved cars',{car:name}))+'">'+ct('Remove')+'</button></div></div></article>';
 }
 function gate(){epoch++;$('savedGrid').replaceChildren();$('savedAccount').hidden=true;$('savedGate').hidden=false}
