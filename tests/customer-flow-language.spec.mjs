@@ -45,7 +45,7 @@ test('guest invitation and full privacy notices follow the selected language',as
  await page.goto(`/intake.html?invite=${applicationId}&lang=zh`);
  await expect(page.locator('.intakeHead h1')).toContainText('更简单的第一步。');
  await expect(page.locator('.customerLanguages a[lang="ms"]')).toHaveAttribute('href',new RegExp(`lang=ms&invite=${applicationId}`));
- await page.locator('#guestStep').selectOption('6');
+ await page.getByRole('button',{name:'上传文件 ↗',exact:true}).click();
  await expect(page.locator('#kind')).toBeVisible();
  await expect(page.getByRole('button',{name:'提交给我的销售员 →',exact:true})).toBeVisible();
  for(const [file,heading]of [['loan-privacy','你的贷款申请资料。'],['customer-privacy','顾客隐私说明。'],['intake-privacy','你的资料。谨慎处理。']]){
