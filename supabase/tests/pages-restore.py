@@ -22,7 +22,8 @@ class RestoreTests(unittest.TestCase):
             self.assertFalse(result['deployed'])
             # Verify the frozen recovery copy independently of current UI translations.
             self.assertEqual(hashlib.sha256((out / 'customer.js').read_bytes()).hexdigest(), 'cc62c21f11b8fcd7508df89c76cfb9638a8336ce745f6f1a9221103fbf3b21bc')
-            for name in ['customer-session.mjs', 'my-e2.js', 'car-detail-demo.css']:
+            self.assertEqual(hashlib.sha256((out / 'my-e2.js').read_bytes()).hexdigest(), '20203e9d0ab2544f902041547c33161f02e86337c275275067eb81da844e5356')
+            for name in ['customer-session.mjs', 'car-detail-demo.css']:
                 self.assertEqual((out / name).read_bytes(), (ROOT / name).read_bytes())
 
     def test_existing_output_is_never_overwritten(self):

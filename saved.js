@@ -1,7 +1,7 @@
 import {db,customer,savedRows,setSaved} from './saved-data.js';
 import {pendingSave,clearSave} from './saved-intent.js';
 import {getVehicles,coverURL,esc,rm} from './e2-data.js';
-import {ct,accountURL,setupCustomerLanguage} from './customer-language.mjs';
+import {ct,accountURL,setupCustomerLanguage} from './customer-language.mjs?v=flow-20261113';
 setupCustomerLanguage();
 const $=id=>document.getElementById(id);let epoch=0,busy=false;
 function savedCard(row,c){

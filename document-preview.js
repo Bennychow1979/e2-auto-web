@@ -14,7 +14,7 @@ async function loadPDFLibrary() {
   return pdfjs;
 }
 
-export function createDocumentPreview({dialog, title, content, closeButton, download, isCurrent = () => true}) {
+export function createDocumentPreview({dialog, title, content, closeButton, download, isCurrent = () => true, translate = (text,values={}) => text.replace(/\{(\w+)\}/g,(m,k)=>values[k]??m)}) {
   let active = null;
   dialog.classList.add('documentPreview');
   content.classList.add('documentPreviewContent');
@@ -33,7 +33,7 @@ export function createDocumentPreview({dialog, title, content, closeButton, down
     content.querySelectorAll('canvas').forEach(canvas => { canvas.width = canvas.height = 1; });
     content.replaceChildren();
     content.removeAttribute('aria-busy');
-    title.textContent = 'Document preview';
+    title.textContent = translate('Document preview');
   }
 
   function close() {
@@ -58,7 +58,7 @@ export function createDocumentPreview({dialog, title, content, closeButton, down
     status.className = 'documentPreviewStatus';
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
-    status.textContent = 'Loading document…';
+    status.textContent = translate('Loading document…');
     const actions = document.createElement('div');
     actions.className = 'documentPreviewActions';
     const pages = document.createElement('div');
@@ -79,20 +79,20 @@ export function createDocumentPreview({dialog, title, content, closeButton, down
       link.className = 'secondary';
       link.href = state.url;
       link.download = file.filename;
-      link.textContent = 'Download file';
+      link.textContent = translate('Download file');
       actions.append(link);
       hasDownload = true;
       if (mime !== 'application/pdf') {
         const img = document.createElement('img');
-        img.alt = 'Uploaded document: ' + file.filename;
-        img.onload = () => { if (current()) { status.textContent = 'Document preview'; content.removeAttribute('aria-busy'); } };
-        img.onerror = () => { if (current()) { status.textContent = 'Preview unavailable. Download this file to open it on your device.'; content.removeAttribute('aria-busy'); } };
+        img.alt = translate('Uploaded document: {name}',{name:file.filename});
+        img.onload = () => { if (current()) { status.textContent = translate('Document preview'); content.removeAttribute('aria-busy'); } };
+        img.onerror = () => { if (current()) { status.textContent = translate('Preview unavailable. Download this file to open it on your device.'); content.removeAttribute('aria-busy'); } };
         img.src = state.url;
         pages.append(img);
         return;
       }
 
-      status.textContent = 'Loading PDF preview…';
+      status.textContent = translate('Loading PDF preview…');
       const [pdfjs, buffer] = await Promise.all([loadPDFLibrary(), blob.arrayBuffer()]);
       if (!current()) return;
       state.loadingTask = pdfjs.getDocument({
@@ -111,16 +111,16 @@ export function createDocumentPreview({dialog, title, content, closeButton, down
       const previous = document.createElement('button');
       previous.type = 'button';
       previous.className = 'secondary documentPreviewPrevious';
-      previous.textContent = 'Previous page';
+      previous.textContent = translate('Previous page');
       const next = document.createElement('button');
       next.type = 'button';
       next.className = 'secondary documentPreviewNext';
-      next.textContent = 'Next page';
+      next.textContent = translate('Next page');
       actions.prepend(previous, next);
       const textDetails = document.createElement('details');
       textDetails.className = 'documentPreviewText';
       const summary = document.createElement('summary');
-      summary.textContent = 'Page text';
+      summary.textContent = translate('Page text');
       const pageText = document.createElement('p');
       textDetails.append(summary, pageText);
       content.append(textDetails);
@@ -131,7 +131,7 @@ export function createDocumentPreview({dialog, title, content, closeButton, down
         state.renderTask?.cancel();
         const rendering = () => current() && renderId === state.renderId;
         previous.disabled = next.disabled = true;
-        status.textContent = `Loading page ${pageNumber} of ${pdf.numPages}…`;
+        status.textContent = translate('Loading page {page} of {total}…',{page:pageNumber,total:pdf.numPages});
         content.setAttribute('aria-busy', 'true');
         textDetails.hidden = true;
         let page;
@@ -148,23 +148,23 @@ export function createDocumentPreview({dialog, title, content, closeButton, down
           canvas.height = Math.max(1, Math.floor(viewport.height * resolution));
           canvas.style.width = '100%';
           canvas.setAttribute('role', 'img');
-          canvas.setAttribute('aria-label', `Page ${pageNumber} of ${pdf.numPages} of ${file.filename}. Expand Page text or download for an accessible copy.`);
+          canvas.setAttribute('aria-label', translate('Page {page} of {total} of {name}. Expand Page text or download for an accessible copy.',{page:pageNumber,total:pdf.numPages,name:file.filename}));
           pages.querySelectorAll('canvas').forEach(old => { old.width = old.height = 1; });
           pages.replaceChildren(canvas);
           state.renderTask = page.render({canvasContext: canvas.getContext('2d'), viewport, transform: [resolution, 0, 0, resolution, 0, 0]});
           await state.renderTask.promise;
           if (!rendering()) return;
-          status.textContent = `Page ${pageNumber} of ${pdf.numPages}`;
+          status.textContent = translate('Page {page} of {total}',{page:pageNumber,total:pdf.numPages});
           previous.disabled = pageNumber === 1;
           next.disabled = pageNumber === pdf.numPages;
           content.removeAttribute('aria-busy');
           const text = await page.getTextContent();
           if (!rendering()) return;
-          pageText.textContent = text.items.map(item => item.str + (item.hasEOL ? '\n' : ' ')).join('') || 'This page is scanned or has no extractable text. Download it to use your device’s accessibility tools.';
+          pageText.textContent = text.items.map(item => item.str + (item.hasEOL ? '\n' : ' ')).join('') || translate('This page is scanned or has no extractable text. Download it to use your device’s accessibility tools.');
           textDetails.hidden = false;
         } catch (error) {
           if (!rendering()) return;
-          status.textContent = 'This page could not be previewed. Download the file to open it on your device.';
+          status.textContent = translate('This page could not be previewed. Download the file to open it on your device.');
           previous.disabled = pageNumber === 1;
           next.disabled = pageNumber === pdf.numPages;
           content.removeAttribute('aria-busy');
@@ -188,8 +188,8 @@ export function createDocumentPreview({dialog, title, content, closeButton, down
     } catch (error) {
       if (!current()) return;
       status.textContent = hasDownload
-        ? 'PDF preview unavailable. The file may be protected or damaged. Download it to open it on your device.'
-        : 'Could not load this document. Close this preview and try again. If access has changed, sign in again.';
+        ? translate('PDF preview unavailable. The file may be protected or damaged. Download it to open it on your device.')
+        : translate('Could not load this document. Close this preview and try again. If access has changed, sign in again.');
       content.removeAttribute('aria-busy');
     }
   }

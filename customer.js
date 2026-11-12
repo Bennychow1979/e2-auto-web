@@ -1,5 +1,5 @@
-import {ct} from './customer-language.mjs';
-import {takeLoan} from './loan-intent.js';
+import {ct,accountURL} from './customer-language.mjs?v=flow-20261113';
+import {takeLoan} from './loan-intent.js?v=flow-20261113';
 import {pendingSave} from './saved-intent.js';
 import {customerDB as db,check,fields} from './customer-data.js?v=customer-1';
 import {normalizeWhatsApp} from './profile-utils.js';
@@ -31,8 +31,8 @@ async function hydrate(session){
       const initial={full_name:user.user_metadata.full_name,phone:user.user_metadata.phone};
       try{const created=check(await db.rpc('e2_save_customer_profile',{details:initial,expected_revision:0,accept_privacy:true}));if(run!==epoch)return;saved=Array.isArray(created)?created[0]:created}catch{if(run!==epoch)return}
     }
-    const loanReturn=takeLoan();if(loanReturn){location.replace(loanReturn);return}
-    if(pendingSave()){location.replace('saved.html');return}
+    const loanReturn=takeLoan();if(loanReturn){location.replace(accountURL(loanReturn));return}
+    if(pendingSave()){location.replace(accountURL('saved.html'));return}
     fillProfile();$('customerAuth').hidden=true;$('customerRecovery').hidden=true;$('customerAccount').hidden=false;note('customerProfileMessage',saved?'Your saved details are ready.':'Complete your details to finish setting up your customer profile.');
   }catch(error){if(run===epoch){gate();note('customerAuthMessage',error.message||'Could not load your account. Please try again.',true)}}
 }
