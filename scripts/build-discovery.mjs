@@ -1,6 +1,6 @@
 import {escapeHTML as e,LANGUAGES,languageTags,t} from '../i18n.mjs';
 import {vehiclePath} from '../vehicle-routes.mjs';
-import {categoryMatches,categoryPath,relatedAvailable,modelSlug} from '../vehicle-discovery.mjs';
+import {budgets,categoryMatches,categoryPath,relatedAvailable,modelSlug} from '../vehicle-discovery.mjs';
 import {publicVehicleImageURL} from '../vehicle-public-image.mjs';
 const origin='https://e2auto.my',json=v=>JSON.stringify(v).replace(/</g,'\\u003c');
 const money=v=>'RM'+Number(v).toLocaleString('en-MY',{maximumFractionDigits:0});
@@ -21,14 +21,20 @@ export function discoveryCards(rows,lang,slugs,{imageOrigin,imageIDs=new Set(),c
 }
 export function categoryNavigation(categories,lang,{footer=false}={}){
  const c=copy[lang];
- return '<nav class="discoveryNav'+(footer?' discoveryFooter':' wrap')+'" aria-label="'+e(c.browse)+'"><h2>'+e(c.browse)+'</h2>'+['brand','budget','model'].map(kind=>'<details'+(kind==='model'?'':' open')+'><summary>'+e(c[{brand:'brands',model:'models',budget:'budget'}[kind]])+'</summary><div>'+categories.filter(v=>v.kind===kind).map(v=>'<a href="'+categoryPath(v.slug,lang)+'">'+e(v.kind==='budget'?t(v.label,{},lang):v.label)+'</a>').join('\n')+'</div></details>').join('')+'</nav>';
+ const link=v=>'<a href="'+categoryPath(v.slug,lang)+'">'+e(v.kind==='budget'?t(v.label,{},lang):v.label)+'</a>';
+ const budgetLinks=budgets.map(b=>categories.find(v=>v.kind==='budget'&&v.slug===b.slug)).filter(Boolean);
+ if(footer){
+  const brands=['honda','toyota','proton','perodua'].map(slug=>categories.find(v=>v.kind==='brand'&&v.slug===slug)).filter(Boolean);
+  return '<nav class="discoveryFooter" aria-label="'+e(c.browse)+'">'+[...brands,...budgetLinks].map(link).join('\n')+'</nav>';
+ }
+ return '<nav class="discoveryNav" aria-label="'+e(c.browse)+'"><h2>'+e(c.browse)+'</h2><div class="discoveryGroups">'+['brand','budget','model'].map(kind=>'<details><summary>'+e(c[{brand:'brands',model:'models',budget:'budget'}[kind]])+'</summary><div>'+(kind==='budget'?budgetLinks:categories.filter(v=>v.kind===kind)).map(link).join('\n')+'</div></details>').join('')+'</div></nav>';
 }
 export function renderListing(template,rows,lang,slugs,categories,options={}){
  const available=rows.filter(v=>v.stock_status==='Available');
  return template.replace('<div id="filterResults"></div>',()=>'<div id="filterResults">\n'+discoveryCards(available,lang,slugs,options)+'\n</div>')
   .replace(/(<div id="publicState"[^>]*>)[^<]*<\/div>/,(_,open)=>open+e(copy[lang].updated)+'</div>')
   .replace(/(<p id="resultCount"[^>]*>)[\s\S]*?<\/p>/,(_,open)=>open+e(t('{count} cars to explore',{count:available.length},lang))+'</p>')
-  .replace('</main>',()=>categoryNavigation(categories,lang)+'</main>')
+  .replace('<form class="searchToolbar"',()=>categoryNavigation(categories,lang)+'<form class="searchToolbar"')
   .replace('</footer>',()=>categoryNavigation(categories,lang,{footer:true})+'</footer>');
 }
 export function categoryMetadata(category,lang){
@@ -44,7 +50,7 @@ export function renderCategory(category,rows,lang,slugs,categories,options={}){
  const related=matches.length?[]:relatedAvailable(comparable,rows,6);
  const message=({en:'Hi E2 Auto, I am looking for ',ms:'Hai E2 Auto, saya mencari ',zh:'你好 E2 Auto，我想询问 '}[lang])+meta.h1;
  const breadcrumbs={'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'E2 Auto',item:origin+home(lang)},{'@type':'ListItem',position:2,name:meta.h1,item:origin+path}]};
- return '<!doctype html><html lang="'+(lang==='zh'?'zh-Hans':lang)+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+e(meta.title)+'</title><meta name="description" content="'+e(meta.description)+'"><link rel="canonical" href="'+origin+path+'">'+LANGUAGES.concat('x-default').map(l=>'<link rel="alternate" hreflang="'+(languageTags[l]||l)+'" href="'+origin+categoryPath(category.slug,l==='x-default'?'en':l)+'">').join('')+'<link rel="stylesheet" href="/discovery.css?v=seo-20261113"><script type="application/ld+json">'+json(breadcrumbs)+'</script></head><body class="categoryPage"><header><a href="'+home(lang)+'">E2 AUTO</a><nav aria-label="Language">'+LANGUAGES.map(l=>'<a lang="'+(l==='zh'?'zh-Hans':l)+'" href="'+categoryPath(category.slug,l)+'"'+(l===lang?' aria-current="page"':'')+'>'+({en:'EN',ms:'BM',zh:'华语'}[l])+'</a>').join('')+'</nav></header><main><p><a href="'+home(lang)+'#cars">← '+e(c.all)+'</a></p><h1>'+e(meta.h1)+'</h1><p>'+e(c.intro)+'</p><p>'+e(c.visit)+'</p>'+(matches.length?'<p>'+e(t('{count} cars to explore',{count:matches.length},lang))+'</p>':'<h2>'+e(c.empty)+'</h2><p>'+e(c.none)+'</p>')+'<p class="categoryActions"><a href="'+home(lang)+'booking.html">'+e(c.book)+'</a><a href="https://wa.me/60122785126?text='+encodeURIComponent(message)+'">WhatsApp · '+e(c.ask)+'</a></p>'+(!matches.length&&related.length?'<h2>'+e(c.related)+'</h2>':'')+'<div class="discoveryGrid">'+discoveryCards(matches.length?matches:related,lang,slugs,{...options,compact:true})+'</div><p>'+e(c.updated)+'</p></main><footer>'+categoryNavigation(categories,lang,{footer:true})+'</footer></body></html>';
+ return '<!doctype html><html lang="'+(lang==='zh'?'zh-Hans':lang)+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+e(meta.title)+'</title><meta name="description" content="'+e(meta.description)+'"><link rel="canonical" href="'+origin+path+'">'+LANGUAGES.concat('x-default').map(l=>'<link rel="alternate" hreflang="'+(languageTags[l]||l)+'" href="'+origin+categoryPath(category.slug,l==='x-default'?'en':l)+'">').join('')+'<link rel="stylesheet" href="/discovery.css?v=nav-20261113"><script type="application/ld+json">'+json(breadcrumbs)+'</script></head><body class="categoryPage"><header><a href="'+home(lang)+'">E2 AUTO</a><nav aria-label="Language">'+LANGUAGES.map(l=>'<a lang="'+(l==='zh'?'zh-Hans':l)+'" href="'+categoryPath(category.slug,l)+'"'+(l===lang?' aria-current="page"':'')+'>'+({en:'EN',ms:'BM',zh:'华语'}[l])+'</a>').join('')+'</nav></header><main><p><a href="'+home(lang)+'#cars">← '+e(c.all)+'</a></p><h1>'+e(meta.h1)+'</h1><p>'+e(c.intro)+'</p><p>'+e(c.visit)+'</p>'+(matches.length?'<p>'+e(t('{count} cars to explore',{count:matches.length},lang))+'</p>':'<h2>'+e(c.empty)+'</h2><p>'+e(c.none)+'</p>')+'<p class="categoryActions"><a href="'+home(lang)+'booking.html">'+e(c.book)+'</a><a href="https://wa.me/60122785126?text='+encodeURIComponent(message)+'">WhatsApp · '+e(c.ask)+'</a></p>'+(!matches.length&&related.length?'<h2>'+e(c.related)+'</h2>':'')+'<div class="discoveryGrid">'+discoveryCards(matches.length?matches:related,lang,slugs,{...options,compact:true})+'</div><p>'+e(c.updated)+'</p></main><footer>'+categoryNavigation(categories,lang,{footer:true})+'</footer></body></html>';
 }
 export function renderRelated(car,rows,lang,slugs,options={}){
  const c=copy[lang];
