@@ -1,3 +1,4 @@
+import {relatedAvailable} from './vehicle-discovery.mjs';
 import {benefitsHTML,benefitDetailsHTML} from './vehicle-benefits.mjs?v=1';
 import {t,language,localizedURL,localizedMileage as mileageText} from './i18n.mjs';
 import {descriptionFor} from './vehicle-translations.mjs';
@@ -7,7 +8,7 @@ import {viewVehicle} from './advertising.js?v=languages-1';
 import {publicContact,enquiryURL,vehicleShareURL,vehiclePageURL,withVehicleLink} from './referral.js?v=car-share-1';
 import {setupCarSharing} from './car-share.js?v=languages-1';
 import {db,check,esc,rm,getVehicles,photoURLs,coverURL,currentPhotoURL,renewPhoto,retryPhotos,friendlyError} from './e2-data.js?v=drive-2';
-import {validVehicleId,applyVehicleMetadata,excludeVehicleFromSearch} from './vehicle-seo.mjs?v=languages-1';
+import {validVehicleId,applyVehicleMetadata,excludeVehicleFromSearch} from './vehicle-seo.mjs?v=seo-20261113';
 import {vehicleIdentity,usesStaticVehiclePages} from './vehicle-routes.mjs';
 import {withDeadline} from './vehicle-loading.mjs';
 import {vehicleCopy} from './vehicle-page-copy.mjs';
@@ -179,9 +180,9 @@ document.documentElement.dataset.inventoryVerified='true';
 document.querySelectorAll('[data-requires-live]').forEach(node=>node.disabled=false);
 refreshPhotos();
 (async()=>{
-const related=(await getVehicles().catch(()=>[])).filter(c=>c.id!==car.id).slice(0,3);
+const related=relatedAvailable(car,await getVehicles().catch(()=>[]));
 $('relatedCars').innerHTML=related.map(c=>'<a class="relatedCard" href="'+esc(vehiclePageURL(location.href,c.id,contact?.user_id))+'"><div class="noPhoto" data-related="'+c.id+'">'+esc(t('Loading photo…'))+'</div><small>'+c.year+' · '+esc(t(c.stock_status))+'</small><h3>'+esc(c.brand+' '+c.model)+'</h3>'+benefitsHTML(c)+'<p>'+rm(c.price)+' <span aria-hidden="true">↗</span></p></a>').join('');
-document.querySelector('.moreCars').hidden=!related.length;
+document.querySelector('.moreCars').hidden=!related.length&&!document.getElementById('discoveryRelated');
 for(const c of related)coverURL(c).then(url=>{const node=document.querySelector('[data-related="'+c.id+'"]');if(url&&node)node.innerHTML='<img src="'+esc(url)+'" alt="'+esc(c.brand+' '+c.model)+'" loading="lazy">'}).catch(()=>{});
 })().catch(()=>{});
 } catch(error) { $('carState').hidden=false;$('carState').textContent=t(friendlyError(error));if(unavailable||(!staticSnapshot&&!verified)){$('carMain').hidden=true;$('carDock').hidden=true;}else if(staticSnapshot&&!verified){$('carState').hidden=true;if($('inventoryNotice'))$('inventoryNotice').textContent=vehicleCopy('offline',language);}

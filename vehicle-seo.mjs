@@ -25,7 +25,7 @@ export function vehicleMetadata(car, {preview = false, lang = 'en',staticPages=f
 
 export function vehicleStructuredData(car,{lang='en',staticPages=true,slugs,imageURL}={}){
  const metadata=vehicleMetadata(car,{lang,staticPages,slugs});if(!metadata)return null;
- const schema={'@context':'https://schema.org','@type':'Car','@id':metadata.canonical+'#vehicle',url:metadata.canonical,name:[car.year,car.brand,car.model,car.variant].filter(Boolean).join(' '),brand:{'@type':'Brand',name:car.brand},model:car.model,vehicleModelDate:String(car.year),vehicleConfiguration:car.variant||undefined};
+ const schema={'@context':'https://schema.org','@type':Number(car.price)>0?['Car','Product']:'Car','@id':metadata.canonical+'#vehicle',url:metadata.canonical,name:[car.year,car.brand,car.model,car.variant].filter(Boolean).join(' '),brand:{'@type':'Brand',name:car.brand},description:metadata.description,itemCondition:'https://schema.org/UsedCondition',model:car.model,vehicleModelDate:String(car.year),vehicleConfiguration:car.variant||undefined};
  if(imageURL)schema.image=[imageURL];
  if(Number.isFinite(Number(car.price))&&Number(car.price)>0)schema.offers={'@type':'Offer',url:metadata.canonical,price:Number(car.price),priceCurrency:'MYR',availability:'https://schema.org/'+({Available:'InStock',Reserved:'OutOfStock',Sold:'SoldOut'}[car.stock_status]||'OutOfStock'),itemCondition:'https://schema.org/UsedCondition',seller:{'@type':'AutoDealer',name:'E2 AUTO SDN BHD',url:SITE_URL}};
  return schema;

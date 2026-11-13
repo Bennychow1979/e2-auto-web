@@ -11,6 +11,8 @@ import {descriptionFor} from '../vehicle-translations.mjs';
 import {enquiryURL,withVehicleLink} from '../referral.js';
 import {renderSitemap} from './build-sitemap.mjs';
 import {renderStock} from './build-stock.mjs';
+import {categoryRegistry,categoryPath,modelSlug} from '../vehicle-discovery.mjs';
+import {renderListing,renderCategory,renderRelated} from './build-discovery.mjs';
 import {inventoryReceipt} from './inventory-refresh-receipt.mjs';
 import {publicVehicleImageURL,probePublicImageGateway} from '../vehicle-public-image.mjs';
 import {stockCopy,stockRequestHTML,stockRequestText} from '../vehicle-stock-display.mjs';
@@ -39,6 +41,7 @@ export function createSlugMap(rows,previous={}){
  return slugs;
 }
 function routeScript(slugs){return '<script id="vehicleRoutes" type="application/json">'+json(slugs)+'</script>';}
+export function legacyRedirectScript(){return `<script id="legacyVehicleRedirect">(function(){var q=new URLSearchParams(location.search);if(q.get('preview')==='1')return;var id=(q.get('id')||'').toLowerCase(),routes=JSON.parse(document.getElementById('vehicleRoutes').textContent),slug=Object.hasOwn(routes,id)?routes[id]:null;if(typeof slug!=='string'||!/^[-a-z0-9]+$/.test(slug))return;var prefix=/^\\/(ms|zh)\\//.exec(location.pathname),path='/'+(prefix?prefix[1]+'/':'')+'cars/'+slug+'/',canonical=document.createElement('link');canonical.rel='canonical';canonical.href='https://e2auto.my'+path;document.head.append(canonical);var target=new URL(path,location.origin);for(var key of ['ref','sales','utm_source','utm_medium','utm_campaign'])if(q.has(key))target.searchParams.set(key,q.get(key));target.hash=location.hash;location.replace(target.href);})();</script>`;}
 async function assertNoLinks(directory){for(const entry of await readdir(directory,{withFileTypes:true})){if(entry.isSymbolicLink())throw Error('Generated output must not contain symbolic links.');if(entry.isDirectory())await assertNoLinks(join(directory,entry.name));}}
 // Explicit small sample acquisition only. No staff session, photo metadata or URLs.
 export async function fetchPublicSample(config,ids,request=fetch){
@@ -79,6 +82,9 @@ export function renderVehiclePage(template,car,lang,fetchedAt,slugs=createSlugMa
  const links=LANGUAGES.concat('x-default').map(l=>'<link id="seo-language-'+l+'" rel="alternate" hreflang="'+(languageTags[l]||l)+'" href="'+canonicalVehicleURL(car.id,l==='x-default'?'en':l,{staticPages:true,slugs})+'">').join('');
  const tags=routeScript(slugs)+'<link rel="canonical" href="'+meta.canonical+'">'+links+Object.entries({'og:title':meta.title,'og:description':meta.description,'og:url':meta.canonical,'og:type':'website',...(imageURL?{'og:image':imageURL}:{})}).map(([key,value])=>'<meta property="'+key+'" content="'+escapeHTML(value)+'">').join('')+'<script id="vehicleStructuredData" type="application/ld+json">'+json(vehicleStructuredData(car,{lang,slugs,imageURL}))+'</script>';
  html=html.replace('</head>',()=>tags+'<style>#inventoryNotice{max-width:1120px;margin:16px auto;padding:12px 20px;color:#625125;background:#f2ead7;font-size:14px;line-height:1.5}html[data-vehicle-snapshot]:not([data-inventory-verified]) #finance,html[data-vehicle-snapshot]:not([data-inventory-verified]) [href="#finance"]{display:none}[hidden]{display:none!important}</style></head>');
+ const modelURL='https://e2auto.my'+categoryPath(modelSlug(car),lang),homeURL='https://e2auto.my/'+(lang==='en'?'':lang+'/');
+ const breadcrumb={'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'E2 Auto',item:homeURL},{'@type':'ListItem',position:2,name:car.brand+' '+car.model,item:modelURL},{'@type':'ListItem',position:3,name:[car.year,car.brand,car.model,car.variant].filter(Boolean).join(' '),item:meta.canonical}]};
+ html=html.replace('</head>',()=>'<script id="vehicleBreadcrumbs" type="application/ld+json">'+json(breadcrumb)+'</script></head>');
  const values={make:car.brand,model:car.model,heroLine:car.variant||'',heroEyebrow:[car.year,t(car.body_type,{},lang),t(car.stock_status,{},lang)].filter(Boolean).join(' · '),heroPrice:money(car.price),heroPlate:t('PLATE · {plate}',{plate:car.plate||''},lang),story:descriptionFor(car.description||'',lang)||t('See the actual vehicle. Ask the questions that matter to you.',{},lang),publicationNote:t(car.stock_status,{},lang),dockModel:car.brand+' '+car.model,dockPrice:money(car.price),photoCount:vehicleCopy('photosLoading',lang)};
  for(const [id,value] of Object.entries(values))html=content(html,id,escapeHTML(value));
  html=html.replace('<h1>',()=>'<h1><span class="srOnly" id="vehicleHeadingYear">'+car.year+' </span>').replace('</h1>',()=>'<span class="srOnly" id="vehicleHeadingVariant"> '+escapeHTML(car.variant||'')+'</span></h1>');
@@ -127,11 +133,18 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  for(const saved of [snapshot.priorSlugs||{},previous.slugs||{}]){createSlugMap([],saved);for(const [id,slug] of Object.entries(saved)){if(registry[id]&&registry[id]!==slug)throw Error('Saved slug identity cannot change.');registry[id]=slug;}}
  const slugs=createSlugMap(rows,registry),publicSlugs=Object.fromEntries(rows.map(car=>[car.id,slugs[car.id]]));
  const stock=renderStock(rows,{slugs,fetchedAt:snapshot.fetchedAt,builtAt:new Date(now).toISOString(),complete:snapshot.kind==='public-complete'&&snapshot.complete===true&&snapshot.expectedCount===rows.length});
- const sitemap=renderSitemap(rows,{staticPages:true,slugs,includeSold});
+ const categories=categoryRegistry(rows,[...(snapshot.priorCategories||[]),...(previous.categories||[])]);
+ const sitemap=renderSitemap(rows,{staticPages:true,slugs,includeSold,categories});
+ const discoveryOptions={imageOrigin:snapshot.publicImageOrigin,imageIDs:new Set(imageCars.map(c=>c.id))};
  const template=await readFile(join(root,'car.html'),'utf8'),pages=[];
- for(const car of rows)for(const lang of LANGUAGES)pages.push({file:vehiclePath(car.id,lang,slugs).slice(1)+'index.html',html:renderVehiclePage(template,car,lang,snapshot.fetchedAt,publicSlugs,{imageOrigin:snapshot.publicImageOrigin,imageAvailable:!!images.get(car.id)?.photoId})});
+ for(const car of rows)for(const lang of LANGUAGES){
+  let html=renderVehiclePage(template,car,lang,snapshot.fetchedAt,publicSlugs,{imageOrigin:snapshot.publicImageOrigin,imageAvailable:!!images.get(car.id)?.photoId});
+  html=html.replace(/<section class="moreCars wrap">[\s\S]*?<\/section>/,()=>renderRelated(car,rows,lang,publicSlugs,discoveryOptions));
+  pages.push({file:vehiclePath(car.id,lang,slugs).slice(1)+'index.html',html});
+ }
  const files=pages.map(p=>p.file),manifest={version:1,kind:snapshot.kind||'local-snapshot',fetchedAt:snapshot.fetchedAt,builtAt:new Date(now).toISOString(),includeSoldInSitemap:includeSold,slugs,files,imageVehicles:imageCars.length,imageGatewayVerified:gatewayVerified,imageGatewayVersion:gatewayVerified?'v2':null,imageGatewayCheck:gatewayVerified?'HEAD':null,releaseArtifact:release,vehicles:rows.map(v=>({id:v.id,updated_at:v.updated_at}))};
  if(snapshot.inventoryRefresh)manifest.inventoryRefresh=inventoryReceipt(snapshot.inventoryRefresh.revision,snapshot.inventoryRefresh.dispatch);
+ manifest.categories=categories;
  manifest.publicationHashes={stock:createHash('sha256').update(stock).digest('hex'),sitemap:createHash('sha256').update(sitemap).digest('hex')};
  // Construct and validate a separate artifact before replacing the previous one.
  // Only the explicit generated output can be renamed; backups are retained.
@@ -146,15 +159,22 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  try{await cp(join(root,'vendor'),join(stage,'vendor'),{recursive:true});}catch(error){if(error.code!=='ENOENT')throw error;}
  for(const lang of LANGUAGES)for(const file of ['index.html','showroom.html','car.html','booking.html','sales-team.html']){
   let html=await readFile(join(root,file),'utf8');if(lang!=='en')html=localizedPage(html,file,lang);html=html.replace('<html ','<html data-vehicle-pages="static-v1" ').replace('<head>',()=>'<head>'+routeScript(publicSlugs));
+  if(['index.html','showroom.html'].includes(file))html=renderListing(html,rows,lang,publicSlugs,categories,discoveryOptions);
+  // Pages has no query-aware HTTP redirect configuration. Resolve known legacy
+  // IDs synchronously before body rendering; preserve referral attribution.
+  if(file==='car.html')html=html.replace(routeScript(publicSlugs),()=>routeScript(publicSlugs)+legacyRedirectScript());
   const destination=join(stage,lang==='en'?'':lang,file);await mkdir(dirname(destination),{recursive:true});await writeFile(destination,html);
  }
  // The number plate page needs no vehicle routes; it only gets its language copies.
+ for(const file of ['saved.html','intake.html']){const html=(await readFile(join(stage,file),'utf8')).replace('<head>',()=>'<head>'+routeScript(publicSlugs));await writeFile(join(stage,file),html);}
  for(const lang of LANGUAGES)if(lang!=='en')await writeFile(join(stage,lang,'plates.html'),localizedPage(await readFile(join(root,'plates.html'),'utf8'),'plates.html',lang));
  for(const page of pages){const file=join(stage,page.file);await mkdir(dirname(file),{recursive:true});await writeFile(file,page.html);}
+ for(const category of categories)for(const lang of LANGUAGES){const destination=join(stage,categoryPath(category.slug,lang).slice(1),'index.html');await mkdir(dirname(destination),{recursive:true});await writeFile(destination,renderCategory(category,rows,lang,publicSlugs,categories,discoveryOptions));}
  for(const file of previous.files||[])if(!files.includes(file))await unlink(join(stage,file)).catch(e=>{if(e.code!=='ENOENT')throw e;});
  await writeFile(join(stage,'sitemap.xml'),sitemap);
  await writeFile(join(stage,'stock.txt'),stock);
  await mkdir(join(stage,'data'),{recursive:true});await writeFile(join(stage,'data/car-slugs.json'),JSON.stringify(slugs,null,2)+'\n');
+ await writeFile(join(stage,'data/seo-categories.json'),JSON.stringify(categories,null,2)+'\n');
  await writeFile(join(stage,'vehicle-pages-manifest.json'),JSON.stringify(manifest,null,2)+'\n');
  for(const page of pages){const html=await readFile(join(stage,page.file),'utf8');if(!html.includes('id="vehicleStructuredData"')||!html.includes('id="heroPrice">RM'))throw Error('Incomplete staged vehicle page.');}
  const backup=stage+'-previous';if(dirname(backup)!==parent)throw Error('Invalid backup path.');
