@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Road Tax Calculator Malaysia 2026 (JPJ Rates) | E2 Auto</title>
+<meta name="description" content="Work out car road tax by engine cc, vehicle class and region — Peninsular Malaysia, Sabah, Sarawak, Langkawi, Labuan. Includes 2026 EV rates by kW.">
+<link rel="canonical" href="https://e2auto.my/roadtax-calculator/">
+<link rel="alternate" hreflang="ms" href="https://e2auto.my/ms/roadtax-calculator/">
+<link rel="alternate" hreflang="en" href="https://e2auto.my/roadtax-calculator/">
+<link rel="alternate" hreflang="zh-Hans" href="https://e2auto.my/zh/roadtax-calculator/">
+<link rel="alternate" hreflang="x-default" href="https://e2auto.my/roadtax-calculator/">
+<!-- E2 ROADTAX CSS START (everything is scoped under .rt) -->
+<style>
+.rt{--ink:#17181a;--mute:#5b6068;--line:#e2dfd8;--bg:#f7f5f0;--card:#fff;--gold:#8a6614;--goldbg:#fbf4e2;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);
+  line-height:1.5;font-size:16px;margin:0;padding:24px 16px 56px}
+.rt *{box-sizing:border-box}
+.rt-wrap{max-width:720px;margin:0 auto}
+.rt-lang{display:flex;gap:6px;justify-content:flex-end;font-size:14px;margin-bottom:12px}
+.rt-lang a{color:var(--mute);text-decoration:none;padding:4px 10px;border-radius:999px}
+.rt-lang a[aria-current]{background:var(--ink);color:#fff}
+.rt h1{font-size:clamp(26px,6vw,36px);line-height:1.15;margin:0 0 8px;letter-spacing:-.01em;text-wrap:balance}
+.rt h2{font-size:21px;margin:40px 0 12px}
+.rt h3{font-size:15px;margin:24px 0 8px}
+.rt-lead{color:var(--mute);margin:0 0 20px;max-width:60ch}
+.rt-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+.rt-field{border:0;padding:0;margin:0 0 18px;min-width:0}
+.rt-field>legend,.rt-field>label{display:block;font-weight:600;font-size:14px;margin-bottom:8px;padding:0}
+.rt-seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:4px}
+.rt-seg label{position:relative;text-align:center;font-size:15px;padding:10px 8px;border-radius:7px;cursor:pointer;line-height:1.25}
+.rt-seg input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.rt-seg label:has(input:checked){background:var(--ink);color:#fff;font-weight:600}
+.rt-seg label:has(input:focus-visible){outline:3px solid var(--gold);outline-offset:2px}
+.rt select,.rt input[type=number]{width:100%;font:inherit;padding:12px;border:1px solid #bdb9b0;border-radius:10px;background:#fff;color:var(--ink)}
+.rt select:focus-visible,.rt input[type=number]:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+.rt-help{font-size:13.5px;color:var(--mute);margin:8px 0 0}
+.rt-grid{display:grid;gap:0 16px}
+@media(min-width:560px){.rt-grid{grid-template-columns:1fr 1fr}}
+.rt-out{margin-top:6px;border-top:1px solid var(--line);padding-top:18px}
+.rt-out-label{font-size:14px;color:var(--mute);margin:0}
+.rt-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;margin:2px 0 0}
+.rt-total strong{font-size:clamp(38px,11vw,54px);line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.rt-total span{color:var(--mute);font-variant-numeric:tabular-nums}
+.rt-empty{color:var(--mute);margin:6px 0 0}
+.rt-steps{list-style:none;margin:16px 0 0;padding:0;font-size:15px}
+.rt-steps li{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:1px dashed var(--line);font-variant-numeric:tabular-nums}
+.rt-steps li span:last-child{white-space:nowrap;font-weight:600}
+.rt-alt{background:var(--goldbg);color:#5c4409;border-radius:10px;padding:10px 12px;margin:14px 0 0;font-size:14.5px}
+.rt-note{font-size:13.5px;color:var(--mute);margin:12px 0 0}
+.rt-cta{margin-top:20px;display:grid;gap:14px;align-items:center}
+@media(min-width:560px){.rt-cta{grid-template-columns:1fr auto}}
+.rt-cta p{margin:0}.rt-cta p+p{color:var(--mute);font-size:14.5px}
+.rt-btns{display:flex;flex-wrap:wrap;gap:8px}
+.rt-btn{display:inline-block;padding:12px 16px;border-radius:10px;font-weight:600;font-size:15px;text-decoration:none;border:1px solid var(--ink);color:var(--ink)}
+.rt-btn.pri{background:var(--ink);color:#fff}
+.rt-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+.rt table{border-collapse:collapse;width:100%;font-size:14.5px;font-variant-numeric:tabular-nums}
+.rt th,.rt td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.rt th{font-size:13px;color:var(--mute);font-weight:600;background:#fcfbf8}
+.rt tr:last-child td{border-bottom:0}
+.rt td:last-child{white-space:normal;min-width:11em}
+.rt details{border-bottom:1px solid var(--line);padding:12px 0}
+.rt summary{cursor:pointer;font-weight:600}
+.rt details p{margin:8px 0 0;color:#33363b;max-width:65ch}
+.rt [hidden]{display:none!important}
+</style>
+<!-- E2 ROADTAX CSS END -->
+</head>
+<body style="margin:0">
+<!-- E2 ROADTAX START -->
+<main class="rt">
+<div class="rt-wrap">
+  <nav class="rt-lang" aria-label="Language"><a href="/ms/roadtax-calculator/" hreflang="ms">BM</a> <a href="/roadtax-calculator/" aria-current="page" hreflang="en">EN</a> <a href="/zh/roadtax-calculator/" hreflang="zh-Hans">中文</a></nav>
+  <h1>Road Tax Calculator Malaysia 2026</h1>
+  <p class="rt-lead">Enter the engine cc shown on the registration card (geran). Figures follow JPJ’s Motor Vehicle Licence (LKM) schedule for private cars.</p>
+
+  <form class="rt-card" id="rt-form" onsubmit="return false" novalidate>
+    <fieldset class="rt-field">
+      <legend>Power source</legend>
+      <div class="rt-seg">
+        <label><input type="radio" name="power" value="ice" checked>Petrol / Diesel / Hybrid</label>
+        <label><input type="radio" name="power" value="ev">Electric (EV)</label>
+      </div>
+    </fieldset>
+
+    <div id="rt-ice">
+      <div class="rt-field">
+        <label for="rt-region">Region</label>
+        <select id="rt-region" name="region">
+          <option value="pen">Peninsular Malaysia</option>
+          <option value="em">Sabah / Sarawak</option>
+          <option value="lgk">Langkawi / Pangkor</option>
+          <option value="lbn">Labuan</option>
+        </select>
+      </div>
+      <div class="rt-grid">
+        <fieldset class="rt-field">
+          <legend>Vehicle class (per JPJ)</legend>
+          <div class="rt-seg">
+            <label><input type="radio" name="body" value="sal" checked>Saloon</label>
+            <label><input type="radio" name="body" value="non">Non-saloon</label>
+          </div>
+          <p class="rt-help">This follows JPJ’s classification on the geran, not the “SUV” or “MPV” label in an advert. Not sure? Both amounts are shown below.</p>
+        </fieldset>
+        <fieldset class="rt-field">
+          <legend>Registered owner</legend>
+          <div class="rt-seg">
+            <label><input type="radio" name="owner" value="ind" checked>Individual</label>
+            <label><input type="radio" name="owner" value="co">Company</label>
+          </div>
+        </fieldset>
+      </div>
+      <div class="rt-field">
+        <label for="rt-cc">Engine capacity (cc)</label>
+        <input id="rt-cc" name="cc" type="number" inputmode="numeric" min="1" max="9999" step="1" placeholder="e.g. 1497" autocomplete="off">
+        <p class="rt-help">Use the exact cc on the geran (e.g. 1,497 cc, not “1.5”).</p>
+      </div>
+    </div>
+
+    <div id="rt-ev" hidden>
+      <div class="rt-field">
+        <label for="rt-kw">Motor output (kW)</label>
+        <input id="rt-kw" name="kw" type="number" inputmode="decimal" min="1" max="2000" step="any" placeholder="e.g. 150" autocomplete="off">
+        <p class="rt-help">Combined output of all motors, as on the geran. Hybrids and PHEVs are taxed by cc, not kW.</p>
+      </div>
+    </div>
+
+    <div class="rt-out" aria-live="polite">
+      <p class="rt-out-label">Estimated road tax per year</p>
+      <p class="rt-empty" id="rt-empty">Enter the cc to start.</p>
+      <div id="rt-result" hidden>
+        <p class="rt-total"><strong id="rt-total"></strong><span id="rt-half"></span></p>
+        <ul class="rt-steps" id="rt-steps" aria-label="How it is worked out"></ul>
+        <p class="rt-alt" id="rt-alt" hidden></p>
+        <p class="rt-note" id="rt-evnote" hidden>JPJ’s 2026 EV schedule by kW. For vehicles kept in Sabah, Sarawak, Labuan or Langkawi, confirm the amount in MyJPJ.</p>
+        <p class="rt-note">Estimate only. The final amount is what JPJ / MyJPJ shows at renewal, and excludes insurance.</p>
+      </div>
+    </div>
+  </form>
+
+  <section class="rt-card rt-cta">
+    <div><p><strong>Looking for a used car?</strong></p><p>Ask for the full OTR price — road tax, insurance and ownership transfer included.</p></div>
+    <div class="rt-btns">
+      <a class="rt-btn pri" href="https://wa.me/60122785126?text=Hi%20E2%20Auto%2C%20I%20would%20like%20to%20ask%20about%20the%20OTR%20price." rel="noopener">WhatsApp E2 Auto</a>
+      <a class="rt-btn" href="/showroom.html#cars">Browse cars in stock</a>
+    </div>
+  </section>
+
+  <section>
+    <h2>JPJ road tax rate tables</h2>
+    <h3>Peninsular — saloon, individual owner</h3><div class="rt-scroll"><table><thead><tr><th scope="col">Engine capacity</th><th scope="col">Base rate</th><th scope="col">Progressive rate</th></tr></thead><tbody><tr><td>1,000 cc and below</td><td>RM20</td><td>—</td></tr><tr><td>1,001 – 1,200 cc</td><td>RM55</td><td>—</td></tr><tr><td>1,201 – 1,400 cc</td><td>RM70</td><td>—</td></tr><tr><td>1,401 – 1,600 cc</td><td>RM90</td><td>—</td></tr><tr><td>1,601 – 1,800 cc</td><td>RM200</td><td>+ RM0.40 per cc above 1,600 cc</td></tr><tr><td>1,801 – 2,000 cc</td><td>RM280</td><td>+ RM0.50 per cc above 1,800 cc</td></tr><tr><td>2,001 – 2,500 cc</td><td>RM380</td><td>+ RM1.00 per cc above 2,000 cc</td></tr><tr><td>2,501 – 3,000 cc</td><td>RM880</td><td>+ RM2.50 per cc above 2,500 cc</td></tr><tr><td>Above 3,000 cc</td><td>RM2,130</td><td>+ RM4.50 per cc above 3,000 cc</td></tr></tbody></table></div><h3>Peninsular — saloon, company owner</h3><div class="rt-scroll"><table><thead><tr><th scope="col">Engine capacity</th><th scope="col">Base rate</th><th scope="col">Progressive rate</th></tr></thead><tbody><tr><td>1,000 cc and below</td><td>RM20</td><td>—</td></tr><tr><td>1,001 – 1,200 cc</td><td>RM110</td><td>—</td></tr><tr><td>1,201 – 1,400 cc</td><td>RM140</td><td>—</td></tr><tr><td>1,401 – 1,600 cc</td><td>RM180</td><td>—</td></tr><tr><td>1,601 – 1,800 cc</td><td>RM400</td><td>+ RM0.80 per cc above 1,600 cc</td></tr><tr><td>1,801 – 2,000 cc</td><td>RM560</td><td>+ RM1.00 per cc above 1,800 cc</td></tr><tr><td>2,001 – 2,500 cc</td><td>RM760</td><td>+ RM3.00 per cc above 2,000 cc</td></tr><tr><td>2,501 – 3,000 cc</td><td>RM2,260</td><td>+ RM7.50 per cc above 2,500 cc</td></tr><tr><td>Above 3,000 cc</td><td>RM6,010</td><td>+ RM13.50 per cc above 3,000 cc</td></tr></tbody></table></div><h3>Peninsular — non-saloon (individual & company)</h3><div class="rt-scroll"><table><thead><tr><th scope="col">Engine capacity</th><th scope="col">Base rate</th><th scope="col">Progressive rate</th></tr></thead><tbody><tr><td>1,000 cc and below</td><td>RM20</td><td>—</td></tr><tr><td>1,001 – 1,200 cc</td><td>RM85</td><td>—</td></tr><tr><td>1,201 – 1,400 cc</td><td>RM100</td><td>—</td></tr><tr><td>1,401 – 1,600 cc</td><td>RM120</td><td>—</td></tr><tr><td>1,601 – 1,800 cc</td><td>RM300</td><td>+ RM0.30 per cc above 1,600 cc</td></tr><tr><td>1,801 – 2,000 cc</td><td>RM360</td><td>+ RM0.40 per cc above 1,800 cc</td></tr><tr><td>2,001 – 2,500 cc</td><td>RM440</td><td>+ RM0.80 per cc above 2,000 cc</td></tr><tr><td>2,501 – 3,000 cc</td><td>RM840</td><td>+ RM1.60 per cc above 2,500 cc</td></tr><tr><td>Above 3,000 cc</td><td>RM1,640</td><td>+ RM1.60 per cc above 3,000 cc</td></tr></tbody></table></div><h3>Sabah & Sarawak — saloon</h3><div class="rt-scroll"><table><thead><tr><th scope="col">Engine capacity</th><th scope="col">Base rate</th><th scope="col">Progressive rate</th></tr></thead><tbody><tr><td>1,000 cc and below</td><td>RM20</td><td>—</td></tr><tr><td>1,001 – 1,200 cc</td><td>RM44</td><td>—</td></tr><tr><td>1,201 – 1,400 cc</td><td>RM56</td><td>—</td></tr><tr><td>1,401 – 1,600 cc</td><td>RM72</td><td>—</td></tr><tr><td>1,601 – 1,800 cc</td><td>RM160</td><td>+ RM0.32 per cc above 1,600 cc</td></tr><tr><td>1,801 – 2,000 cc</td><td>RM224</td><td>+ RM0.25 per cc above 1,800 cc</td></tr><tr><td>2,001 – 2,500 cc</td><td>RM274</td><td>+ RM0.50 per cc above 2,000 cc</td></tr><tr><td>2,501 – 3,000 cc</td><td>RM524</td><td>+ RM1.00 per cc above 2,500 cc</td></tr><tr><td>Above 3,000 cc</td><td>RM1,024</td><td>+ RM1.35 per cc above 3,000 cc</td></tr></tbody></table></div><h3>Sabah & Sarawak — non-saloon</h3><div class="rt-scroll"><table><thead><tr><th scope="col">Engine capacity</th><th scope="col">Base rate</th><th scope="col">Progressive rate</th></tr></thead><tbody><tr><td>1,000 cc and below</td><td>RM20</td><td>—</td></tr><tr><td>1,001 – 1,200 cc</td><td>RM42.50</td><td>—</td></tr><tr><td>1,201 – 1,400 cc</td><td>RM50</td><td>—</td></tr><tr><td>1,401 – 1,600 cc</td><td>RM60</td><td>—</td></tr><tr><td>1,601 – 1,800 cc</td><td>RM165</td><td>+ RM0.17 per cc above 1,600 cc</td></tr><tr><td>1,801 – 2,000 cc</td><td>RM199</td><td>+ RM0.22 per cc above 1,800 cc</td></tr><tr><td>2,001 – 2,500 cc</td><td>RM243</td><td>+ RM0.44 per cc above 2,000 cc</td></tr><tr><td>2,501 – 3,000 cc</td><td>RM463</td><td>+ RM0.88 per cc above 2,500 cc</td></tr><tr><td>Above 3,000 cc</td><td>RM903</td><td>+ RM1.20 per cc above 3,000 cc</td></tr></tbody></table></div><p class="rt-note">Langkawi & Pangkor: 50% of the Peninsular rate for engines above 1,000 cc. Labuan: 50% of the Sabah rate for engines above 1,000 cc. 1,000 cc and below: RM20.</p><h3>Electric vehicles (EV) — from 1 January 2026</h3><div class="rt-scroll"><table><thead><tr><th scope="col">Motor output</th><th scope="col">Minimum</th><th scope="col">Each further 10 kW</th><th scope="col">Maximum</th></tr></thead><tbody><tr><td>50 kW and below</td><td>RM20</td><td>Fixed</td><td>RM20</td></tr><tr><td>Above 50 – 100 kW</td><td>RM30</td><td>+ RM10</td><td>RM70</td></tr><tr><td>Above 100 – 210 kW</td><td>RM80</td><td>+ RM20</td><td>RM280</td></tr><tr><td>Above 210 – 310 kW</td><td>RM305</td><td>+ RM30</td><td>RM575</td></tr><tr><td>Above 310 – 410 kW</td><td>RM615</td><td>+ RM50</td><td>RM1,065</td></tr><tr><td>Above 410 – 510 kW</td><td>RM1,140</td><td>+ RM100</td><td>RM2,040</td></tr><tr><td>Above 510 – 610 kW</td><td>RM2,165</td><td>+ RM150</td><td>RM3,515</td></tr><tr><td>Above 610 – 710 kW</td><td>RM3,690</td><td>+ RM200</td><td>RM5,490</td></tr><tr><td>Above 710 – 810 kW</td><td>RM5,715</td><td>+ RM250</td><td>RM7,965</td></tr><tr><td>Above 810 – 910 kW</td><td>RM8,240</td><td>+ RM300</td><td>RM10,940</td></tr><tr><td>Above 910 – 1,010 kW</td><td>RM11,265</td><td>+ RM350</td><td>RM14,415</td></tr><tr><td>Above 1,010 kW</td><td>RM20,000</td><td>Fixed</td><td>RM20,000</td></tr></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>Common questions</h2>
+    <details><summary>What is the difference between saloon and non-saloon?</summary><p>JPJ has two schedules for private cars. The class comes from the JPJ registration (check the geran or MyJPJ), not from the marketing label. For small engines the non-saloon rate is higher; for large engines it is lower.</p></details><details><summary>Where do I find the exact cc?</summary><p>On the geran (Vehicle Ownership Certificate / VOC) or in the MyJPJ app. A “1.5” is usually 1,496–1,498 cc and a “2.0” usually 1,997–1,999 cc — a few cc changes the amount for engines above 1,600 cc.</p></details><details><summary>How are hybrids taxed?</summary><p>Hybrids and plug-in hybrids are taxed by engine cc, the same as petrol cars. Only fully electric cars use the kW schedule.</p></details><details><summary>Why does a company-registered car cost more?</summary><p>In Peninsular Malaysia, a saloon registered to a company uses a higher schedule. For non-saloons, and in Sabah and Sarawak, the rate is the same.</p></details>
+    <p class="rt-note">Rate source: JPJ LKM schedule. Updated November 2026.</p>
+  </section>
+</div>
+</main>
+<!-- E2 ROADTAX END -->
+
+<!-- E2 ROADTAX JS START -->
+<script>
+/* E2 Auto road tax calculator — rate data + logic (JPJ LKM schedule; EV schedule effective 1 Jan 2026) */
+var E2RT = (function () {
+  // each row: [max cc of band, base RM, RM per cc above the previous band's max]
+  var T = {
+    pen_sal_ind: [[1000,20,0],[1200,55,0],[1400,70,0],[1600,90,0],[1800,200,0.40],[2000,280,0.50],[2500,380,1.00],[3000,880,2.50],[Infinity,2130,4.50]],
+    pen_sal_co:  [[1000,20,0],[1200,110,0],[1400,140,0],[1600,180,0],[1800,400,0.80],[2000,560,1.00],[2500,760,3.00],[3000,2260,7.50],[Infinity,6010,13.50]],
+    pen_non:     [[1000,20,0],[1200,85,0],[1400,100,0],[1600,120,0],[1800,300,0.30],[2000,360,0.40],[2500,440,0.80],[3000,840,1.60],[Infinity,1640,1.60]],
+    em_sal:      [[1000,20,0],[1200,44,0],[1400,56,0],[1600,72,0],[1800,160,0.32],[2000,224,0.25],[2500,274,0.50],[3000,524,1.00],[Infinity,1024,1.35]],
+    em_non:      [[1000,20,0],[1200,42.5,0],[1400,50,0],[1600,60,0],[1800,165,0.17],[2000,199,0.22],[2500,243,0.44],[3000,463,0.88],[Infinity,903,1.20]]
+  };
+  // EV groups above 100 kW: [from kW (exclusive), to kW (inclusive), RM for first 10 kW block, RM per further started 10 kW block]
+  var EV = [[100,210,80,20],[210,310,305,30],[310,410,615,50],[410,510,1140,100],[510,610,2165,150],[610,710,3690,200],[710,810,5715,250],[810,910,8240,300],[910,1010,11265,350]];
+  function r2(x) { return Math.round(x * 100) / 100; }
+  function tableKey(region, body, owner) {
+    if (region === 'pen' || region === 'lgk') return body === 'non' ? 'pen_non' : (owner === 'co' ? 'pen_sal_co' : 'pen_sal_ind');
+    return body === 'non' ? 'em_non' : 'em_sal';
+  }
+  // region: pen | em (Sabah/Sarawak) | lgk (Langkawi/Pangkor) | lbn (Labuan); body: sal | non; owner: ind | co
+  function ice(region, body, owner, cc) {
+    cc = Math.floor(Number(cc));
+    if (!(cc >= 1)) return null;
+    var rows = T[tableKey(region, body, owner)], prev = 0, i, row;
+    for (i = 0; i < rows.length; i++) { if (cc <= rows[i][0]) break; prev = rows[i][0]; }
+    row = rows[i];
+    var extra = row[2] ? cc - prev : 0;
+    var full = r2(row[1] + extra * row[2]);
+    var half = (region === 'lgk' || region === 'lbn') && cc > 1000;
+    return { total: half ? r2(full / 2) : full, base: row[1], rate: row[2], over: prev, extra: extra, full: full, half: half,
+             bandFrom: prev + 1, bandTo: row[0] };
+  }
+  function ev(kw) {
+    kw = Number(kw);
+    if (!(kw > 0)) return null;
+    var blocks = function (from) { return Math.ceil((kw - from) / 10 - 1e-9); };
+    if (kw <= 50) return { total: 20, base: 20, inc: 0, blocks: 0 };
+    if (kw <= 100) return { total: 20 + blocks(50) * 10, base: 20, inc: 10, blocks: blocks(50) };
+    if (kw > 1010) return { total: 20000, base: 20000, inc: 0, blocks: 0 };
+    for (var i = 0; i < EV.length; i++) if (kw <= EV[i][1]) {
+      var b = blocks(EV[i][0]) - 1;
+      return { total: EV[i][2] + b * EV[i][3], base: EV[i][2], inc: EV[i][3], blocks: b };
+    }
+  }
+  return { T: T, EV: EV, ice: ice, ev: ev };
+})();
+(function () {
+  var S = {"half": "6 months ≈", "empty": "Enter the cc to start.", "emptykw": "Enter the kW to start.", "band": "Base rate ({a}–{b} cc)", "bandtop": "Base rate (above {a} cc)", "prog": "{x} cc above {o} cc × RM{r}", "halfnote": "Island rate: 50% of {f}", "alt": "If JPJ classes it as {c}: {v} per year", "evbase": "Base rate for the power group", "evprog": "{x} further 10 kW blocks × RM{r}", "evflat": "Fixed rate", "sal": "Saloon", "non": "Non-saloon"};
+  var f = document.getElementById('rt-form'), $ = function (id) { return document.getElementById(id); };
+  function rm(x) { return 'RM' + x.toLocaleString('en-MY', { minimumFractionDigits: x % 1 ? 2 : 0, maximumFractionDigits: 2 }); }
+  function num(x) { return x.toLocaleString('en-MY'); }
+  function t(s, o) { return s.replace(/\{(\w)\}/g, function (_, k) { return o[k]; }); }
+  function row(a, b) { var li = document.createElement('li'), x = document.createElement('span'), y = document.createElement('span'); x.textContent = a; y.textContent = b; li.appendChild(x); li.appendChild(y); return li; }
+  function show(total, steps, alt, isEv) {
+    $('rt-empty').hidden = true; $('rt-result').hidden = false;
+    $('rt-total').textContent = rm(total);
+    $('rt-half').textContent = S.half + ' ' + rm(Math.round(total * 50) / 100);
+    var ul = $('rt-steps'); ul.textContent = ''; steps.forEach(function (s) { ul.appendChild(row(s[0], s[1])); });
+    $('rt-alt').hidden = !alt; $('rt-alt').textContent = alt || '';
+    $('rt-evnote').hidden = !isEv;
+  }
+  function clear(msg) { $('rt-result').hidden = true; $('rt-empty').hidden = false; $('rt-empty').textContent = msg; }
+  function calc() {
+    var ev = f.power.value === 'ev';
+    $('rt-ice').hidden = ev; $('rt-ev').hidden = !ev;
+    if (ev) {
+      var e = E2RT.ev(f.kw.value);
+      if (!e) return clear(S.emptykw);
+      var st = [[e.inc || e.total === 20 ? S.evbase : S.evflat, rm(e.base)]];
+      if (e.blocks) st.push([t(S.evprog, { x: e.blocks, r: e.inc }), rm(e.blocks * e.inc)]);
+      return show(e.total, st, '', true);
+    }
+    var region = f.region.value, body = f.body.value, owner = f.owner.value;
+    var r = E2RT.ice(region, body, owner, f.cc.value);
+    if (!r || r.bandFrom > 9999) return clear(S.empty);
+    var steps = [[r.bandTo === Infinity ? t(S.bandtop, { a: num(r.over) }) : t(S.band, { a: num(r.bandFrom), b: num(r.bandTo) }), rm(r.base)]];
+    if (r.extra && r.rate) steps.push([t(S.prog, { x: num(r.extra), o: num(r.over), r: r.rate.toFixed(2) }), rm(Math.round(r.extra * r.rate * 100) / 100)]);
+    if (r.half) steps.push([t(S.halfnote, { f: rm(r.full) }), rm(r.total)]);
+    var other = body === 'sal' ? 'non' : 'sal', o = E2RT.ice(region, other, owner, f.cc.value);
+    var alt = o && o.total !== r.total ? t(S.alt, { c: S[other], v: rm(o.total) }) : '';
+    show(r.total, steps, alt, false);
+  }
+  f.addEventListener('input', calc); f.addEventListener('change', calc); calc();
+})();
+</script>
+<!-- E2 ROADTAX JS END -->
+</body>
+</html>
