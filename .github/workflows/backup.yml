@@ -1,0 +1,80 @@
+name: E2 encrypted backups
+
+on:
+  schedule:
+    # 19:00 UTC = 03:00 Asia/Kuala_Lumpur on the following calendar day.
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+    inputs:
+      include_files:
+        description: 'Also back up all Storage files now (first run does this automatically)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2-encrypted-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: write # Only the small, allowlisted JSON on backup-status is published.
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify existing Benny notification target
+        env:
+          E2AUTO_CHECK_BOT_TOKEN: ${{ secrets.E2AUTO_CHECK_BOT_TOKEN }}
+          E2AUTO_CHECK_CHAT_ID: ${{ secrets.E2AUTO_CHECK_CHAT_ID }}
+        run: node scripts/notify-stock-publication.mjs --check
+
+      - name: Install backup clients (no dependency cache)
+        run: |
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-18 gnupg
+          python -m pip install --disable-pip-version-check --no-cache-dir 'psycopg[binary]==3.2.9'
+          echo '/usr/lib/postgresql/18/bin' >> "$GITHUB_PATH"
+          aws --version
+
+      - name: Export, encrypt locally, then upload ciphertext only
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_SUPABASE_URL: ${{ secrets.BACKUP_SUPABASE_URL }}
+          BACKUP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.BACKUP_SUPABASE_SERVICE_ROLE_KEY }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ap-southeast-2
+          AWS_EC2_METADATA_DISABLED: 'true'
+          GITHUB_TOKEN: ${{ github.token }}
+          INCLUDE_FILES: ${{ inputs.include_files || false }}
+        run: python scripts/backup/run.py
+
+      - name: Publish public metadata even when an earlier step failed
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BACKUP_JOB_STATUS: ${{ job.status }}
+        run: python scripts/backup/status.py
+
+      - name: Notify Benny on failure or cancellation
+        if: ${{ always() && (failure() || cancelled()) }}
+        env:
+          E2AUTO_CHECK_BOT_TOKEN: ${{ secrets.E2AUTO_CHECK_BOT_TOKEN }}
+          E2AUTO_CHECK_CHAT_ID: ${{ secrets.E2AUTO_CHECK_CHAT_ID }}
+        run: node scripts/notify-backup.mjs
+
+      # No upload-artifact, cache, S3 read/list/sync/delete, or public ACL.
