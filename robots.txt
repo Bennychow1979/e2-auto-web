@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://e2auto.my/sitemap.xml

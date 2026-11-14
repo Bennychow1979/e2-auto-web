@@ -1,7 +1,0 @@
-{
-  "enabled": false,
-  "mode": "events-with-backup",
-  "backupMinutes": 1440,
-  "debounceSeconds": 30,
-  "targetMinutes": 10
-}
