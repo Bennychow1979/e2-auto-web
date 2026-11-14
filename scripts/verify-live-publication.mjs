@@ -4,7 +4,8 @@ import {pathToFileURL} from 'node:url';
 export async function verifyLivePublication(output,{request=fetch,attempts=12,sleep=ms=>new Promise(r=>setTimeout(r,ms))}={}){
  const paths=['vehicle-pages-manifest.json','stock.txt','sitemap.xml'];
  const expected=await Promise.all(paths.map(path=>readFile(join(output,path),'utf8')));
- const builtAt=JSON.parse(expected[0]).builtAt;
+ const manifest=JSON.parse(expected[0]),builtAt=manifest.builtAt;
+ if(manifest.stockFeeds){paths.push('stock-sold.txt');expected.push(await readFile(join(output,'stock-sold.txt'),'utf8'));}
  for(let attempt=0;attempt<attempts;attempt++){
   try{
    const actual=await Promise.all(paths.map(async path=>{

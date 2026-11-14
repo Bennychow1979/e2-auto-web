@@ -12,7 +12,7 @@ import {vehicleCopy} from '../vehicle-page-copy.mjs';
 import {descriptionFor} from '../vehicle-translations.mjs';
 import {enquiryURL,withVehicleLink} from '../referral.js';
 import {renderSitemap} from './build-sitemap.mjs';
-import {renderStock} from './build-stock.mjs';
+import {renderStockFeeds,resolveStockSoldDates} from './build-stock-feeds.mjs';
 import {categoryRegistry,categoryPath,modelSlug} from '../vehicle-discovery.mjs';
 import {renderListing,renderCategory,renderRelated} from './build-discovery.mjs';
 import {inventoryReceipt} from './inventory-refresh-receipt.mjs';
@@ -134,7 +134,8 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  const registry={...seed};
  for(const saved of [snapshot.priorSlugs||{},previous.slugs||{}]){createSlugMap([],saved);for(const [id,slug] of Object.entries(saved)){if(registry[id]&&registry[id]!==slug)throw Error('Saved slug identity cannot change.');registry[id]=slug;}}
  const slugs=createSlugMap(rows,registry),publicSlugs=Object.fromEntries(rows.map(car=>[car.id,slugs[car.id]]));
- const stock=renderStock(rows,{slugs,fetchedAt:snapshot.fetchedAt,builtAt:new Date(now).toISOString(),complete:snapshot.kind==='public-complete'&&snapshot.complete===true&&snapshot.expectedCount===rows.length});
+ const stockSoldDates=resolveStockSoldDates(rows,snapshot.priorStockSoldDates??previous.stockSoldDates??{});
+ const {stock,soldStock,coverage}=renderStockFeeds(rows,{soldAtById:stockSoldDates,slugs,fetchedAt:snapshot.fetchedAt,builtAt:new Date(now).toISOString(),complete:snapshot.kind==='public-complete'&&snapshot.complete===true&&snapshot.expectedCount===rows.length});
  const categories=categoryRegistry(rows,[...(snapshot.priorCategories||[]),...(previous.categories||[])]);
  const sitemap=renderSitemap(rows,{staticPages:true,slugs,includeSold,categories});
  const discoveryOptions={imageOrigin:snapshot.publicImageOrigin,imageIDs:new Set(imageCars.map(c=>c.id))};
@@ -147,7 +148,8 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  const files=pages.map(p=>p.file),manifest={version:1,kind:snapshot.kind||'local-snapshot',fetchedAt:snapshot.fetchedAt,builtAt:new Date(now).toISOString(),includeSoldInSitemap:includeSold,slugs,files,imageVehicles:imageCars.length,imageGatewayVerified:gatewayVerified,imageGatewayVersion:gatewayVerified?'v2':null,imageGatewayCheck:gatewayVerified?'HEAD':null,releaseArtifact:release,vehicles:rows.map(v=>({id:v.id,updated_at:v.updated_at}))};
  if(snapshot.inventoryRefresh)manifest.inventoryRefresh=inventoryReceipt(snapshot.inventoryRefresh.revision,snapshot.inventoryRefresh.dispatch);
  manifest.categories=categories;
- manifest.publicationHashes={stock:createHash('sha256').update(stock).digest('hex'),sitemap:createHash('sha256').update(sitemap).digest('hex')};
+ manifest.stockFeeds=coverage;manifest.stockSoldDates=stockSoldDates;
+ manifest.publicationHashes={stock:createHash('sha256').update(stock).digest('hex'),stockSold:createHash('sha256').update(soldStock).digest('hex'),sitemap:createHash('sha256').update(sitemap).digest('hex')};
  // Construct and validate a separate artifact before replacing the previous one.
  // Only the explicit generated output can be renamed; backups are retained.
  await mkdir(parent,{recursive:true});const stage=await mkdtemp(join(parent,'.vehicle-build-'));
@@ -177,6 +179,7 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  await buildLoanGuides(stage,{source:root,categories});
  await writeFile(join(stage,'sitemap.xml'),sitemap);
  await writeFile(join(stage,'stock.txt'),stock);
+ await writeFile(join(stage,'stock-sold.txt'),soldStock);
  await mkdir(join(stage,'data'),{recursive:true});await writeFile(join(stage,'data/car-slugs.json'),JSON.stringify(slugs,null,2)+'\n');
  await writeFile(join(stage,'data/seo-categories.json'),JSON.stringify(categories,null,2)+'\n');
  await writeFile(join(stage,'vehicle-pages-manifest.json'),JSON.stringify(manifest,null,2)+'\n');

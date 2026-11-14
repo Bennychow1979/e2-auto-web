@@ -49,18 +49,18 @@ test('compact stock contains every public unit once, with exact facts, statuses 
   assert.equal(parse(renderStock(rows, {...options, complete: false}))[0].complete, false);
 });
 
-test('119 representative records fit the observed 20,000-character reader limit without dropping fields or records', () => {
+test('119 representative records fit the declared publication budget without dropping fields or records', () => {
   const rows = Array.from({length: 119}, (_, i) => ({...vehicleB,
     id: 'aaaaaaaa-1111-4111-8111-' + String(i).padStart(12, '0'), plate: 'TEST' + i}));
   const text = renderStock(rows, {slugs: createSlugMap(rows), fetchedAt: new Date(now).toISOString(), builtAt: new Date(now).toISOString(), complete: true});
-  assert(text.length <= STOCK_MAX_CHARACTERS);assert(STOCK_MAX_CHARACTERS <= 18000);
+  assert(text.length <= STOCK_MAX_CHARACTERS);assert.equal(STOCK_MAX_CHARACTERS,40000);
   const parsed = parse(text);
   assert.equal(parsed.length, 121);assert.equal(parsed[0].vehicles, 119);assert.equal(parsed.at(-1).vehicles, 119);
   assert(parsed.slice(1, -1).every(row => Object.keys(row).length === 8));
 });
 
 test('oversized inventory fails explicitly instead of silently truncating records', () => {
-  const rows = Array.from({length: 250}, (_, i) => ({...vehicleB,
+  const rows = Array.from({length: 500}, (_, i) => ({...vehicleB,
     id: 'aaaaaaaa-1111-4111-8111-' + String(i).padStart(12, '0'), plate: 'TEST' + i}));
   assert.throws(() => renderStock(rows, {slugs: createSlugMap(rows), fetchedAt: new Date(now).toISOString(), builtAt: new Date(now).toISOString(), complete: true}), /reader budget.*No records were truncated/);
 });
@@ -109,11 +109,11 @@ test('same build updates stock, pages and sitemap; rejected snapshots preserve p
   changed.fetchedAt = new Date(now + 60000).toISOString();
   const second = await buildVehicleSite(changed, out, {now: now + 60000, includeSold: false});
   const text = await readFile(join(out, 'stock.txt'), 'utf8'), parsed = parse(text);
-  assert.notEqual(firstText, text); assert.equal(parsed[0].vehicles, 2);
+  assert.notEqual(firstText, text); assert.equal(parsed[0].vehicles, 1);
   assert.equal(parsed[0].snapshot_at, changed.fetchedAt);
   assert.equal(parsed[0].built_at, second.builtAt);
   assert.equal(parsed[1].model, 'CHANGED'); assert.equal(parsed[1].price_myr, 12345);
-  assert.equal(parsed[1].status, 'Reserved'); assert.equal(parsed[2].status, 'Sold');
+  assert.equal(parsed[1].status, 'Reserved'); const sold=parse(await readFile(join(out,'stock-sold.txt'),'utf8'));assert.equal(sold[1].status,'Sold');assert.equal(sold[0].vehicles,1);assert.equal(sold[0].snapshot_at,parsed[0].snapshot_at);
   assert.equal(second.slugs[vehicleA.id], first.slugs[vehicleA.id]);
   for (const row of parsed.slice(1, -1)) {
     const html = await readFile(join(out, new URL(row.url).pathname, 'index.html'), 'utf8');
@@ -121,13 +121,13 @@ test('same build updates stock, pages and sitemap; rejected snapshots preserve p
   }
   const xml = await readFile(join(out, 'sitemap.xml'), 'utf8');
   assert(xml.includes(parsed[1].url)); assert(!xml.includes(first.slugs[vehicleB.id]));
-  // Sold remains a public page and stock row even if explicitly excluded from sitemap.
+  // Sold remains a public page and a recent-Sold feed row even if excluded from sitemap.
   assert(!xml.includes(first.slugs[vehicleSold.id]));
   await assert.rejects(access(join(out, 'cars', first.slugs[vehicleB.id], 'index.html')));
   for (const bad of [snapshot([]), {...original, expectedCount: 4},
     {...original, fetchedAt: new Date(now - 1800001).toISOString()},
     {...original, fetchedAt: new Date(now + 60001).toISOString()},
-    snapshot([{...vehicleA, price: null}]), snapshot([{...vehicleA, variant: 'L'.repeat(20000)}])]) {
+    snapshot([{...vehicleA, price: null}]), snapshot([{...vehicleA, variant: 'L'.repeat(50000)}])]) {
     await assert.rejects(buildVehicleSite(bad, out, {now}));
     assert.equal(await readFile(join(out, 'stock.txt'), 'utf8'), text);
   }

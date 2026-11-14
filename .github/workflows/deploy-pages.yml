@@ -78,6 +78,13 @@ jobs:
           node --test supabase/tests/stock.mjs supabase/tests/pages-artifact.mjs supabase/tests/inventory-refresh-worker.mjs
           python3 supabase/tests/pages-restore.py
 
+      - name: Verify configured stock failure notification target
+        if: ${{ !inputs.restore_previous }}
+        env:
+          E2AUTO_CHECK_BOT_TOKEN: ${{ secrets.E2AUTO_CHECK_BOT_TOKEN }}
+          E2AUTO_CHECK_CHAT_ID: ${{ secrets.E2AUTO_CHECK_CHAT_ID }}
+        run: node scripts/notify-stock-publication.mjs --check
+
       - name: Acquire fresh public inventory and deployed slug registry
         if: ${{ !inputs.restore_previous }}
         env:
@@ -132,3 +139,10 @@ jobs:
       - name: Verify live publication after CDN propagation
         if: ${{ !inputs.restore_previous }}
         run: node scripts/verify-live-publication.mjs _site
+
+      - name: Notify Benny when stock publication fails
+        if: ${{ failure() && !inputs.restore_previous }}
+        env:
+          E2AUTO_CHECK_BOT_TOKEN: ${{ secrets.E2AUTO_CHECK_BOT_TOKEN }}
+          E2AUTO_CHECK_CHAT_ID: ${{ secrets.E2AUTO_CHECK_CHAT_ID }}
+        run: node scripts/notify-stock-publication.mjs

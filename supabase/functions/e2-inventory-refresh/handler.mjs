@@ -1,9 +1,26 @@
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export const revision=value=>typeof value==='string'&&/^[1-9]\d{0,17}$/.test(value);
-export async function publicationMatches(job,manifest,stock,sitemap){
+function validFeed(text,manifest,statuses,expected){
+ if(typeof text!=='string'||text.length>40000)return null;
+ const values=text.trim().split('\n').filter(l=>!l.startsWith('#')).map(JSON.parse),header=values.shift(),end=values.pop(),columns=['year','make','model','variant','plate','status','price_myr','url'];
+ if(header?.format!=='e2-stock-v1'||header.max_chars!==40000||header.complete!==true||header.snapshot_at!==manifest.fetchedAt||header.built_at!==manifest.builtAt||header.vehicles!==expected||values.length!==expected||end?.end!==header.format||end.vehicles!==expected||JSON.stringify(header.columns)!==JSON.stringify(columns))return null;
+ const counts={Available:0,Reserved:0,Sold:0},urls=new Set();
+ for(const row of values){if(!Array.isArray(row)||row.length!==8||!statuses.includes(row[5])||typeof row[7]!=='string'||!row[7].startsWith('https://e2auto.my/cars/')||urls.has(row[7]))return null;urls.add(row[7]);counts[row[5]]++;}
+ if(!header.counts||Object.keys(counts).some(k=>header.counts[k]!==counts[k]))return null;
+ return urls;
+}
+export async function publicationMatches(job,manifest,stock,sitemap,soldStock){
  if(!manifest?.releaseArtifact||manifest.inventoryRefresh?.dispatch!==job.dispatch||manifest.inventoryRefresh?.revision!==job.revision
   ||!Number.isFinite(Date.parse(manifest.fetchedAt))||Date.parse(manifest.fetchedAt)<Date.parse(job.started_at)-60000)return false;
  try{
+  if(manifest.stockFeeds){
+   const c=manifest.stockFeeds;
+   if(c.version!==1||c.maxCharacters!==40000||c.retentionDays!==90||!['published','active','soldRecent','soldExpired'].every(k=>Number.isSafeInteger(c[k])&&c[k]>=0)||c.published!==c.active+c.soldRecent+c.soldExpired||manifest.files.length!==c.published*3||c.soldCutoff!==new Date(Date.parse(manifest.fetchedAt)-90*86400000).toISOString())return false;
+   const active=validFeed(stock,manifest,['Available','Reserved'],c.active),sold=validFeed(soldStock,manifest,['Sold'],c.soldRecent);
+   if(!active||!sold||[...sold].some(url=>active.has(url))||typeof sitemap!=='string')return false;
+   const hash=async text=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))),b=>b.toString(16).padStart(2,'0')).join('');
+   return manifest.publicationHashes?.stock===await hash(stock)&&manifest.publicationHashes?.stockSold===await hash(soldStock)&&manifest.publicationHashes?.sitemap===await hash(sitemap);
+  }
   if(stock.length>18000)return false;
   const values=stock.trim().split('\n').filter(l=>!l.startsWith('#')).map(l=>JSON.parse(l)),header=values.shift(),end=values.pop();
   if(!(header.complete===true&&header.format==='e2-stock-v1'&&header.snapshot_at===manifest.fetchedAt
@@ -35,7 +52,10 @@ export function createHandler({store,githubToken,fetchImpl=fetch,now=Date.now}){
      const query='?refresh='+job.dispatch+'&t='+Math.floor(now()/60000);
      const options={credentials:'omit',cache:'no-store',redirect:'error',headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(15000)};
      const [m,s,x]=await Promise.all(['vehicle-pages-manifest.json','stock.txt','sitemap.xml'].map(path=>fetchImpl('https://e2auto.my/'+path+query,options)));
-     if(m.ok&&s.ok&&x.ok&&await publicationMatches(job,await m.json(),await s.text(),await x.text()))outcome='deployed';
+     if(m.ok&&s.ok&&x.ok){
+      const manifest=await m.json(),sold=manifest.stockFeeds?await fetchImpl('https://e2auto.my/stock-sold.txt'+query,options):null;
+      if((!manifest.stockFeeds||sold?.ok)&&await publicationMatches(job,manifest,await s.text(),await x.text(),sold?await sold.text():undefined))outcome='deployed';
+     }
     }catch{/* Keep the attempt outstanding; a stale CDN response is not success. */}
     if(outcome==='waiting'){
      try{

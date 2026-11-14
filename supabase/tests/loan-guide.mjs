@@ -34,7 +34,7 @@ for(const [i,lang]of ['ms','en','zh'].entries())test(lang+': approved wording, s
 test('release includes approved guides and translated home/car links without changing stock or vehicle URLs',async()=>{
  const rows=[vehicleA,vehicleSold],snapshot={kind:'public-complete',complete:true,expectedCount:2,fetchedAt:new Date().toISOString(),vehicles:rows},out=join(await mkdtemp(join(tmpdir(),'e2-loan-guide-')),'site');
  const manifest=await buildVehicleSite(snapshot,out),xml=await readFile(join(out,'sitemap.xml'),'utf8');
- assert.equal(await readFile(join(out,'stock.txt'),'utf8'),renderStock(rows,{slugs:manifest.slugs,fetchedAt:snapshot.fetchedAt,builtAt:manifest.builtAt,complete:true}));
+ assert.equal(await readFile(join(out,'stock.txt'),'utf8'),renderStock(rows.filter(v=>v.stock_status!=='Sold'),{maxCharacters:40000,slugs:manifest.slugs,fetchedAt:snapshot.fetchedAt,builtAt:manifest.builtAt,complete:true}));
  for(const lang of ['en','ms','zh']){
   const prefix=lang==='en'?'':lang+'/';assert(xml.includes('<loc>https://e2auto.my'+loanGuidePaths[lang]+'</loc>'));
   const html=await readFile(join(out,loanGuidePaths[lang].slice(1),'index.html'),'utf8');assert(html.includes('id="loanFAQ"'));

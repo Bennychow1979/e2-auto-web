@@ -6,7 +6,7 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 import {publicRows} from './build-vehicle-pages.mjs';
 import {vehiclePath} from '../vehicle-routes.mjs';
-import {renderStock} from './build-stock.mjs';
+import {renderStockFeeds,resolveStockSoldDates} from './build-stock-feeds.mjs';
 import {inventoryReceipt} from './inventory-refresh-receipt.mjs';
 import {categoryPath,categoryMatches} from '../vehicle-discovery.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
@@ -18,7 +18,10 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
  assert.deepEqual(manifest.vehicles,rows.map(v=>({id:v.id,updated_at:v.updated_at})));
  assert.deepEqual(manifest.inventoryRefresh,snapshot.inventoryRefresh?inventoryReceipt(snapshot.inventoryRefresh.revision,snapshot.inventoryRefresh.dispatch):undefined);
  const registry=JSON.parse(await readFile(join(out,'data/car-slugs.json'),'utf8'));assert.deepEqual(registry,manifest.slugs);
- assert.equal(await readFile(join(out,'stock.txt'),'utf8'),renderStock(rows,{slugs:registry,fetchedAt:snapshot.fetchedAt,builtAt:manifest.builtAt,complete:true}),'stock.txt must match the complete public snapshot and canonical routes');
+ const soldAtById=resolveStockSoldDates(rows,snapshot.priorStockSoldDates??{}),feeds=renderStockFeeds(rows,{soldAtById,slugs:registry,fetchedAt:snapshot.fetchedAt,builtAt:manifest.builtAt,complete:true});
+ assert.deepEqual(manifest.stockSoldDates,soldAtById);assert.deepEqual(manifest.stockFeeds,feeds.coverage);
+ assert.equal(await readFile(join(out,'stock.txt'),'utf8'),feeds.stock,'stock.txt must match all Available and Reserved vehicles');
+ assert.equal(await readFile(join(out,'stock-sold.txt'),'utf8'),feeds.soldStock,'Sold stock must match the 90-day website-status window');
  for(const file of preserved)assert.deepEqual(await readFile(join(out,file)),await readFile(join(source,file)),'Existing page/asset changed: '+file);
  // Pages settings own the current custom domain; main has no CNAME file.
  // Preserve one if a future reviewed source adds it.
@@ -66,7 +69,7 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
  }
  for(const file of ['sales-team.js','sales-team.css','sales-team-data.mjs','sales-team-motion.mjs','sales-team-navigation.mjs','sales-team-translations.mjs'])assert.deepEqual(await readFile(join(out,file)),await readFile(join(source,file)),'Team module preserved: '+file);
  const sitemap=await readFile(join(out,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,rows.length*3+16+manifest.categories.length*3);
- for(const [name,file] of [['stock','stock.txt'],['sitemap','sitemap.xml']])assert.equal(manifest.publicationHashes?.[name],createHash('sha256').update(await readFile(join(out,file))).digest('hex'),'Publication hash mismatch: '+name);
+ for(const [name,file] of [['stock','stock.txt'],['stockSold','stock-sold.txt'],['sitemap','sitemap.xml']])assert.equal(manifest.publicationHashes?.[name],createHash('sha256').update(await readFile(join(out,file))).digest('hex'),'Publication hash mismatch: '+name);
  return {vehicles:rows.length,pages:manifest.files.length,preservedFiles:preserved.length,publicImageVersion:'v2',photoBytesDownloaded:0,artifactVerified:true};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
