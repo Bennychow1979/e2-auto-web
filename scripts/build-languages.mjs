@@ -1,6 +1,7 @@
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {LANGUAGES,languageTags,translateHTML,publicPageNames,escapeHTML,t} from '../i18n.mjs';
+import {loanGuidePaths,isLoanGuidePath} from '../loan-guide-routes.mjs';
 const origin='https://e2auto.my/';
 export const homeMetadata={
  en:{title:'Used Cars KL & Selangor | E2 Auto Batu Caves',description:'Browse used cars for KL and Selangor at E2 Auto. See real photos and specifications, estimate monthly payments and visit our Batu Caves showroom.'},
@@ -36,6 +37,7 @@ export function localizedPage(source,file,lang){
    return attr+'="'+escapeHTML(url.href)+'"';
   }
   if(attr==='href' && /^\/?(customer|saved)\.html(?:[?#]|$)/.test(value)){const url=new URL(value.replace(/&amp;/g,'&'),'https://e2auto.my/');url.searchParams.set('lang',lang);return attr+'="..'+escapeHTML(url.pathname+url.search+url.hash)+'"';}
+  if(attr==='href' && isLoanGuidePath(new URL(value,'https://e2auto.my/').pathname))return attr+'="'+loanGuidePaths[lang]+'"';
   if(/^(?:[a-z]+:|\/)/i.test(value))return whole;
   const path=value.split(/[?#]/)[0];
   if(attr==='href' && publicPageNames.has(path))return attr+'="'+value+'"';

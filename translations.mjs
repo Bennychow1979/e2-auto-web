@@ -3,7 +3,8 @@
 import {bookingTranslations} from './booking-translations.mjs';
 import {salesTeamTranslations} from './sales-team-translations.mjs';
 export const translations = {
-  'Road tax calculator':['Kalkulator cukai jalan','路税计算器'],
+  'Used car loans':['Pinjaman kereta terpakai','二手车贷款'],
+ 'Road tax calculator':['Kalkulator cukai jalan','路税计算器'],
   'Used Cars in Batu Caves, KL & Selangor':['Kereta Terpakai di Batu Caves, KL & Selangor','Batu Caves 二手车｜吉隆坡 雪兰莪'],
   'Elevate Your Drive, Elevate Your Dreams':['Pemanduan Lebih Hebat, Impian Lebih Tinggi','驾驭更好，梦想更远'],
   'Under RM30,000':['Bawah RM30,000','RM30,000 以下'],

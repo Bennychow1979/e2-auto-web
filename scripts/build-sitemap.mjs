@@ -4,6 +4,7 @@ import {pathToFileURL} from 'node:url';
 import {SITE_URL, validVehicleId, canonicalVehicleURL} from '../vehicle-seo.mjs';
 import {LANGUAGES,languageTags} from '../i18n.mjs';
 import {categoryPath} from '../vehicle-discovery.mjs';
+import {loanGuidePaths} from '../loan-guide-routes.mjs';
 
 const escapeXML = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 
@@ -19,6 +20,9 @@ export function renderSitemap(rows,{staticPages=false,slugs,includeSold=true,cat
     const roadtax=Object.fromEntries(LANGUAGES.map(lang=>[lang,SITE_URL+(lang==='en'?'':lang+'/')+'roadtax-calculator/']));
     const roadtaxAlternates=[...LANGUAGES.map(lang=>'<xhtml:link rel="alternate" hreflang="'+({en:'en',ms:'ms',zh:'zh-Hans'}[lang])+'" href="'+roadtax[lang]+'"/>'),'<xhtml:link rel="alternate" hreflang="x-default" href="'+roadtax.en+'"/>'].join('');
     entries.push(...LANGUAGES.map(lang=>'  <url><loc>'+roadtax[lang]+'</loc>'+roadtaxAlternates+'</url>'));
+    const loans=Object.fromEntries(LANGUAGES.map(lang=>[lang,new URL(loanGuidePaths[lang],SITE_URL).href]));
+    const loanAlternates=[...LANGUAGES.map(lang=>'<xhtml:link rel="alternate" hreflang="'+({en:'en',ms:'ms',zh:'zh-Hans'}[lang])+'" href="'+loans[lang]+'"/>'),'<xhtml:link rel="alternate" hreflang="x-default" href="'+loans.ms+'"/>'].join('');
+    entries.push(...LANGUAGES.map(lang=>'  <url><loc>'+loans[lang]+'</loc>'+loanAlternates+'</url>'));
     const plates=Object.fromEntries(LANGUAGES.map(lang=>[lang,SITE_URL+(lang==='en'?'':lang+'/')+'plates.html']));
     entries.push(...LANGUAGES.map(lang=>'  <url><loc>'+plates[lang]+'</loc>'+alternatives(plates)+'</url>'));
   }
