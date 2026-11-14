@@ -40,6 +40,16 @@ jobs:
           E2AUTO_CHECK_CHAT_ID: ${{ secrets.E2AUTO_CHECK_CHAT_ID }}
         run: node scripts/notify-stock-publication.mjs --check
 
+      - name: Check required secret names without exposing values
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_SUPABASE_URL: ${{ secrets.BACKUP_SUPABASE_URL }}
+          BACKUP_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.BACKUP_SUPABASE_SERVICE_ROLE_KEY }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+        run: python scripts/backup/run.py --check-config
+
       - name: Install backup clients (no dependency cache)
         run: |
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y

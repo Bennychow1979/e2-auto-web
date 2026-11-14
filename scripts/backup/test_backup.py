@@ -20,6 +20,27 @@ import verify_restore
 
 
 class PolicyTests(unittest.TestCase):
+    def test_preflight_only_reports_missing_names(self):
+        with patch.dict(os.environ, {'BACKUP_PASSPHRASE': 'never-print-this-value'}, clear=True), \
+             patch('sys.stderr', new_callable=io.StringIO) as output:
+            self.assertEqual(backup.check_configuration(), 1)
+            self.assertIn('BACKUP_DATABASE_URL', output.getvalue())
+            self.assertIn('BACKUP_AWS_ACCESS_KEY_ID', output.getvalue())
+            self.assertNotIn('never-print-this-value', output.getvalue())
+            self.assertNotIn('BACKUP_PASSPHRASE', output.getvalue())
+
+    def test_diagnostics_never_return_raw_error_or_secret_values(self):
+        errors = [
+            (backup.MissingSecret('private-value'), 'missing-required-secret'),
+            (RuntimeError('postgresql://private:secret@db:5432/app Network is unreachable'),
+             'network-unreachable-use-session-pooler'),
+            (RuntimeError('password authentication failed for user private-user'),
+             'database-authentication-failed'),
+            (RuntimeError('private-customer-data and secret-key'), 'operation-failed-no-sensitive-details'),
+        ]
+        for error, expected in errors:
+            self.assertEqual(backup.safe_reason(error), expected)
+
     def test_malaysia_month_boundary(self):
         utc = dt.datetime(2026, 11, 30, 19, tzinfo=status.UTC)
         local = utc.astimezone(status.MYT)
