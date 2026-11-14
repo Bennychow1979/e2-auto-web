@@ -29,6 +29,30 @@ MANIFEST_PREFIX = b'-- E2_BACKUP_MANIFEST_V1 '
 STAGE = 'configuration'
 
 
+class MissingSecret(ValueError):
+    pass
+
+
+def safe_reason(error):
+    """Classify in memory; NEVER return exception text, URLs or identifiers."""
+    if isinstance(error, MissingSecret):
+        return 'missing-required-secret'
+    message = str(error).lower()
+    for needles, code in (
+        (('network is unreachable', 'no route to host'), 'network-unreachable-use-session-pooler'),
+        (('could not translate host', 'name or service not known', 'failed to resolve', 'nodename nor servname'), 'database-dns-failure'),
+        (('password authentication failed', 'wrong password'), 'database-authentication-failed'),
+        (('tenant or user not found',), 'pooler-project-or-username-invalid'),
+        (('invalid dsn', 'missing "="', 'invalid connection option', 'invalid percent-encoded', 'invalid uri'), 'database-connection-string-invalid'),
+        (('connection timeout', 'timeout expired', 'connection timed out'), 'database-connection-timeout'),
+        (('permission denied', 'insufficient privilege'), 'database-permission-denied'),
+        (('ssl', 'certificate verify'), 'database-tls-failure'),
+    ):
+        if any(needle in message for needle in needles):
+            return code
+    return 'operation-failed-no-sensitive-details'
+
+
 def stage(name):
     global STAGE
     STAGE = name
@@ -38,8 +62,24 @@ def stage(name):
 def require(name):
     value = os.environ.get(name)
     if not value:
-        raise ValueError('Required backup secret missing')
+        raise MissingSecret('Required backup secret missing')
     return value
+
+
+def check_configuration():
+    # The display names are constants, never derived from secret values.
+    names = {
+        'BACKUP_DATABASE_URL': 'BACKUP_DATABASE_URL',
+        'BACKUP_SUPABASE_URL': 'BACKUP_SUPABASE_URL',
+        'BACKUP_SUPABASE_SERVICE_ROLE_KEY': 'BACKUP_SUPABASE_SERVICE_ROLE_KEY',
+        'BACKUP_PASSPHRASE': 'BACKUP_PASSPHRASE',
+        'AWS_ACCESS_KEY_ID': 'BACKUP_AWS_ACCESS_KEY_ID',
+        'AWS_SECRET_ACCESS_KEY': 'BACKUP_AWS_SECRET_ACCESS_KEY',
+    }
+    missing = [display for env, display in names.items() if not os.environ.get(env)]
+    for name in missing:
+        print('Missing required GitHub secret: ' + name, file=sys.stderr)
+    return 1 if missing else 0
 
 
 def client_env(extra=None):
@@ -290,9 +330,9 @@ def run():
                 upload(path, f'monthly/e2-db-{local:%Y-%m}.sql.gz.gpg')
             receipt['db'] = db_receipt
             save_receipt(receipt)
-        except Exception:
+        except Exception as error:
             failed = True
-            print('Backup failed at stage: ' + STAGE, file=sys.stderr)
+            print('Backup failed at stage: ' + STAGE + '; reason=' + safe_reason(error), file=sys.stderr)
         if files_due(previous, now, os.environ.get('INCLUDE_FILES') == 'true'):
             stage('storage-download-and-encryption')
             try:
@@ -301,9 +341,9 @@ def run():
                 stage('storage-upload')
                 receipt['files'] = upload(path, f'files/{path.name}')
                 save_receipt(receipt)
-            except Exception:
+            except Exception as error:
                 failed = True
-                print('Backup failed at stage: ' + STAGE, file=sys.stderr)
+                print('Backup failed at stage: ' + STAGE + '; reason=' + safe_reason(error), file=sys.stderr)
         receipt['complete'] = not failed
         save_receipt(receipt)
     # Only runner scratch is cleaned; no S3 object deletion is implemented.
@@ -312,7 +352,7 @@ def run():
 
 if __name__ == '__main__':
     try:
-        sys.exit(run())
-    except Exception:
-        print('Backup failed at stage: ' + STAGE + '; inspect secret configuration and service access.', file=sys.stderr)
+        sys.exit(check_configuration() if sys.argv[1:] == ['--check-config'] else run())
+    except Exception as error:
+        print('Backup failed at stage: ' + STAGE + '; reason=' + safe_reason(error), file=sys.stderr)
         sys.exit(1)
