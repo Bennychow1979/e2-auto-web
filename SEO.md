@@ -39,27 +39,30 @@ this is not immediate suppression. Do not commit signed photo URLs to a sitemap.
 ## Compact inventory for assistants: stock.txt
 
 `https://e2auto.my/stock.txt` is generated, never maintained as a separate list.
-It contains every `publication=published` vehicle once, including Available,
-Reserved and Sold, using the exact rows and stable EN canonical links used by
-the public vehicle pages. The optional sitemap Sold exclusion does not hide
-Sold public listings from stock.txt. Draft/withdrawn vehicles are excluded.
+After the coordinated 2026-11-15 cutover, it contains every published Available
+and Reserved vehicle once. `stock-sold.txt` contains published Sold vehicles
+inside the 90-day website-status window. Both use stable EN canonical vehicle
+links; Sold pages and sitemap entries remain intact even after feed expiry.
+Draft/withdrawn vehicles are excluded. These feeds serve AIRA and the server's
+daily reconciliation program; there is no index or brand-based sharding.
 Each compact JSON Lines record allows only year, make, model, variant, plate,
 status, public price in MYR and canonical URL. Vehicle lines are compact JSON
 arrays; the header's `columns` gives their field order once instead of repeating
-keys on every line. Header and footer remain JSON objects. This keeps the
-current inventory below the observed 20,000-character assistant fetch limit.
-The generator enforces an 18,000-character budget including its own header,
-instructions and footer, leaving room below that reader limit. If inventory
-growth exceeds it, the build fails explicitly before replacing the previous
-artifact; no record is silently truncated. A future format/reader review would
-be needed before that larger inventory could be published. Reader settings
-are not changed by this implementation. Consumers must still check the end marker/count.
+keys on every line. Header and footer remain JSON objects. The old 18,000
+budget was a code safeguard below an observed 20,000-character assistant fetch
+limit, not a GitHub Pages hosting restriction. Benny approved a 40,000-character
+budget per file, declared as `max_chars` in each header. This includes the
+header, comments, records and footer. Overflow stops the build before replacing
+the artifact; no record is truncated or dropped to fit. The failure notification
+uses E2auto_check_bot. AIRA's actual server reader settings must be confirmed
+separately; changing this budget does not change that reader.
+Consumers must still check the end marker/count.
 Free-text descriptions, private
 fields, customers, loans and photo metadata are not exported. JSON escaping
 keeps embedded newlines, tabs, quotes and markup inside a single data record.
 
 The first line supplies format version, snapshot/build timestamps, complete
-flag, total and status counts; the last line repeats the total. Consumers must
+flag, file-specific total and status counts; the last line repeats the total. Consumers must
 read all records and confirm the end marker/count before claiming completeness.
 `complete` describes coverage of that snapshot, not current freshness or a
 successful deployment. Measure age from `snapshot_at`, never `built_at`.
@@ -72,6 +75,25 @@ as available; Sold prices are historical. Reconfirm current price/availability
 using live public details. A snapshot older than 30 minutes, an incomplete
 read, missing footer or failed fetch is not evidence of the full current stock.
 Do not fall back to a remembered short list while claiming it is exhaustive.
+
+The website has no sale-date field. At Benny's instruction, initial Sold dates
+use the existing Sold record's `updated_at`, then freeze in the publication
+manifest's `stockSoldDates`. This is website record timing, not a claim about the
+actual sale date. Editing a Sold price/description does not reset retention.
+A published return to Available/Reserved clears the saved date; a subsequent
+Sold transition adopts that record's update time. Missing/invalid dates fail
+explicitly. Both feeds share snapshot/build timestamps and are packaged together;
+upload, live verification and the refresh worker verify both hashes and counts.
+
+Cutover is on hold until Benny confirms AIRA is ready to fall back to
+`stock-sold.txt` when a car is absent from the main feed. Before merging:
+deploy the backward-compatible refresh worker, and configure
+`E2AUTO_CHECK_BOT_TOKEN` / `E2AUTO_CHECK_CHAT_ID` as GitHub encrypted Actions
+secrets. A read-only getMe/getChat preflight verifies the bot and recipient;
+failure delivery requires Telegram's message receipt. Never put credentials in
+this repository or logs. Future work at 180 active vehicles: a read-only public
+inventory query API by brand, price and status; retain stock.txt as fallback
+and for daily reconciliation. No query API is introduced in this change.
 
 The existing acquisition performs two matching, paginated, exact-count reads.
 Stale/future and incomplete snapshots fail closed, preserving the prior artifact.

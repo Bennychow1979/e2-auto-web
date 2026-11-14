@@ -19,9 +19,13 @@ export async function fetchBuildInput(config,{bootstrap=false,seed={},request=fe
  const snapshot=await fetchPublicInventory(config,request);
  snapshot.publicPhotos=await fetchPublicPhotoCoverage(config,snapshot,request);
  const response=await request('https://e2auto.my/vehicle-pages-manifest.json',{credentials:'omit',cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
- let priorCategories=[];
- if(response.status!==404||!bootstrap){if(!response.ok)throw Error('Category history is unavailable; preserve existing pages.');const raw=await response.text();if(raw.length>4000000)throw Error('Category registry is too large');const manifest=JSON.parse(raw);if(manifest.version!==1||!Array.isArray(manifest.vehicles))throw Error('Invalid previous publication manifest');priorCategories=categoryRegistry([],manifest.categories||[]);}
- return {...snapshot,publicImageOrigin:config.supabaseUrl,priorSlugs,priorCategories};
+ let priorCategories=[],priorStockSoldDates={};
+ if(response.status!==404||!bootstrap){
+  if(!response.ok)throw Error('Category history is unavailable; preserve existing pages.');const raw=await response.text();if(raw.length>4000000)throw Error('Category registry is too large');const manifest=JSON.parse(raw);if(manifest.version!==1||!Array.isArray(manifest.vehicles))throw Error('Invalid previous publication manifest');
+  priorCategories=categoryRegistry([],manifest.categories||[]);
+  if(manifest.stockFeeds&&(!manifest.stockSoldDates||Array.isArray(manifest.stockSoldDates)||Object.keys(manifest.stockSoldDates).length!==manifest.stockFeeds.soldRecent+manifest.stockFeeds.soldExpired))throw Error('Sold date history missing or incomplete in prior publication');priorStockSoldDates=manifest.stockSoldDates||{};
+ }
+ return {...snapshot,publicImageOrigin:config.supabaseUrl,priorSlugs,priorCategories,priorStockSoldDates};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const [output,mode]=process.argv.slice(2);if(!output||process.argv.length>4||(mode&&mode!=='--bootstrap'))throw Error('Usage: node scripts/fetch-vehicle-build-input.mjs <snapshot-output.json> [--bootstrap]');

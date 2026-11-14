@@ -37,7 +37,7 @@ test('all six listing HTML documents expose full available links, Sold pages rem
   const schema=JSON.parse(/id="vehicleStructuredData" type="application\/ld\+json">([^<]+)</.exec(soldPage)[1]);assert.deepEqual(schema['@type'],['Car','Product']);assert.equal(schema.offers.priceCurrency,'MYR');
   assert(soldPage.includes('"@type":"BreadcrumbList"'));
  }
- assert.equal(await readFile(join(out,'stock.txt'),'utf8'),renderStock(rows,{slugs:manifest.slugs,fetchedAt:snapshot.fetchedAt,builtAt:manifest.builtAt,complete:true}));
+ assert.equal(await readFile(join(out,'stock.txt'),'utf8'),renderStock(rows.filter(v=>v.stock_status!=='Sold'),{slugs:manifest.slugs,fetchedAt:snapshot.fetchedAt,builtAt:manifest.builtAt,complete:true}));
  const oldCategory=manifest.categories.find(v=>v.kind==='model'&&categoryMatches(vehicleA,v));
  const changed={...snapshot,vehicles:[{...vehicleA,stock_status:'Sold'},sold]};
  const next=await buildVehicleSite(changed,out);assert(next.categories.some(v=>v.slug===oldCategory.slug));

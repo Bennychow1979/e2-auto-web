@@ -40,7 +40,7 @@ for(const lang of ['en','ms','zh']){
 test('release build retains stock and vehicle routes, adds three calculator pages and discoverable language-correct links',async()=>{
  const rows=[vehicleA,vehicleSold],snapshot={kind:'public-complete',complete:true,expectedCount:rows.length,fetchedAt:new Date().toISOString(),vehicles:rows};
  const out=join(await mkdtemp(join(tmpdir(),'e2-roadtax-')),'site'),manifest=await buildVehicleSite(snapshot,out);
- assert.equal(await readFile(join(out,'stock.txt'),'utf8'),renderStock(rows,{slugs:manifest.slugs,fetchedAt:snapshot.fetchedAt,builtAt:manifest.builtAt,complete:true}));
+ assert.equal(await readFile(join(out,'stock.txt'),'utf8'),renderStock(rows.filter(v=>v.stock_status!=='Sold'),{maxCharacters:40000,slugs:manifest.slugs,fetchedAt:snapshot.fetchedAt,builtAt:manifest.builtAt,complete:true}));
  const xml=await readFile(join(out,'sitemap.xml'),'utf8');
  for(const lang of ['en','ms','zh']){
   const prefix=lang==='en'?'':lang+'/';
