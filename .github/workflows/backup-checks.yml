@@ -20,7 +20,7 @@ jobs:
           POSTGRES_DB: source
         ports: ['5432:5432']
         options: >-
-          --health-cmd 'pg_isready -U e2_source -d source'
+          --health-cmd "pg_isready -U e2_source -d source"
           --health-interval 5s --health-timeout 5s --health-retries 12
       restore:
         image: postgres:18
@@ -30,7 +30,7 @@ jobs:
           POSTGRES_DB: restore
         ports: ['5433:5432']
         options: >-
-          --health-cmd 'pg_isready -U e2_restore -d restore'
+          --health-cmd "pg_isready -U e2_restore -d restore"
           --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
       - uses: actions/checkout@v6
