@@ -1,3 +1,4 @@
+import {loanGuidePaths} from '../loan-guide-routes.mjs';
 import assert from 'node:assert/strict';
 import {readFile,lstat,readdir} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
@@ -37,6 +38,10 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
   assert(!html.includes('?ticket='));
  }
  for(const lang of ['en','ms','zh']){
+  const loan=await readFile(join(out,loanGuidePaths[lang].slice(1),'index.html'),'utf8');
+  assert(loan.includes('rel="canonical" href="https://e2auto.my'+loanGuidePaths[lang]+'"'));
+  assert.equal(JSON.parse(/<script type="application\/ld\+json" id="loanFAQ">([^<]*)<\/script>/.exec(loan)[1]).mainEntity.length,9);
+  assert.equal((loan.match(/<details>/g)||[]).length,9);
   const calculatorPath='/'+(lang==='en'?'':lang+'/')+'roadtax-calculator/';
   const calculator=await readFile(join(out,calculatorPath.slice(1),'index.html'),'utf8');
   assert(calculator.includes('rel="canonical" href="https://e2auto.my'+calculatorPath+'"'));
@@ -60,7 +65,7 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
   JSON.parse(/<script id="plateStructuredData" type="application\/ld\+json">([^<]*)<\/script>/.exec(html)[1]);
  }
  for(const file of ['sales-team.js','sales-team.css','sales-team-data.mjs','sales-team-motion.mjs','sales-team-navigation.mjs','sales-team-translations.mjs'])assert.deepEqual(await readFile(join(out,file)),await readFile(join(source,file)),'Team module preserved: '+file);
- const sitemap=await readFile(join(out,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,rows.length*3+13+manifest.categories.length*3);
+ const sitemap=await readFile(join(out,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,rows.length*3+16+manifest.categories.length*3);
  for(const [name,file] of [['stock','stock.txt'],['sitemap','sitemap.xml']])assert.equal(manifest.publicationHashes?.[name],createHash('sha256').update(await readFile(join(out,file))).digest('hex'),'Publication hash mismatch: '+name);
  return {vehicles:rows.length,pages:manifest.files.length,preservedFiles:preserved.length,publicImageVersion:'v2',photoBytesDownloaded:0,artifactVerified:true};
 }

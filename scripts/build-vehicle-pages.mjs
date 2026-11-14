@@ -1,4 +1,5 @@
 import {buildRoadtaxPages} from './build-roadtax.mjs';
+import {buildLoanGuides} from './build-loan-guide.mjs';
 import {readFile,writeFile,mkdir,readdir,cp,unlink,mkdtemp,rename,lstat} from 'node:fs/promises';
 import {resolve,join,sep,dirname} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
@@ -173,6 +174,7 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  for(const category of categories)for(const lang of LANGUAGES){const destination=join(stage,categoryPath(category.slug,lang).slice(1),'index.html');await mkdir(dirname(destination),{recursive:true});await writeFile(destination,renderCategory(category,rows,lang,publicSlugs,categories,discoveryOptions));}
  for(const file of previous.files||[])if(!files.includes(file))await unlink(join(stage,file)).catch(e=>{if(e.code!=='ENOENT')throw e;});
  await buildRoadtaxPages(stage,{source:root,categories});
+ await buildLoanGuides(stage,{source:root,categories});
  await writeFile(join(stage,'sitemap.xml'),sitemap);
  await writeFile(join(stage,'stock.txt'),stock);
  await mkdir(join(stage,'data'),{recursive:true});await writeFile(join(stage,'data/car-slugs.json'),JSON.stringify(slugs,null,2)+'\n');
