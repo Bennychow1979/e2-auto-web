@@ -11,12 +11,12 @@ import {vehicleA,vehicleB,vehiclePath,testSlugs} from '../../tests/fixtures/vehi
 const template=await readFile(new URL('../../car.html',import.meta.url),'utf8');
 const snapshot=(vehicles=[vehicleA,vehicleB])=>({kind:'synthetic-test',fetchedAt:new Date().toISOString(),vehicles:structuredClone(vehicles)});
 
-test('initial mileage notice stays beside mileage and never claims unconfirmed records were checked',()=>{
+test('initial mileage notice follows the purchase reminder and never claims unconfirmed records were checked',()=>{
  for(const [lang,checked,pending,rights] of [['en','E2 Auto checks vehicle mileage','Mileage is pending verification','your statutory rights'],['ms','E2 Auto menyemak perbatuan','Perbatuan masih menunggu pengesahan','hak anda di sisi undang-undang'],['zh','根据现有记录核查车辆里程','车辆里程尚待','依法享有的权利']]){
   for(const fields of [{mileage:50000,mileage_confirmed:true},{mileage:50000,mileage_confirmed:false},{mileage:null,mileage_confirmed:true},{mileage:50000,mileage_confirmed:'true'}]){
    const html=renderVehiclePage(template,{...vehicleA,...fields},lang,'test');
-   const note=/<dd>[^<]*<span class="vehicleNotice vehicleNotice--mileage"[\s\S]*?<\/dd>/.exec(html)?.[0];
-   assert(note,'notice belongs inside the mileage value');assert(note.includes(rights));
+   const note=/<div id="mileageNotice" class="smallNote mileageNotice">[\s\S]*?<\/div>/.exec(html)?.[0];
+   assert(note,'notice belongs in its small-note container');assert(html.includes('</span>'+note+'</div><div class="specsPanel">'));assert(!/<dd>[^<]*<span class="vehicleNotice/.test(html));assert(note.includes(rights));
    const verified=fields.mileage===50000&&fields.mileage_confirmed===true;
    assert(note.includes(verified?checked:pending));assert(!note.includes(verified?pending:checked));
   }
