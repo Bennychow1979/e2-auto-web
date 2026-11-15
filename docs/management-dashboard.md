@@ -7,6 +7,9 @@ action queue. All demo data belongs in tests, never in the production page.
 
 ## Source and definitions
 
+The owner confirmed on 2026-11-16 (MYT) that MASTERLIST is authoritative. Notion
+is a cross-check only; differences require review and must not overwrite it.
+
 - Fleet: the existing fixed E2 MASTERLIST workbook, current Malaysia-month sheet.
   Reads reuse the existing server-side Drive service account and single-file
   Viewer grant. No new source sharing, browser token or source edits are needed.
@@ -56,7 +59,7 @@ commissions without returning their rows, and checks loan pagination completely.
 
 ## Deployment and acceptance
 
-1. Confirm the source definitions with the owner, especially current-month
+1. Preserve the owner-confirmed source definitions above, especially current-month
    `SOLD & DELIVERED` membership versus exact daily handover records.
 2. Deploy `e2-management-dashboard` to the existing E2 Supabase project, including
    its relative shared modules. The browser sends a current user JWT; the handler
@@ -81,3 +84,4 @@ commissions without returning their rows, and checks loan pagination completely.
 
 Rollback: turn the gate off; no database rollback is needed. The disabled gate
 does not replace endpoint access control.
+
