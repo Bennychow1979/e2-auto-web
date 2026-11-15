@@ -58,7 +58,7 @@ export function documentDataMock(staffView = false) {
   return `
     export const staffView = ${staffView};
     export const check = result => { if (result.error) throw result.error; return result.data; };
-    export const db = {auth: {onAuthStateChange(callback) { window.__previewFixture.auth = callback; }}};
+    export const db = {auth: {onAuthStateChange(callback) { const previous=window.__previewFixture.auth; window.__previewFixture.auth=(...args)=>{previous?.(...args);callback(...args);}; }}};
     export const sessionUser = async () => ({id: ${JSON.stringify(staffView ? staffId : customerId)}});
     export const application = async () => (${JSON.stringify(application)});
     export const documentRows = async () => ${JSON.stringify(files)};
@@ -77,7 +77,7 @@ export function documentDataMock(staffView = false) {
 export function intakeDataMock() {
   const intakeApplication = {...application, status: 'Sent to Office', office_admin: staffId, salesperson: 'other-staff', details: {name: 'Synthetic test applicant', guarantor: 'Not requested'}};
   return `
-    export const db = {auth: {onAuthStateChange(callback) { window.__previewFixture.auth = callback; }}};
+    export const db = {auth: {onAuthStateChange(callback) { const previous=window.__previewFixture.auth; window.__previewFixture.auth=(...args)=>{previous?.(...args);callback(...args);}; }}};
     export const who = async () => ({id: ${JSON.stringify(staffId)}, role: 'office_admin'});
     export const list = async offset => offset ? [] : [${JSON.stringify(intakeApplication)}];
     export const detail = async () => ({app: ${JSON.stringify(intakeApplication)}, files: ${JSON.stringify(files)}, events: []});
