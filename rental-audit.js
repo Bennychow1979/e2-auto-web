@@ -4,7 +4,7 @@ const $=s=>document.querySelector(s);
 let epoch=0,request=0,currentUser=null,cursors=[null],page=0,filter='',busy=false,detailRequest=0;
 function node(tag,text,className){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(className)e.className=className;return e;}
 function clearDetail(){detailRequest++;$('#detail').close();$('#changes').replaceChildren();$('#detailMeta').textContent='';$('#detailTitle').textContent='修改前后';}
-function gate(message){epoch++;request++;currentUser=null;busy=false;cursors=[null];page=0;filter='';$('#plate').value='';$('#records').replaceChildren();clearDetail();$('#content').hidden=true;$('#signOut').hidden=true;$('#gate').hidden=false;$('#gateMessage').textContent=message;$('#status').textContent='';}
+function gate(message){epoch++;request++;currentUser=null;busy=false;cursors=[null];page=0;filter='';$('#plate').value='';$('#records').replaceChildren();clearDetail();$('#content').hidden=true;$('#signOut').hidden=true;$('#returnDashboard').hidden=true;$('#gate').hidden=false;$('#gateMessage').textContent=message;$('#status').textContent='';}
 async function permitted(){if(check(await db.rpc('e2_is_super_admin'))!==true)throw Error('denied');}
 async function load(reset=false){
  if(busy)return;if(reset){page=0;cursors=[null];filter=$('#plate').value.trim();}
@@ -33,7 +33,7 @@ async function detail(row){
  }catch{if(token===epoch&&serial===detailRequest)gate('无法读取该记录。请重新验证 Super Admin 权限。');}
 }
 async function boot(session){gate('正在验证 Super Admin 权限…');if(!session){gate('请先使用 Super Admin 员工账号登录。');return;}const token=epoch;
- try{const user=check(await db.auth.getUser()).user;await permitted();if(token!==epoch)return;currentUser=user.id;$('#gate').hidden=true;$('#content').hidden=false;$('#signOut').hidden=false;await load(true);}catch{if(token===epoch)gate('仅 Super Admin 可以查看操作记录。');}
+ try{const user=check(await db.auth.getUser()).user;await permitted();if(token!==epoch)return;currentUser=user.id;$('#gate').hidden=true;$('#content').hidden=false;$('#signOut').hidden=false;$('#returnDashboard').hidden=false;await load(true);}catch{if(token===epoch)gate('仅 Super Admin 可以查看操作记录。');}
 }
 $('#filters').addEventListener('submit',e=>{e.preventDefault();void load(true);});$('#refresh').onclick=()=>load(true);
 $('#previous').onclick=()=>{if(!busy&&page>0){page--;void load();}};$('#next').onclick=()=>{if(!busy&&cursors[page+1]){page++;void load();}};
