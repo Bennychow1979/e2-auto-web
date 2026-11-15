@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="zh">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>租车操作记录 · E2 Auto</title><link rel="stylesheet" href="rental-audit.css?v=1"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>租车操作记录 · E2 Auto</title><link rel="stylesheet" href="rental-audit.css?v=return-nav-1"></head>
 <body>
-<header><div class="shell top"><a href="rental.html">← 租车月供跟进</a><span> E2 AUTO · SUPER ADMIN</span><button id="signOut" hidden>退出</button></div></header>
+<header><div class="shell top"><nav class="returnNav" aria-label="返回工作台"><a href="rental.html">← 租车月供</a><a id="returnDashboard" href="dashboard.html" hidden>返回 Dashboard</a><a href="portal.html?view=inventory">返回工作台 ↗</a></nav><span> E2 AUTO · SUPER ADMIN</span><button id="signOut" hidden>退出</button></div></header>
 <main class="shell">
 <h1>租车操作记录</h1><p class="subtitle">Rental activity log · 谁操作、何时操作，以及资料的前后变化。</p>
 <section id="gate" class="card" role="status"><p id="gateMessage">正在验证 Super Admin 权限…</p><a href="rental.html">员工登录 / 返回租车页</a></section>
@@ -13,5 +13,5 @@
 <nav class="pagination" aria-label="操作记录分页"><button id="previous">上一页</button><button id="next">下一页</button></nav>
 </section>
 <dialog id="detail" aria-labelledby="detailTitle"><div class="dialogHead"><h2 id="detailTitle">修改前后</h2><button id="closeDetail" aria-label="关闭对比">关闭 ×</button></div><p id="detailMeta"></p><p class="note">仅列出有变化的字段；“未设置”与空值、0、否分别显示。数组按项目顺序对比。</p><div id="changes"></div></dialog>
-</main><script src="e2-config.js"></script><script type="module" src="rental-audit.js?v=1"></script>
+</main><script src="e2-config.js"></script><script type="module" src="rental-audit.js?v=return-nav-1"></script>
 </body></html>

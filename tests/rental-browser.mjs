@@ -16,9 +16,9 @@ try{
   await context.route('**/*',route=>{if(new URL(route.request().url()).origin!==origin){external.push(route.request().url());return route.abort();}return route.continue();});
   const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(origin+'/rental.html?role='+role);
   if(['admin','anon'].includes(role)){
-   await expect(page.locator('#login')).toBeVisible();await expect(page.locator('#app')).toBeHidden();await expect(page.locator('body')).not.toContainText('SYNTHETIC OWNER');assert.equal(await page.evaluate(()=>rentalFixture.snapshot().reads),0);
+   await expect(page.locator('#login')).toBeVisible();await expect(page.locator('#app')).toBeHidden();await expect(page.locator('body')).not.toContainText('SYNTHETIC OWNER');assert.equal(await page.evaluate(()=>rentalFixture.snapshot().reads),0);await expect(page.locator('#returnDashboard')).toBeHidden();
   }else{
-   await expect(page.locator('#rentalStatus')).toContainText('已读取 1 台');await expect(page.locator('#rows')).toContainText('DEMO1');
+   await expect(page.locator('#rentalStatus')).toContainText('已读取 1 台');if(role==='super_admin')await expect(page.locator('#returnDashboard')).toBeVisible();else await expect(page.locator('#returnDashboard')).toBeHidden();await expect(page.locator('#rows')).toContainText('DEMO1');
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),name+' page overflow');
    if(role==='super_admin'){await page.locator('#btnAccess').click();await expect(page.locator('#panel')).toContainText('office@example.test');await page.locator('#closeAccess').click();}else await expect(page.locator('#btnAccess')).toBeHidden();
    await page.locator('tr[data-id="DEMO1"] b').first().click();await expect(page.locator('#p_date')).toBeVisible();await expect(page.locator('#panel')).toContainText('12/08/2026');
@@ -26,7 +26,7 @@ try{
    await expect(page.locator('#panel')).toContainText('instalment #2');
    await page.evaluate(()=>rentalFixture.conflict());await page.locator('#btnPay').click();await expect(page.locator('#toast')).toContainText('Record changed');assert.equal(await page.evaluate(()=>rentalFixture.snapshot().contracts[0].data.payments.length),1);
    await page.evaluate(()=>{closeDrawer();window.scrollTo(0,0);document.querySelector('#toast').classList.remove('show');});await page.screenshot({path:'test-results/rental-'+name+'.png',fullPage:true});
-   await page.evaluate(()=>rentalFixture.revoke());await expect(page.locator('#app')).toBeHidden();await expect(page.locator('#rows')).toBeEmpty();await expect(page.locator('#panel')).toBeEmpty();
+   await page.evaluate(()=>rentalFixture.revoke());await expect(page.locator('#app')).toBeHidden();await expect(page.locator('#returnDashboard')).toBeHidden();await expect(page.locator('#rows')).toBeEmpty();await expect(page.locator('#panel')).toBeEmpty();
   }
   await context.close();
  }
