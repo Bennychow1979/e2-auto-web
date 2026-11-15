@@ -18,3 +18,7 @@
 @media(max-width:700px){.galleryIntro.e2ShinyHero{width:calc(100% - 40px);margin:30px auto 22px}.galleryIntro #galleryHeading.e2ShinyTitle{font-size:clamp(1.15rem,6.1vw,2.65rem)}.e2ShinyHero .introSignature{margin-bottom:18px}}
 @media(prefers-reduced-motion:reduce),(forced-colors:active){.e2ShineWindow{display:none!important}.e2ShineWindow,.e2ShineInk{animation:none}}
 @media print{.e2ShineWindow{display:none!important}}
+
+/* Keep the current SEO heading and slogan layout; restore only the gold sweep. */
+.galleryIntro .heroSlogan.e2ShinyTitle{position:relative;isolation:isolate;max-width:100%;color:#876921}
+.heroSlogan .e2ShineInk{white-space:normal}
