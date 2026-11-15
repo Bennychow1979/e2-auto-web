@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>E2 租车月供跟进</title>
+<link rel="stylesheet" href="rental.css?v=1">
+</head>
+<body>
+<header><div class="wrap">
+  <div><h1>租车月供跟进 · Rental Instalment Tracker</h1></div>
+  <div class="right" id="hdr" hidden><span id="who"></span><button id="btnAdd" class="gold">+ 新增车辆 Add car</button><button id="btnSettings">⚙ 设定</button><button id="btnAccess" hidden>权限管理 Access</button><button id="btnOut">退出</button></div>
+</div></header>
+<main>
+  <div id="login" class="card">
+<h2>租车月供跟进 · 员工登录</h2>
+<p class="hint">仅 Super Admin 及获其授权的 Admin / Office Admin 可使用。</p>
+<form id="rentalLogin">
+<label for="rentalEmail">员工邮箱 / Staff email</label><input id="rentalEmail" type="email" autocomplete="username" required>
+<label for="rentalPassword">密码 / Password</label><input id="rentalPassword" type="password" autocomplete="current-password" required>
+<button class="btn primary" id="btnIn" type="submit">登录 Sign in</button>
+</form><p class="errmsg" id="loginErr" role="status"></p>
+<p class="hint"><a href="portal.html">员工入口 / Staff portal</a></p>
+</div>
+
+  <div id="app" hidden>
+    <p id="rentalStatus" class="hint" role="status"></p><div class="stats" id="stats"></div>
+    <div class="card">
+      <div class="row">
+        <select id="fStatus"><option value="open">在供的车 / Active</option><option value="rented">已租出 / Rented out</option><option value="instock">在库未租 / In stock</option><option value="OVERDUE">只看逾期 / Overdue only</option><option value="due7">7 天内到期 / Due in 7 days</option><option value="check">⚠ 待核实 / To confirm</option><option value="adv">💰 ADV 待收 / ADV to collect</option><option value="advlost">💸 ADV 收不回 / ADV written off</option><option value="closed">已结束 / Closed only</option><option value="all">全部 / All (incl. returned)</option></select>
+        <select id="fPartner"><option value="">全部租客来源 / All sources</option></select>
+        <select id="fSort"><option value="due">排序：逾期优先 Overdue first</option><option value="new">最新入库 Newest added</option><option value="plate">车牌 Plate A–Z</option><option value="model">车款 Model</option></select>
+        <input id="fQ" placeholder="搜车牌 / 车款 / 车主 / 租客 · Plate, model, owner, renter" style="flex:1;min-width:160px">
+        <button class="btn" id="btnRefresh">刷新 Refresh</button>
+        <button class="btn" id="btnExport">⬇ 导出 Excel / Export</button>
+        <button class="btn" id="btnStock">📋 库存清单 Stock list</button>
+      </div>
+      <div class="row" id="selbar" hidden style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+        <b id="selCount"></b>
+        <button class="btn primary" id="btnSelWA">📋 WhatsApp 已选的车 / selected cars</button>
+        <button class="btn" id="btnSelClear">清除 Clear</button>
+      </div>
+    </div>
+    <div class="card tbl"><table><thead><tr>
+      <th><input type="checkbox" id="selAll" title="全选 Select all"></th><th>车牌 Plate</th><th>供款 Instalment</th><th>租出 / 在库 Rental</th><th>下期 Next due</th><th>已付 Paid</th><th>车主 Owner</th><th>Agent</th><th>Financier</th><th>月供 Monthly</th><th>付款去处 Pay to</th>
+    </tr></thead><tbody id="rows"></tbody></table><div class="hint" id="empty" hidden>没有符合的记录。</div></div>
+  </div>
+</main>
+
+<div class="drawer" id="drawer"><div class="panel" id="panel"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="e2-config.js"></script><script type="module" src="rental.js?v=1"></script>
+</body>
+</html>
