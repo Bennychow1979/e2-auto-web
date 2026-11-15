@@ -94,7 +94,9 @@ test('browser denies non-Super-Admin reads and discards an in-flight response af
     globalThis.__dashboardTest={db,dashboardView,barWidths};
     let source=await readFile(new URL('../../dashboard.js',import.meta.url),'utf8');
     source=source.replace(/^import .*;\r?\n/gm,'');
-    source='const {db,dashboardView,barWidths}=globalThis.__dashboardTest;const configured=true,check=r=>{if(r.error)throw r.error;return r.data},esc=String;\n'+source;
+    // Navigation has its own role/revocation browser tests; keep this harness
+    // focused on dashboard data requests and its in-flight response handling.
+    source='const setupRentalNavigation=()=>{};const {db,dashboardView,barWidths}=globalThis.__dashboardTest;const configured=true,check=r=>{if(r.error)throw r.error;return r.data},esc=String;\n'+source;
     await import('data:text/javascript;charset=utf-8,'+encodeURIComponent(source));
     callback('INITIAL_SESSION',{user:{id:'not-super-admin'}});await new Promise(r=>setTimeout(r,20));
     assert.equal(reads,0);assert.equal(element('dashboard').hidden,true);

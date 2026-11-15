@@ -1,7 +1,7 @@
 # Rental instalment tracker
 
-The private staff module is served at `/rental.html`. It is not linked in the
-portal menu and contains no embedded customer or contract data. The CSV supplied
+The private staff module is served at `/rental.html`. It is linked from the
+Staff menus for authorized users and contains no embedded customer or contract data. The CSV supplied
 by the owner is imported directly into Supabase and must never be committed,
 included in a Pages artifact, cached in CI, or logged. The source ZIP also stays
 outside the repository.
@@ -80,3 +80,34 @@ the owner's own login; never retrieve or copy their browser session token.
 For rollback, unpublish the page and revoke grants. Preserve contract and audit
 tables; do not delete imported records as a routine rollback step. Existing
 encrypted whole-database backups include the rental tables.
+
+## Super Admin activity viewer
+
+`/rental-audit.html` is linked from the rental page and Staff menus. The Super Admin
+Dashboard, Admin vehicle workspace and Office Admin intake workspace all expose
+the rental link only when `rental_ok()` succeeds. The audit link additionally
+requires active Super Admin. Menu visibility is not the security boundary.
+
+The read-only `rental_audit_list` and `rental_audit_detail` RPCs independently
+require `auth.uid()` and active Super Admin on every call. Neither grants direct
+access to `auth.users`. The SECURITY DEFINER join is needed only to resolve the
+actor UUID to its current account email; anonymous execution is revoked. Admin
+and Office Admin cannot read audit data even with a rental grant. No client can
+edit or delete audit records. No changes to contract or payment data are needed
+for this feature.
+
+The list uses a bounded 20-record page, descending identity cursor and optional
+plate search. Snapshots load only when opening one record. The view shows MYT,
+vehicle plate, current actor email (or retained UUID for deleted accounts), and
+field-level before/after changes including payment and handover arrays. System
+or import actions without an authenticated actor are explicitly labelled.
+Historical import records do not establish who originally edited the source CSV.
+Array comparisons use item position; an insertion/reorder can show multiple
+changed fields. All source text is rendered as text, never interpreted as HTML.
+
+Sign-out clears list and detail immediately; role checks on focus and every
+15 seconds clear the viewer when access is lost. Already viewed or copied
+information cannot be recalled. No snapshots are stored in browser storage.
+Tests use synthetic records for unauthorized roles, inactive Super Admin,
+pagination, filtering, before/after payments, XSS text, mobile layout and
+late responses after sign-out.

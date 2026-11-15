@@ -1,3 +1,4 @@
+import {setupRentalNavigation} from './rental-navigation.mjs?v=1';
 import {db,configured,check,esc} from './e2-data.js?v=dashboard-1';
 import {dashboardView,barWidths} from './dashboard-view.mjs?v=1';
 const $=id=>document.getElementById(id);
@@ -60,3 +61,5 @@ else db.auth.onAuthStateChange((event,session)=>{
   if(event==='SIGNED_OUT'){++epoch;activeUser=null;clear();$('dashboard').hidden=true;$('access').hidden=false;$('accessMessage').textContent='已退出登录。';return}
   if(event==='INITIAL_SESSION'||(event==='SIGNED_IN'&&session?.user.id!==activeUser))setTimeout(()=>sessionChanged(session),0);
 });
+
+if(db)setupRentalNavigation(db);

@@ -8,7 +8,7 @@ const rentalServices={async use(cap){if(cap==='downloads')return {async save({fi
 function gate(message='请用已获授权的员工账号登录。'){
  ++authEpoch;unsub?.();unsub=null;currentUser=null;me=null;writable=false;rows=[];selected.clear();
  settings={agents:[],financiers:[],partners:[]};settingsRevision=0;fins=[];db=null;
- $('#app').hidden=true;$('#hdr').hidden=true;$('#login').hidden=false;$('#btnAccess').hidden=true;
+ $('#app').hidden=true;$('#hdr').hidden=true;$('#login').hidden=false;$('#btnAccess').hidden=true;$('#auditLink').hidden=true;
  $('#stats').replaceChildren();$('#rows').replaceChildren();$('#panel').replaceChildren();$('#drawer').classList.remove('open');
  $('#who').textContent='';$('#fQ').value='';$('#fPartner').innerHTML='<option value="">全部租客来源 / All sources</option>';$('#rentalStatus').textContent='';$('#toast').textContent='';$('#toast').classList.remove('show');$('#selCount').textContent='';$('#selbar').hidden=true;
  window.__openId=null;window.__editingId=null;window.__dirty=false;
@@ -89,7 +89,7 @@ async function boot(session){
   const isSuper=check(await sb.rpc('e2_is_super_admin'));if(token!==authEpoch)return;
   db=createRentalStore(sb,authorized);
   $('#login').hidden=true;$('#app').hidden=false;$('#hdr').hidden=false;$('#who').textContent=user.email;
-  $('#btnAccess').hidden=isSuper!==true;
+  $('#btnAccess').hidden=isSuper!==true;$('#auditLink').hidden=isSuper!==true;
   unsub=db.collection('contracts').onSnapshot(async snap=>{
    const sd=await db.doc('settings/lists').get();if(token!==authEpoch)return;
    if(!sd.exists)throw Error('Rental settings unavailable');
