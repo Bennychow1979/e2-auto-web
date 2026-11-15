@@ -17,7 +17,7 @@ const ids={};let i=1;for(const role of ['super_admin','admin','office_admin','sa
  await db.query('insert into auth.users values($1,$2)',[id,role+'@example.test']);
  await db.query('insert into staff_memberships values($1,$2,$3)',[id,role==='inactive'?'admin':role,role!=='inactive']);
 }
-await db.exec(await readFile(new URL('../migrations/20261115175606_rental_staff_tracker.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../migrations/20261115180050_rental_staff_tracker.sql',import.meta.url),'utf8'));
 const as=async role=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[ids[role]||'']);await db.exec('set role '+(role==='anon'?'anon':'authenticated'));};
 const q=async(sql,args=[])=> (await db.query(sql,args)).rows;
 const can=async()=> (await q('select public.rental_ok() value'))[0].value;

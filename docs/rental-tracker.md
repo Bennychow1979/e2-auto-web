@@ -61,7 +61,7 @@ project-wide Realtime setting is modified.
 
 ## Deployment and verification
 
-Apply `20261115175606_rental_staff_tracker.sql` to the intended E2 project after
+Apply `20261115180050_rental_staff_tracker.sql` to the intended E2 project after
 schema review. The migration intentionally fails on conflicting existing tables.
 Import the approved source via client-side parsed CSV into `rental_contracts`
 (`id`, `data` only), in one transaction that refuses a nonempty destination.
