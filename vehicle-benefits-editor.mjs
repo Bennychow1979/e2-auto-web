@@ -1,4 +1,4 @@
-import {benefitFields,benefitsHTML,factoryWarrantyActive,batteryWarrantyActive} from './vehicle-benefits.mjs?v=battery-2';
+import {benefitFields,benefitsHTML,factoryWarrantyActive,batteryWarrantyActive} from './vehicle-benefits.mjs?v=warranty-notice-1';
 const booleans=['factory_warranty','battery_warranty','factory_warranty_unlimited','warranty_unlimited','full_service_record'];
 const numbers=['factory_warranty_km','battery_warranty_km','warranty_months','warranty_km','warranty_price'];
 export function setupBenefitsEditor(form) {
