@@ -1,6 +1,6 @@
 import {relatedAvailable} from './vehicle-discovery.mjs';
 import {vehicleNoticeHTML} from './vehicle-notices.mjs';
-import {benefitsHTML,benefitDetailsHTML} from './vehicle-benefits.mjs?v=vehicle-notices-2';
+import {benefitsHTML,benefitDetailsHTML} from './vehicle-benefits.mjs?v=vehicle-notices-3';
 import {t,language,localizedURL,localizedMileage as mileageText} from './i18n.mjs';
 import {descriptionFor} from './vehicle-translations.mjs';
 import {loadVehicleDescription} from './vehicle-description.mjs?v=auto-translation-1';
@@ -47,7 +47,8 @@ $('story').textContent=descriptionFor(car.description,language)||t('See the actu
 loadVehicleDescription(db,car,language).then(text=>{if(text)$('story').textContent=text;});
 $('publicationNote').textContent=t(car.publication==='draft'?'PRIVATE DRAFT PREVIEW · Not on the website':car.stock_status);
 const specs=[['Car plate',car.plate],['Year',car.year],['Brand',car.brand],['Model',car.model],['Variant / SPEC',car.variant],['Engine size',car.engine_litres==null?null:Number(car.engine_litres).toFixed(1)+' L'],['Transmission',t(car.transmission)],['Fuel type',t(car.fuel_type)],['Mileage',mileageText(car)]];
-$('specGrid').innerHTML=specs.filter(([,value])=>value!==null&&value!==undefined&&String(value).trim()!=='').map(([label,value])=>'<div><dt>'+esc(t(label))+'</dt><dd>'+esc(value)+(label==='Mileage'?vehicleNoticeHTML('mileage',{car}):'')+'</dd></div>').join('');
+$('mileageNotice').innerHTML=vehicleNoticeHTML('mileage',{car});
+$('specGrid').innerHTML=specs.filter(([,value])=>value!==null&&value!==undefined&&String(value).trim()!=='').map(([label,value])=>'<div><dt>'+esc(t(label))+'</dt><dd>'+esc(value)+'</dd></div>').join('');
 $('dockModel').textContent=car.name;$('dockPrice').textContent=rm(car.price);
 verified=true;$('carState').hidden=true;$('carMain').hidden=false;$('carDock').hidden=false;
 if($('inventoryNotice')){$('inventoryNotice').textContent=vehicleCopy('verified',language);$('inventoryNotice').dataset.verified='true'}

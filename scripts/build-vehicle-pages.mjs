@@ -94,7 +94,8 @@ export function renderVehiclePage(template,car,lang,fetchedAt,slugs=createSlugMa
  html=html.replace('id="heroImage" alt=""',()=> 'id="heroImage" alt="'+escapeHTML([car.year,car.brand,car.model,car.variant].filter(Boolean).join(' ')+' — '+t('photo {count}',{count:1},lang))+'"');
  if(imageURL)html=html.replace('id="heroImage"',()=> 'id="heroImage" data-public-image="1" src="'+escapeHTML(imageURL)+'"');
  const facts=[['Car plate',car.plate],['Year',car.year],['Brand',car.brand],['Model',car.model],['Variant / SPEC',car.variant],['Engine size',car.engine_litres==null?null:Number(car.engine_litres).toFixed(1)+' L'],['Transmission',t(car.transmission,{},lang)],['Fuel type',t(car.fuel_type,{},lang)],['Mileage',car.mileage==null?t('Pending confirmation',{},lang):Number(car.mileage).toLocaleString('en-MY')+' km'+(car.mileage_confirmed?'':t(' · pending confirmation',{},lang))]];
- html=content(html,'specGrid',facts.filter(([,v])=>v!=null&&String(v).trim()).map(([label,value])=>'<div><dt>'+escapeHTML(t(label,{},lang))+'</dt><dd>'+escapeHTML(value)+(label==='Mileage'?vehicleNoticeHTML('mileage',{car,lang}):'')+'</dd></div>').join(''));
+ html=content(html,'mileageNotice',vehicleNoticeHTML('mileage',{car,lang}));
+ html=content(html,'specGrid',facts.filter(([,v])=>v!=null&&String(v).trim()).map(([label,value])=>'<div><dt>'+escapeHTML(t(label,{},lang))+'</dt><dd>'+escapeHTML(value)+'</dd></div>').join(''));
  html=html.replace('<main id="carMain" hidden>','<main id="carMain">').replace('<aside id="carDock" hidden','<aside id="carDock"').replace('id="carState"','id="carState" hidden').replace('id="openPhoto"','id="openPhoto" hidden');
  if(imageURL)html=html.replace('id="openPhoto" hidden','id="openPhoto"');
  html=html.replace(/<button\b([^>]*)>/g,(_,attrs)=>'<button'+attrs+' disabled data-requires-live>');

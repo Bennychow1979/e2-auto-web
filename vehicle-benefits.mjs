@@ -32,8 +32,7 @@ export function benefitIcon(kind) {
 }
 export function benefitsHTML(car,{lang=language,now=new Date()}={}) {
   const items=benefits(car,now);
-  const qualification=items.some(([kind])=>kind!=='service')?vehicleNoticeHTML('warranty',{lang,className:'warrantyCaption'}):'';
-  return items.length?'<span class="vehicleBenefits">'+items.map(([kind,label])=>'<span class="vehicleBadge vehicleBadge--'+kind+'">'+benefitIcon(kind)+'<span>'+esc(t(label,{},lang))+'</span></span>').join('')+qualification+'</span>':'';
+  return items.length?'<span class="vehicleBenefits">'+items.map(([kind,label])=>'<span class="vehicleBadge vehicleBadge--'+kind+'">'+benefitIcon(kind)+'<span>'+esc(t(label,{},lang))+'</span></span>').join('')+'</span>':'';
 }
 export function benefitDetailsHTML(car,{lang=language,now=new Date()}={}) {
   const items=benefits(car,now),copy=s=>esc(t(s,{},lang));
