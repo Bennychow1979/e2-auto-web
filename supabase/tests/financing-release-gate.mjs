@@ -32,7 +32,7 @@ try {
   for (const [path, persistent] of [
     ['/financing-case.html?source=intake&id=synthetic', true],
     ['/financing-case.html?source=loan&id=synthetic', true],
-    ['/portal.html', true], ['/intake-workspace.html', true], ['/loans.html', true],
+    ['/portal.html', true], ['/dashboard.html', true], ['/intake-workspace.html', true], ['/loans.html', true],
     ['/documents.html?staff=1', true], ['/car.html?preview=1', true],
     ['/index.html', false], ['/showroom.html', false], ['/intake.html?invite=synthetic', false],
     ['/documents.html?application=synthetic', false], ['/car.html', false], ['/customer.html', false],
