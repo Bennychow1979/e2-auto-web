@@ -1,4 +1,5 @@
 import {t,language,escapeHTML as esc} from './i18n.mjs';
+import {vehicleNoticeHTML} from './vehicle-notices.mjs';
 
 export const benefitFields=['factory_warranty','factory_warranty_expires','factory_warranty_km','factory_warranty_unlimited','factory_warranty_terms','battery_warranty','battery_warranty_expires','battery_warranty_km','battery_warranty_terms','third_party_warranty','warranty_provider','warranty_package','warranty_months','warranty_km','warranty_unlimited','warranty_price','warranty_coverage','warranty_terms','full_service_record'];
 export function malaysiaDay(now=new Date()) {
@@ -31,7 +32,7 @@ export function benefitIcon(kind) {
 }
 export function benefitsHTML(car,{lang=language,now=new Date()}={}) {
   const items=benefits(car,now);
-  const qualification=items.some(([kind])=>kind!=='service')?'<span class="warrantyCaption">'+esc(t('Warranty subject to provider terms.',{},lang))+'</span>':'';
+  const qualification=items.some(([kind])=>kind!=='service')?vehicleNoticeHTML('warranty',{lang,className:'warrantyCaption'}):'';
   return items.length?'<span class="vehicleBenefits">'+items.map(([kind,label])=>'<span class="vehicleBadge vehicleBadge--'+kind+'">'+benefitIcon(kind)+'<span>'+esc(t(label,{},lang))+'</span></span>').join('')+qualification+'</span>':'';
 }
 export function benefitDetailsHTML(car,{lang=language,now=new Date()}={}) {
@@ -45,6 +46,6 @@ export function benefitDetailsHTML(car,{lang=language,now=new Date()}={}) {
   if(items.some(([kind])=>kind==='battery'))html+='<article><h3>'+copy('Battery Warranty')+'</h3><p>'+copy('High-voltage hybrid / EV battery coverage, separate from the vehicle factory warranty.')+'</p><dl>'+fact('Expiry date',car.battery_warranty_expires)+(Number.isInteger(car.battery_warranty_km)&&car.battery_warranty_km>0?fact('Odometer limit',km(false,car.battery_warranty_km)):'')+'</dl><p>'+copy('Coverage is subject to the verified battery warranty policy, including any extension and transfer conditions.')+'</p>'+note(car.battery_warranty_terms)+'</article>';
   if(items.some(([kind])=>['included','available'].includes(kind)))html+='<article><h3>'+copy(car.third_party_warranty==='included'?'Warranty Included':'Warranty Available')+'</h3><p>'+copy('Third-party warranty')+'</p><dl>'+fact('Provider',car.warranty_provider)+fact('Package',car.warranty_package)+fact('Duration',t('{count} months',{count:car.warranty_months},lang))+fact('Package mileage allowance',km(car.warranty_unlimited,car.warranty_km))+fact('Package price',car.third_party_warranty==='included'?t('Included in vehicle price',{},lang):car.warranty_price==null?t('Ask for a quote',{},lang):'RM'+Number(car.warranty_price).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}))+'</dl>'+note(car.warranty_coverage)+note(car.warranty_terms)+'<p>'+copy('Package availability or inclusion does not mean cover is active. Start date, eligibility, exclusions and claim limits are subject to the provider’s policy.')+'</p></article>';
   if(car.full_service_record===true)html+='<article><h3>'+copy('Full Service Record')+'</h3><p>'+copy('Complete maintenance records checked by E2. This does not mean every service was performed by an authorised service centre.')+'</p></article>';
-  const notice=items.some(([kind])=>kind!=='service')?'<aside class="warrantyNotice" aria-label="'+copy('Warranty information')+'"><h3>'+copy('Warranty information')+'</h3><p>'+copy('Warranty information summarises the documents available to E2. Actual coverage, expiry, mileage limits, exclusions, maintenance requirements, transfer eligibility and any extension are subject to the relevant manufacturer or warranty provider’s written policy. Please confirm the current policy and extension with the provider before purchase; claims remain subject to its assessment under that policy.')+'</p><p>'+copy('A website label does not create or extend a warranty or promise approval of every repair claim. It does not replace any written warranty or sales agreement, or exclude or limit your rights under applicable Malaysian law.')+'</p></aside>':'';
+  const notice=items.some(([kind])=>kind!=='service')?vehicleNoticeHTML('warranty',{lang,className:'warrantyNotice'}):'';
   return '<h2>'+copy('Warranty & service records')+'</h2><div class="benefitDetailGrid">'+html+'</div>'+notice;
 }

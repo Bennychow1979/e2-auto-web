@@ -36,7 +36,7 @@ test('expired factory details disappear with its badge',()=>{assert.equal(benefi
 test('optional battery limit is displayed as entered, never as unlimited or an automatic odometer promise',()=>{const html=benefitDetailsHTML({...battery,battery_warranty_km:210000,mileage:220000,mileage_confirmed:false},{now});assert(html.includes('210,000 km'));assert(html.includes('verified battery warranty policy'));assert(!html.includes('whichever comes first'));const blank=benefitDetailsHTML({...battery,battery_warranty_km:null},{now});assert(!blank.includes('Odometer limit'));assert(!blank.includes('Unlimited'));assert(!blank.includes('NaN'));});
 
 test('warranty notices cover each warranty type, preserve statutory rights and exclude service-only labels',()=>{
-  for(const car of [factory,battery,third,{...third,third_party_warranty:'available'}])for(const [lang,title,rights] of [['en','Warranty information','rights under applicable Malaysian law'],['ms','Maklumat waranti','hak anda di bawah undang-undang Malaysia'],['zh','保修须知','不排除或限制']]){
+  for(const car of [factory,battery,third,{...third,third_party_warranty:'available'}])for(const [lang,title,rights] of [['en','Warranty information','your statutory rights'],['ms','Maklumat waranti','hak anda di sisi undang-undang'],['zh','保修须知','不排除或限制']]){
     const badge=benefitsHTML(car,{lang,now}),details=benefitDetailsHTML(car,{lang,now});assert(badge.includes('warrantyCaption'));assert(details.includes(title));assert(details.includes(rights));assert(!details.includes('undefined'));
   }
   assert(!benefitsHTML({full_service_record:true},{now}).includes('warrantyCaption'));
