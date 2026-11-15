@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-Hans"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="strict-origin-when-cross-origin"><title>经营总览 · E2 Auto</title><link rel="icon" href="assets/e2-logo.png"><link rel="stylesheet" href="dashboard.css?v=1"><script src="e2-config.js"></script><script type="module" src="dashboard.js?v=1"></script></head>
+<body>
+<a class="skip" href="#main">跳至总览</a>
+<div id="access" class="access" role="status"><img src="assets/e2-logo.png" alt="E2 Auto"><h1>管理后台</h1><p id="accessMessage">正在验证 Super Admin 权限…</p><a href="portal.html">返回登录 · Staff sign in ↗</a></div>
+<div id="dashboard" hidden>
+<aside class="sidebar" id="navigation"><a class="brand" href="dashboard.html"><img src="assets/e2-logo.png" alt=""><span>E2 AUTO<small>MANAGEMENT</small></span></a>
+<nav aria-label="管理后台导航"><p class="navHeading">运营 / OPERATIONS</p>
+<a href="dashboard.html" aria-current="page"><span aria-hidden="true">▦</span>经营总览</a>
+<a href="customers.html"><span aria-hidden="true">♙</span>客户与会员</a>
+<a href="portal.html?view=inventory"><span aria-hidden="true">▱</span>网站车辆库存</a>
+<a href="loans.html"><span aria-hidden="true">▤</span>网站贷款案件</a>
+<a href="intake-workspace.html"><span aria-hidden="true">▤</span>销售贷款收件</a>
+<a href="referrals.html"><span aria-hidden="true">◇</span>推荐与佣金</a>
+<p class="navHeading">管理 / SYSTEM</p>
+<a href="team.html"><span aria-hidden="true">▣</span>员工与权限</a>
+<a href="operations.html"><span aria-hidden="true">⌘</span>派工与费用</a>
+<a href="https://docs.google.com/spreadsheets/d/1J6chzBi0limhdzc0wGtS9HX1lzxjYdS8/edit" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">↗</span>打开 MASTERLIST</a>
+</nav><div class="sidebarBottom"><span class="avatar" aria-hidden="true">E2</span><div><strong>Super Admin</strong><button id="signOut">退出登录 · Sign out</button></div></div></aside>
+<div class="mainShell"><header class="topbar"><button id="menu" class="menu" aria-expanded="false" aria-controls="navigation" aria-label="展开导航">☰</button><strong>E2 Auto <span>/ 管理后台</span></strong><span class="role">SUPER ADMIN</span></header>
+<main id="main" tabindex="-1"><section class="intro"><div><p class="eyebrow">SUPER ADMIN OVERVIEW</p><h1>经营总览</h1><p>会员、全车队库存、贷款和交车，一页查看。</p></div><div class="tools"><span id="period">本月 · MYT</span><button id="refresh">刷新数据 ↻</button></div></section>
+<p id="loadStatus" class="loadStatus" role="status" aria-live="polite">正在读取数据…</p>
+<section class="metrics" aria-label="本月关键数据">
+<article class="metric"><span class="tag">MEMBERS</span><h2>会员档案</h2><strong id="membersTotal">—</strong><p id="membersNote">已完成的网站会员档案</p></article>
+<article class="metric"><span class="tag">FLEET</span><h2>全车队在库</h2><strong id="stockTotal">—</strong><p>MASTERLIST 当前库存区 · 包括整备及已订</p></article>
+<article class="metric"><span class="tag">LOANS</span><h2>处理中贷款</h2><strong id="loansTotal">—</strong><p>网站申请 + 销售收件 · 按案件计</p></article>
+<article class="metric"><span class="tag">DELIVERY</span><h2>本月已交车</h2><strong id="deliveredTotal">—</strong><p id="deliveryNote">当月 SOLD &amp; DELIVERED 区块</p></article>
+</section>
+<div class="charts"><section class="panel"><div class="panelHeading"><h2>贷款案件 <span>· Loan Pipeline</span></h2><small>当前处理中 · 按案件计</small></div><div id="loanBars" class="bars"></div><p class="panelFoot">同一案件仅计一次；已记录结果及撤回案件不计入处理中。</p></section>
+<section class="panel"><div class="panelHeading"><h2>实际库存天数 <span>· Stock Age</span></h2><small>从实际 DATE IN 起算 · MYT</small></div><div id="stockBars" class="bars"></div><p id="stockNote" class="panelFoot">缺失或异常日期单独列出，不按建档日期推算。</p></section></div>
+<section class="panel queue"><div class="panelHeading"><h2>优先跟进 <span>· Action Queue</span></h2><small>按待处理事项显示</small></div><div class="tableScroll"><table><thead><tr><th>优先级</th><th>待处理事项</th><th>下一步</th><th>入口</th></tr></thead><tbody id="actions"></tbody></table></div><p id="emptyQueue" hidden>当前没有这些类别的待处理事项。</p></section>
+<footer class="sourceFoot"><p id="fleetSource">全车队来源：MASTERLIST · 正在核对</p><p>交车按月度已交车区块统计；不代表已补齐每辆车的具体交车日。网站数据与车队来源各自显示读取状态。</p></footer>
+</main></div></div><noscript>请启用 JavaScript 后登录管理后台。</noscript></body></html>

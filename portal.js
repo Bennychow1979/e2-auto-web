@@ -244,6 +244,7 @@ async function showSession(session){
     const membership=check(await db.from('staff_memberships').select('role,active').eq('user_id',session.user.id).maybeSingle());if(epoch!==authEpoch)return;
     if(!membership?.active||!Object.hasOwn(roleLabels,membership.role)){$('entry').hidden=false;$('workspace').hidden=true;await db.auth.signOut();throw new Error('This account has no inventory access. Ask the E2 administrator to activate your staff membership.')}
     role=membership.role;
+    if($('manageDashboard'))$('manageDashboard').hidden=role!=='super_admin'||window.E2_CONFIG?.managementDashboard!==true;
     if(dispatchDraft){
       if(!canManageStock())throw new Error('Only Admin / Super Admin can add a vehicle. / 只有 Admin / Super Admin 可以新增车辆。');
       $('entry').hidden=true;$('workspace').hidden=true;
@@ -258,6 +259,7 @@ async function showSession(session){
       }
       return;
     }
+    if(role==='super_admin'&&window.E2_CONFIG?.managementDashboard===true&&new URLSearchParams(location.search).get('view')!=='inventory'){location.replace('dashboard.html');return}
     if(['runner','account'].includes(role)){location.replace('operations.html');return}if($('manageOperations'))$('manageOperations').hidden=!['super_admin','admin'].includes(role);if(role==='inspector'){location.replace('inspections.html');return}if($('manageInspections'))$('manageInspections').hidden=!['super_admin','admin'].includes(role);if($('manageMileage'))$('manageMileage').hidden=window.E2_CONFIG?.mileageChecks!==true||!['super_admin','admin','sales'].includes(role);if(role==='office_admin'){location.replace('intake-workspace.html');return}$('manageLoans').hidden=!['super_admin','admin','sales'].includes(role);$('manageCustomers').hidden=!['super_admin','admin'].includes(role);$('myProfileLink').hidden=role==='customer';$('profileName').textContent=session.user.email;$('profileRole').textContent=roleLabels[role];$('manageUsers').hidden=role!=='super_admin';if($('manageInstitutions'))$('manageInstitutions').hidden=role!=='super_admin';$('addVehicle').hidden=!canManageStock();vehicleImporter.update();$('entry').hidden=true;$('workspace').hidden=false;await refresh();
   }catch(error){if(dispatchDraft){$('entry').hidden=false;$('workspace').hidden=true;$('vehicleEditor').close();}message('authMessage',friendlyError(error),true)}
 }
