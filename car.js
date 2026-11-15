@@ -1,5 +1,5 @@
 import {relatedAvailable} from './vehicle-discovery.mjs';
-import {benefitsHTML,benefitDetailsHTML} from './vehicle-benefits.mjs?v=battery-2';
+import {benefitsHTML,benefitDetailsHTML} from './vehicle-benefits.mjs?v=warranty-notice-1';
 import {t,language,localizedURL,localizedMileage as mileageText} from './i18n.mjs';
 import {descriptionFor} from './vehicle-translations.mjs';
 import {loadVehicleDescription} from './vehicle-description.mjs?v=auto-translation-1';
