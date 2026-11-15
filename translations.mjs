@@ -217,6 +217,8 @@ export const translations = {
 };
 
 Object.assign(translations,{
+  "Battery Warranty": ["Waranti Bateri", "高压电池保修"],
+  "High-voltage hybrid / EV battery coverage, separate from the vehicle factory warranty.": ["Perlindungan bateri voltan tinggi hibrid / EV, berasingan daripada waranti pengilang kenderaan.", "混合动力／电动车高压电池保障，与整车原厂保修分开。"],
   "Factory Warranty": [
     "Waranti Pengilang",
     "原厂保修"

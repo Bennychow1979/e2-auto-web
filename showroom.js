@@ -1,4 +1,4 @@
-import {benefitsHTML,malaysiaDay} from './vehicle-benefits.mjs?v=1';
+import {benefitsHTML,malaysiaDay} from './vehicle-benefits.mjs?v=battery-1';
 import {t,localizedMileage as mileageText} from './i18n.mjs';
 import {showroomVehicleLinks,showroomContactAction} from './showroom-referral.mjs?v=contact-1';
 import {createShowroomFlow} from './showroom-flow.js?v=languages-1';
