@@ -218,6 +218,7 @@ export const translations = {
 
 Object.assign(translations,{
   "Battery Warranty": ["Waranti Bateri", "高压电池保修"],
+  "Coverage is subject to the verified battery warranty policy, including any extension and transfer conditions.": ["Perlindungan tertakluk pada polisi waranti bateri yang telah disahkan, termasuk syarat lanjutan dan pindah milik.", "保障以已核实的电池保修条款为准，包括延长保修及转让条件。"],
   "High-voltage hybrid / EV battery coverage, separate from the vehicle factory warranty.": ["Perlindungan bateri voltan tinggi hibrid / EV, berasingan daripada waranti pengilang kenderaan.", "混合动力／电动车高压电池保障，与整车原厂保修分开。"],
   "Factory Warranty": [
     "Waranti Pengilang",

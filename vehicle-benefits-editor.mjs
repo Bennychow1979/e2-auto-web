@@ -1,4 +1,4 @@
-import {benefitFields,benefitsHTML,factoryWarrantyActive,batteryWarrantyActive} from './vehicle-benefits.mjs?v=battery-1';
+import {benefitFields,benefitsHTML,factoryWarrantyActive,batteryWarrantyActive} from './vehicle-benefits.mjs?v=battery-2';
 const booleans=['factory_warranty','battery_warranty','factory_warranty_unlimited','warranty_unlimited','full_service_record'];
 const numbers=['factory_warranty_km','battery_warranty_km','warranty_months','warranty_km','warranty_price'];
 export function setupBenefitsEditor(form) {
@@ -23,7 +23,6 @@ export function setupBenefitsEditor(form) {
     }
     el('factory_warranty_expires').required=factory;
     el('battery_warranty_expires').required=battery;
-    el('battery_warranty_km').required=battery;
     el('factory_warranty_km').disabled=!factory||el('factory_warranty_unlimited').checked;el('factory_warranty_km').required=!el('factory_warranty_km').disabled;
     for(const key of ['warranty_provider','warranty_package','warranty_months'])el(key).required=third;
     el('warranty_km').disabled=!third||el('warranty_unlimited').checked;el('warranty_km').required=!el('warranty_km').disabled;
@@ -36,6 +35,6 @@ export function setupBenefitsEditor(form) {
   form.addEventListener('input',update);form.addEventListener('change',update);
   return {
     populate(car){for(const key of benefitFields){if(booleans.includes(key))el(key).checked=car?.[key]===true;else el(key).value=car?.[key]??(key==='third_party_warranty'?'none':'');}update();},
-    read(){const result=data(),car={...result,mileage:el('mileage').value===''?null:Number(el('mileage').value),mileage_confirmed:el('mileage_confirmed').checked};if(result.factory_warranty&&!factoryWarrantyActive(car))throw Error('Factory Warranty needs a current expiry date and either verified mileage below its limit or verified unlimited mileage.');if(result.battery_warranty&&!batteryWarrantyActive(car))throw Error('Battery Warranty needs a current expiry date and verified mileage below its odometer limit.');return result;}
+    read(){const result=data(),car={...result,mileage:el('mileage').value===''?null:Number(el('mileage').value),mileage_confirmed:el('mileage_confirmed').checked};if(result.factory_warranty&&!factoryWarrantyActive(car))throw Error('Factory Warranty needs a current expiry date and either verified mileage below its limit or verified unlimited mileage.');if(result.battery_warranty&&!batteryWarrantyActive(car))throw Error('Battery Warranty needs a current expiry date.');return result;}
   };
 }
