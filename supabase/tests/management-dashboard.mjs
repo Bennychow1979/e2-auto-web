@@ -74,10 +74,10 @@ test('unread metrics stay blank; genuine zeros remain zeros; proportions are bou
   assert.deepEqual(barWidths([0,5,10,0]),[0,50,100,0]);assert.equal(barWidths([1,-1]),null);
   assert.equal(dashboardView({fleet:{missingDates:2,ages:[0,0,0,1],pending:1}}).actions.length,3);
 });
-test('rollout remains off and dispatch/password flows precede dashboard navigation',async()=>{
+test('verified dashboard is enabled and dispatch/password flows precede dashboard navigation',async()=>{
   const root=new URL('../../',import.meta.url),read=name=>readFile(new URL(name,root),'utf8');
   const portal=await read('portal.js'),config=await read('e2-config.js'),data=await read('e2-data.js');
-  assert.match(config,/managementDashboard: false/);assert.ok(portal.indexOf('if(dispatchDraft){',portal.indexOf('async function showSession'))<portal.indexOf("location.replace('dashboard.html')"));
+  assert.match(config,/managementDashboard: true/);assert.ok(portal.indexOf('if(dispatchDraft){',portal.indexOf('async function showSession'))<portal.indexOf("location.replace('dashboard.html')"));
   assert.ok(portal.indexOf('if(recovery)return')<portal.indexOf("location.replace('dashboard.html')"));
   assert.match(portal,/get\('view'\)!=='inventory'/);assert.match(data,/'\/dashboard\.html'/);
 });
