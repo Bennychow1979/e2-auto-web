@@ -68,9 +68,9 @@ Storage 清单直接读取 `storage.buckets` 和 `storage.objects` 的全部行�
 
 ## 还原演练：Benny 本机执行
 
-**当前不能仅凭 workflow/合成测试宣称正式数据已演练成功。** 第一次实际备份后，Benny 从 AWS 控制台下载 daily 的 `.sql.gz.gpg` 和对应周备份 `.tar.gz.gpg`。这把 runner 密钥不能下载；不必扩大它的权限。
+**2026-11-15 已完成一份真实数据库备份的本机隔离还原，结果见下方验收记录；Storage 文件恢复仍需另行演练。** Benny 从 AWS 控制台下载 daily 的 `.sql.gz.gpg` 和对应周备份 `.tar.gz.gpg`。这把 runner 密钥不能下载；不必扩大它的权限。
 
-1. 在本机加密磁盘上的私有目录工作，不放在 git checkout、云同步目录或录屏共享终端中。Linux/macOS/WSL 示例：`umask 077`。准备 GPG、gzip、Python 和 `psycopg[binary]==3.2.9`，以及 PostgreSQL 18 的 `psql`（识别 dump 的 `\restrict` 命令）。
+1. 在本机加密磁盘上的私有目录工作，不放在 git checkout、云同步目录或录屏共享终端中。Linux/macOS/WSL 示例：`umask 077`。准备 GPG、gzip、Python 和 `psycopg[binary]==3.2.9`，以及支持 dump 中 `\restrict` 命令的 `psql`；本次成功使用 PostgreSQL 17.6 的客户端/服务端。备份 runner 的 PG18 客户端与还原服务端版本是两件事，不能只按导出客户端的大版本选镜像。
 2. GPG 交互输入 passphrase，**不写入命令行参数、环境变量、脚本或聊天**。先完整解密并验证完整性，再执行 SQL，不能把尚未认证完成的解密流直接送进 `psql`：
 
    ```sh
@@ -80,15 +80,45 @@ Storage 清单直接读取 `storage.buckets` 和 `storage.objects` 的全部行�
    python /path/to/repo/scripts/backup/verify_restore.py manifest e2-db.sql
    ```
 
-3. 查看 manifest 的源 PostgreSQL 版本和 extensions 清单。准备**完全隔离、无外网出口**的临时 PostgreSQL 实例，安装兼容源项目的全部 extensions/所需 preload 配置，使用空白数据库和独立的 bootstrap superuser（如 `e2_restore_admin`），不能预先存在源角色/应用 schema。不要直接把包含 Supabase 内部对象的完整 dump 倒入一个已初始化的新托管 Supabase 项目；它的保留角色和 schema 会冲突。通常需要与源版本兼容的 Supabase PostgreSQL 扩展环境，而非缺少 `pg_net`、`pg_graphql` 等扩展的原生 PostgreSQL 镜像。保持网络隔离，防止恢复的 cron、webhook 或 subscription 联系生产服务。
-4. 仅在该测试实例中，以独立 superuser 创建空数据库，例如 `createdb -T template0 e2_restore`。在本机交互设置测试环境的 `PGHOST`、`PGPORT`、`PGUSER`、`PGDATABASE=e2_restore`；密码由 `psql -W` 自行输入。先确认主机是隔离测试实例，不要使用生产连接串。执行：
+3. 查看 manifest 的源 PostgreSQL 和扩展版本。使用**完全隔离、无外网出口**的空白集群。本次实测使用 `supabase/postgres:17.6.1.178`（源/目标 PostgreSQL 均为 17.6），镜像 digest 为 `sha256:c282d393ae56fd165b7ada2ddbac55e582a601b86f3840aa2bbc112e43d3a570`。绕过镜像默认 entrypoint 和 Supabase 初始化脚本，不预建应用 schema 或其他源角色。**必须以 `initdb -U supabase_admin` 初始化**，让源 bootstrap 管理员保持 OID 10；另建任意 SUPERUSER 不能替代这一身份。使用隔离集群内的 `postgres` 数据库，以保留 dump 中按数据库名称指定的权限/设置。
+
+   本次隔离配置：Docker `--network none`、不发布端口、不挂载主机目录、`--log-driver none`；服务端 `listen_addresses=''`，仅使用容器内 Unix socket。设置 `shared_preload_libraries='pg_cron,pg_net,pg_stat_statements'`、`cron.database_name=postgres`、`cron.launch_active_jobs=off`，将 `pg_net.database_name=e2_disabled` 指向不存在的数据库。关闭 SQL statement 日志，不使用正式连接串。恢复后的 cron/webhook 不得联系正式服务。不要把完整 dump 直接倒入已经初始化的托管 Supabase 项目。
+
+4. 在上述隔离实例中确认当前用户和 bootstrap 身份：
+
+   ```sql
+   SELECT current_user, oid, rolsuper
+   FROM pg_roles WHERE rolname = 'supabase_admin';
+   ```
+
+   预期当前用户为 `supabase_admin`，OID 为 10，`rolsuper` 为 true。只有确认该角色由本次空白 `initdb` 创建后，才能做以下唯一兼容适配：原始 SQL 中必须恰好有一整行 `CREATE ROLE "supabase_admin";`，仅将这一行替换为注释，保留其后所有 `ALTER ROLE`、`GRANT`、业务结构和数据。本次实际演练在内存输入中替换，没有改写原始 SQL；手工演练也可在私有目录生成单独的输入副本：
 
    ```sh
-   psql -X -W --set ON_ERROR_STOP=on --single-transaction --file e2-db.sql
+   python - <<'PY'
+   from pathlib import Path
+   source = Path("e2-db.sql").read_bytes()
+   lines = source.splitlines(keepends=True)
+   matches = [i for i, line in enumerate(lines)
+              if line.rstrip(b"\r\n") == b'CREATE ROLE "supabase_admin";']
+   if len(matches) != 1:
+       raise SystemExit("Expected exactly one bootstrap role declaration; stop")
+   lines[matches[0]] = b"-- supabase_admin already created by isolated initdb\n"
+   with Path("e2-db.restore.sql").open("xb") as target:
+       target.write(b"".join(lines))
+   PY
+   ```
+
+   将适配输入只送到该隔离实例，使用 `supabase_admin` 连接 `postgres`。下面命令应在已经配置好隔离 Unix socket/用户/数据库的环境中执行；凭据如有需要由本人交互输入。禁止使用正式 `PGHOST` 或连接串。禁止记录 SQL、错误语句上下文或查询资料：
+
+   ```sh
+   psql -X -q --set ON_ERROR_STOP=on --set VERBOSITY=sqlstate \
+     --set SHOW_CONTEXT=never --single-transaction \
+     --file e2-db.restore.sql > /dev/null
+   # 仅在 psql 退出码为 0 后执行；比较基准仍是未经修改的原始 SQL。
    python /path/to/repo/scripts/backup/verify_restore.py database e2-db.sql
    ```
 
-   验证工具会隐藏输入测试数据库连接串，要求输入 `ISOLATED`，对照备份快照逐表核对（包括 `public.vehicles`、`auth`、`storage` 和其他业务表）。任何 SQL 错误或行数不一致均不算通过。不要使用忽略错误继续的 restore，也不要为了通过而过滤掉未知失败语句。若环境缺少扩展或存在角色冲突，应重建干净兼容的测试环境后重试。
+   验证工具隐藏测试数据库连接串输入，要求输入 `ISOLATED`，按快照逐表核对（包括 `public.vehicles`、`auth`、`storage`）。任何 SQL 错误或行数不一致都不算通过。不得忽略错误、删除失败数据或省略授权来宣布成功；环境/扩展不匹配应重建干净实例。适配副本同样属于明文，验收后必须清理。
 5. 核对 Storage 完整性：
 
    ```sh
@@ -98,6 +128,82 @@ Storage 清单直接读取 `storage.buckets` 和 `storage.objects` 的全部行�
 
    工具不展开不受信任的路径；逐个检查归档文件数、字节数和 SHA-256。需要恢复 Storage 服务时，在隔离测试项目按 manifest 的 bucket 配置创建 bucket，用 Storage API 按 `source.bucket_id` / `source.name` 上传对应 `archive_path` 的内容及 MIME type；**只恢复数据库中的 `storage.objects` 不会恢复实际文件**。上传后让 Storage 服务生成自己的对象记录，不应再覆盖这些新记录。至少抽查三个私有 bucket 中的样本能由授权用户下载、匿名请求被拒绝。
 6. 记录：日期、S3 object key/Version ID、源/目标 PostgreSQL 与扩展版本、GPG 完整性结果、表数和匹配/不匹配结果、`vehicles` 行数、Storage 数量/字节及哈希结果、演练用时和异常。原始数据/SQL/备份留在本机；仓库只记录演练是否通过及非敏感总结，不提交客户资料或备份。验收后销毁隔离实例和本机临时明文。
+
+
+## 2026-11-15 真实数据库还原验收
+
+验收完成于马来西亚时间 `2026-11-15T15:10:03+08:00`。使用真实 `e2-db-2026-11-15.sql.gz.gpg`，密文 1,905,255 bytes；比较基准为备份快照 `2026-11-14T21:27:25Z`，不是仍在变化的正式库。Passphrase 由本人在本机 Pinentry 输入。GPG 完整性认证与 gzip CRC 校验通过后才执行 SQL。
+
+| 验收项 | 结果 |
+| --- | --- |
+| SQL 还原 | 单事务、ON_ERROR_STOP，退出码 0 |
+| 车辆数量 | 备份与还原均为 153，匹配 |
+| 快照行数 | 94 张非扩展表全部匹配 |
+| 记录内容 | 96 个 COPY 数据块、76,996 条记录，逐行 SHA-256 多重集全部匹配，保留重复次数 |
+| 外键 / CHECK | 107 / 236 项检查，均无违规 |
+| 序列 | 11 个 last_value / is_called 全部匹配 |
+| 索引 | 无无效或未就绪索引 |
+| 视图 | 3 个视图 LIMIT 0 查询通过 |
+| 角色属性 / 成员授权 / 参数权限 | 16 / 21 / 1 项全部匹配，无额外用户角色授权 |
+| 扩展 | 7 项名称和版本完全匹配 |
+
+恢复对象包含 99 张表（含扩展对象）、285 个函数、70 项 RLS policy、47 个非内部触发器、251 个索引、82 张启用 RLS 的表。94 张清单表不包含扩展表；96 个 COPY 块还包含扩展配置数据，因此这些数量不是互相矛盾的总表数。
+
+上述内容哈希、约束、角色等深入检查来自本次本机专用验收，并非现有 `verify_restore.py database` 都已实现；仓库验证器主要核对快照行数。结论是**这份真实数据库备份可恢复，记录与备份内容一致**。本次未恢复 Storage 实际文件，也未进行整个网站、外部服务或全部业务权限的端到端验收；LIMIT 0 不证明视图业务结果正确。数据库登录密码、环境 secrets、Edge Functions 和平台设置需另行恢复。
+
+### 管理员和扩展兼容性
+
+最初用另一名称的 bootstrap superuser 建库，执行原始 `GRANTED BY supabase_admin` 时触发 SQLSTATE 42501，整次事务回滚。解决方法是上述 `initdb -U supabase_admin`，保持 bootstrap OID 10，并仅处理重复的 CREATE ROLE 行；没有删除 GRANT 或降低权限检查。
+
+较早镜像 `supabase/postgres:17.6.1.136` 的 pg_net 为 0.20.3，与源不一致；成功镜像 `17.6.1.178` 包含所需 0.20.4。还原前必须检查实际可用扩展版本，不能只看 PostgreSQL 大版本。以下是本次成功版本基线，未来备份应按其自身 manifest 重新核对：
+
+| 扩展 | 源与还原版本 |
+| --- | --- |
+| pg_cron | 1.6.4 |
+| pg_net | 0.20.4 |
+| pg_stat_statements | 1.11 |
+| pgcrypto | 1.3 |
+| plpgsql | 1.0 |
+| supabase_vault | 0.3.1 |
+| uuid-ossp | 1.1 |
+
+### 清理结果
+
+本次专用 WSL `E2RestoreDrill-20261115` 已注销，虚拟磁盘、临时 SQL/gzip 和 GPG 工作目录已移除；再次核对 WSL 注册信息和路径确认不存在。原始下载的加密备份保留，SHA-256 与清理前一致。`cleanup-status.json` 的非敏感状态为：
+
+```json
+{
+  "test_distro_removed": true,
+  "virtual_disk_removed": true,
+  "temporary_sql_removed": true,
+  "temporary_gzip_removed": true,
+  "gpg_workdir_removed": true,
+  "original_encrypted_backup_preserved": true
+}
+```
+
+未连接或修改正式数据库；真实备份、解密资料未上传到 GitHub、artifact 或 cache，业务记录和密钥未写入验收日志。普通文件删除不等同于取证级磁盘擦除。
+
+## Edge Functions 源码恢复清单（2026-11-15 核对）
+
+数据库备份不包含 Edge Functions。已逐一检查 Supabase 后台全部 8 个已部署函数及其源码文件，仓库来源如下。相对路径均以 `supabase/functions/` 为起点：
+
+| 函数 | 仓库源码 / 后台对应关系 |
+| --- | --- |
+| e2-drive-photos | 同名目录 4 个文件；后台入口固定引用提交 `2ef3bf998b8418708d4fa699fcbe9dd487093c2e`，入口及其相对依赖与 main 一致 |
+| e2-guest-intake | 同名目录 index.ts、handler.mjs；后台为合并入口，核对为相同源码（模块导出/导入及排版差异） |
+| e2-inventory-refresh | 同名目录 index.ts、handler.mjs，与后台一致 |
+| e2-invite-user | 同名目录 index.ts，与后台一致 |
+| e2-mileage-evidence | 本次补入同名目录 index.ts、handler.mjs、image-validation.mjs；逐个与后台核对，统一换行后字节一致 |
+| e2-translate-vehicle | 同名目录 index.ts、core.mjs、handler.mjs，与后台一致 |
+| e2-vehicle-import | 同名目录 6 个文件及 e2-drive-photos/google.mjs；后台入口固定引用提交 `f12d3293e7374a3bc8c981261137474d4a70b66b`，入口及其相对依赖与 main 一致 |
+| e2-viewing-notify | 同名目录 index.ts、handler.mjs；后台将这两个文件合并，源码逻辑一致，排版/模块入口不同 |
+
+此次缺失的是 `e2-mileage-evidence`，现已补齐，8 个函数都有仓库源码。仅归档已部署源码和对应配置，没有重新部署或调用正式函数。里程函数的 `verify_jwt=false` 与后台现状一致；handler 自行验证 Auth 用户及数据库中的有效员工权限，不能移除这些验证。
+
+里程函数依赖固定为 `@supabase/supabase-js@2.57.4`、`@imagemagick/magick-wasm@0.0.44`；恢复部署时须包含该依赖的 `magick.wasm`，并在隔离环境验证图像解码。源文件没有内嵌 key，运行时通过 `Deno.env.get` 获取配置。数据库中的相关 RPC/表/Storage bucket 也须先恢复。
+
+发生灾难恢复时，使用仓库的对应函数目录和 `supabase/config.toml` 配置，在**明确选定的新测试/恢复项目**重新部署并验证权限与依赖。环境 secret 值、OAuth/SMTP、Telegram/Google 等服务配置仍由管理员单独保管和重新配置，不在 Git 或数据库备份中。此清单是本日状态，新增或修改函数时须同步入库，不能只在后台编辑。
 
 ## 故障定位
 
