@@ -1,9 +1,29 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {benefits,benefitsHTML,benefitDetailsHTML,factoryWarrantyActive,malaysiaDay} from '../../vehicle-benefits.mjs';
+import {benefits,benefitsHTML,benefitDetailsHTML,factoryWarrantyActive,batteryWarrantyActive,malaysiaDay} from '../../vehicle-benefits.mjs';
 const now=new Date('2026-10-19T04:00:00Z');
 const factory={factory_warranty:true,factory_warranty_expires:'2026-10-19',factory_warranty_km:100000,mileage:50000,mileage_confirmed:true};
 const third={third_party_warranty:'included',warranty_provider:'Example provider',warranty_package:'Example package',warranty_months:12,warranty_km:20000};
+const battery={battery_warranty:true,battery_warranty_expires:'2026-10-19',battery_warranty_km:160000,mileage:120000,mileage_confirmed:true};
+test('battery cover is independent of factory cover and never inferred from BMW model/year',()=>{
+  assert.deepEqual(benefits({brand:'BMW',model:'X5 xDrive45e',year:2021},now),[]);
+  assert.deepEqual(benefits({...factory,...battery},now).map(x=>x[0]),['battery']);
+  assert.deepEqual(benefits({...factory,...battery,mileage:50000},now).map(x=>x[0]),['factory','battery']);
+  assert.deepEqual(benefits({...factory,...battery,battery_warranty:false,mileage:50000},now).map(x=>x[0]),['factory']);
+});
+test('battery cover validates dates, Malaysian midnight and the confirmed total odometer limit',()=>{
+  assert(batteryWarrantyActive(battery,now));
+  for(const patch of [{battery_warranty:'true'},{battery_warranty_expires:'2026-02-30'},{battery_warranty_expires:'2026-10-18'},{battery_warranty_expires:null},{battery_warranty_km:null},{battery_warranty_km:0},{mileage:160000},{mileage:160001},{mileage:null},{mileage_confirmed:false}])assert(!batteryWarrantyActive({...battery,...patch},now));
+  assert(batteryWarrantyActive(battery,new Date('2026-10-19T15:59:59Z')));
+  assert(!batteryWarrantyActive(battery,new Date('2026-10-19T16:00:00Z')));
+  assert.equal(benefitDetailsHTML(battery,{now:new Date('2026-10-20T00:00:00Z')}),'');
+});
+test('battery icon and public details are translated and escape verified notes',()=>{
+  for(const [lang,label] of [['en','Battery Warranty'],['ms','Waranti Bateri'],['zh','高压电池保修']]){
+    const badge=benefitsHTML(battery,{lang,now});assert(badge.includes(label));assert(badge.includes('<rect'));assert(badge.includes('aria-hidden="true"'));
+    const details=benefitDetailsHTML({...battery,battery_warranty_terms:'<script>private</script>'},{lang,now});assert(details.includes(label));assert(details.includes('160,000 km'));assert(!details.includes('<script>'));assert(!details.includes('undefined'));
+  }
+});
 test('missing/default fields, vehicle age and model never create a label',()=>{for(const car of [{},{year:2026,brand:'BMW'},{factory_warranty:false,full_service_record:false,third_party_warranty:'none'},{factory_warranty:'true',full_service_record:'true'}])assert.deepEqual(benefits(car,now),[])});
 test('factory expires at Malaysian midnight and not UTC midnight',()=>{assert.equal(malaysiaDay(new Date('2026-10-19T16:00:00Z')),'2026-10-20');assert(factoryWarrantyActive(factory,new Date('2026-10-19T15:59:59Z')));assert(!factoryWarrantyActive(factory,new Date('2026-10-19T16:00:00Z')))});
 test('factory requires positive limit, confirmed mileage below limit, or explicitly unlimited',()=>{assert(factoryWarrantyActive(factory,now));for(const patch of [{mileage:100000},{mileage:100001},{mileage:null},{mileage_confirmed:false},{factory_warranty_km:0},{factory_warranty_expires:null},{factory_warranty_expires:'expired'},{factory_warranty_expires:'2026-10-18'}])assert(!factoryWarrantyActive({...factory,...patch},now),JSON.stringify(patch));assert(factoryWarrantyActive({...factory,mileage:null,mileage_confirmed:false,factory_warranty_km:null,factory_warranty_unlimited:true},now))});
