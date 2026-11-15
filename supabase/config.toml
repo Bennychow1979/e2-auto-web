@@ -25,3 +25,8 @@ verify_jwt = false
 # before any GitHub action. No browser/anonymous dispatch path is accepted.
 [functions.e2-inventory-refresh]
 verify_jwt = false
+
+# Matches the deployed function; Auth user and active staff permissions are
+# independently verified by the handler and its database RPCs.
+[functions.e2-mileage-evidence]
+verify_jwt = false
