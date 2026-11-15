@@ -11,9 +11,10 @@ test('battery cover is independent of factory cover and never inferred from BMW 
   assert.deepEqual(benefits({...factory,...battery,mileage:50000},now).map(x=>x[0]),['factory','battery']);
   assert.deepEqual(benefits({...factory,...battery,battery_warranty:false,mileage:50000},now).map(x=>x[0]),['factory']);
 });
-test('battery cover validates dates, Malaysian midnight and the confirmed total odometer limit',()=>{
+test('battery cover validates dates and Malaysian midnight without an odometer gate',()=>{
   assert(batteryWarrantyActive(battery,now));
-  for(const patch of [{battery_warranty:'true'},{battery_warranty_expires:'2026-02-30'},{battery_warranty_expires:'2026-10-18'},{battery_warranty_expires:null},{battery_warranty_km:null},{battery_warranty_km:0},{mileage:160000},{mileage:160001},{mileage:null},{mileage_confirmed:false}])assert(!batteryWarrantyActive({...battery,...patch},now));
+  for(const patch of [{battery_warranty:'true'},{battery_warranty_expires:'2026-02-30'},{battery_warranty_expires:'2026-10-18'},{battery_warranty_expires:null}])assert(!batteryWarrantyActive({...battery,...patch},now));
+  for(const patch of [{battery_warranty_km:210000,mileage:210000},{battery_warranty_km:210000,mileage:220000},{battery_warranty_km:null,mileage:null,mileage_confirmed:false},{mileage_confirmed:false}])assert(batteryWarrantyActive({...battery,...patch},now));
   assert(batteryWarrantyActive(battery,new Date('2026-10-19T15:59:59Z')));
   assert(!batteryWarrantyActive(battery,new Date('2026-10-19T16:00:00Z')));
   assert.equal(benefitDetailsHTML(battery,{now:new Date('2026-10-20T00:00:00Z')}),'');
@@ -31,3 +32,5 @@ test('third-party mode is exclusive, service independent, and factory may coexis
 test('all labels use accessible generic icons and localised text',()=>{for(const lang of ['en','ms','zh']){const html=benefitsHTML({...factory,...third,full_service_record:true},{now,lang});assert.equal((html.match(/<svg /g)||[]).length,3);assert.equal((html.match(/aria-hidden="true"/g)||[]).length,3);assert(!html.includes('undefined'))}assert(benefitsHTML(factory,{now,lang:'zh'}).includes('原厂保修'));assert(benefitsHTML(factory,{now,lang:'ms'}).includes('Waranti Pengilang'))});
 test('details escape stored content, distinguish offers from active cover, and handle unknown price',()=>{const html=benefitDetailsHTML({...third,third_party_warranty:'available',warranty_provider:'<img src=x onerror=alert(1)>',warranty_terms:'<script>x</script>',full_service_record:true},{now});assert(!html.includes('<img'));assert(!html.includes('<script>'));assert(html.includes('Ask for a quote'));assert(html.includes('does not mean cover is active'));assert(html.includes('does not mean every service'));assert(benefitDetailsHTML({...third,warranty_price:999},{now}).includes('Included in vehicle price'));assert(benefitDetailsHTML({...third,third_party_warranty:'available',warranty_price:0},{now}).includes('RM0.00'))});
 test('expired factory details disappear with its badge',()=>{assert.equal(benefitsHTML({...factory,factory_warranty_expires:'2026-01-01'},{now}),'');assert.equal(benefitDetailsHTML({...factory,factory_warranty_expires:'2026-01-01'},{now}),'')});
+
+test('optional battery limit is displayed as entered, never as unlimited or an automatic odometer promise',()=>{const html=benefitDetailsHTML({...battery,battery_warranty_km:210000,mileage:220000,mileage_confirmed:false},{now});assert(html.includes('210,000 km'));assert(html.includes('verified battery warranty policy'));assert(!html.includes('whichever comes first'));const blank=benefitDetailsHTML({...battery,battery_warranty_km:null},{now});assert(!blank.includes('Odometer limit'));assert(!blank.includes('Unlimited'));assert(!blank.includes('NaN'));});
