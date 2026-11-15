@@ -1,9 +1,36 @@
 # Super Admin overview
 
 The dashboard is a read-only management view. The rollout gate `managementDashboard`
-stays off until the hosted endpoint is deployed and verified. Its design follows
+is enabled after hosted endpoint checks and real Super Admin acceptance. Its design follows
 the supplied navy sidebar, mint selection, summary cards, pipeline, age bands and
 action queue. All demo data belongs in tests, never in the production page.
+
+## Rollout status — 2026-11-16 MYT
+
+PR #59 is merged. The protected page is published at
+`https://e2auto.my/dashboard.html`; its HTML, CSS, JavaScript, view module and
+configuration were fetched from the live site and matched the reviewed source.
+The owner verified the live page using their own Super Admin session: all four
+summary totals matched and the page reported that the latest data was loaded.
+Following this acceptance, `managementDashboard` is enabled so Super Admin login
+opens the overview by default. Website inventory remains accessible through
+`portal.html?view=inventory`; dispatch drafts and password recovery retain priority.
+
+`e2-management-dashboard` is active in the existing E2 project, version 1,
+package SHA-256 `14f80b7910c589a53469fae142d350b240c3d7d2fed26b099e48da0d3fb22d1e`.
+All nine deployed files match the submitted source. Hosted checks verified 401
+for missing/invalid sessions, 403 for a disallowed origin and 405 for GET, with
+no-store responses and no business data. Active/inactive role gates, sign-out
+races, failure states and pagination passed synthetic tests; this does not claim
+real-user testing for every role. Source columns and aggregate definitions were
+checked read-only against the live database. No source records, credentials or
+business counts are included in this report.
+
+Desktop and mobile layout checks passed on synthetic fixtures, including chart
+rendering, task links, menu/Escape, refresh and no horizontal page overflow.
+Mobile tasks use cards so action links remain visible. The existing dispatch
+draft regression also passes after restoring its shared notice module in the
+test preview allowlist. GitHub permission and browser checks passed before merge.
 
 ## Source and definitions
 
@@ -84,4 +111,3 @@ commissions without returning their rows, and checks loan pagination completely.
 
 Rollback: turn the gate off; no database rollback is needed. The disabled gate
 does not replace endpoint access control.
-
