@@ -7,13 +7,14 @@ export async function paged(makeQuery) {
   throw Error('Result limit exceeded');
 }
 export function loanSummary(loans,intakes) {
-  const groups=[0,0,0,0],seen=new Set();
+  const groups=[0,0,0,0],needsInformation={loan:0,intake:0},seen=new Set();
   for(const [source,rows] of [['loan',loans],['intake',intakes]])for(const row of rows){
     const key=source+':'+row.id;if(seen.has(key))throw Error('Duplicate loan case');seen.add(key);
     const i={'Submitted to E2':0,'Received by Salesman':0,'Needs information':1,'Ready for financier':2,'Sent to Office':2,'Submitted to financier':3}[row.status];
     if(i!==undefined)groups[i]++;
+    if(i===1)needsInformation[source]++;
   }
-  return {active:groups.reduce((a,b)=>a+b,0),groups};
+  return {active:groups.reduce((a,b)=>a+b,0),groups,needsInformation};
 }
 export function createHandler({authenticate,membership,readMembers,readLoans,readCommissions,readFleet,now=()=>new Date()}) {
   return async req=>{

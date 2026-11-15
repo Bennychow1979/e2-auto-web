@@ -41,7 +41,8 @@ test('duplicate aliases, missing month and unknown section block totals',()=>{
 });
 test('loans count cases once and never count outcomes as approved or disbursed',()=>{
   const r=loanSummary([{id:'a',status:'Submitted to E2'},{id:'b',status:'Outcome recorded'},{id:'c',status:'Withdrawn'}],[{id:'a',status:'Needs information'},{id:'b',status:'Submitted to financier'}]);
-  assert.deepEqual(r,{active:3,groups:[1,1,0,1]});
+  assert.deepEqual(r,{active:3,groups:[1,1,0,1],needsInformation:{loan:0,intake:1}});
+  const action=dashboardView({loans:r}).actions[0];assert.equal(action.href,'intake-workspace.html');
   assert.throws(()=>loanSummary([{id:'a',status:'Needs information'},{id:'a',status:'Needs information'}],[]),/Duplicate/);
 });
 test('pagination reads beyond 1000 and propagates partial read errors',async()=>{
