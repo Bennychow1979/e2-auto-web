@@ -1,3 +1,4 @@
+import {setupRentalNavigation} from './rental-navigation.mjs?v=1';
 
 import * as api from './intake-staff-data.js?v=finance-coordinator-1';
 import {financingEnabled} from './financing-feature.mjs';
@@ -29,3 +30,5 @@ main.onclick=async e=>{const b=e.target.closest('button');if(!b||busy)return;if(
 $('staffIntakeSignOut').onclick=async()=>{if(busy)return;try{await api.signOut();gate('Signed out.')}catch(e){gate(e.message)}};
 api.db?.auth.onAuthStateChange((event,s)=>{if(event==='SIGNED_OUT'||user&&s?.user&&s.user.id!==user.id)gate('Sign in with your staff account.')});
 try{const run=epoch;user=await api.who();$('staffIntakeSignOut').hidden=false;[cars,offices]=user.role==='office_admin'?[[],[]]:await Promise.all([api.cars(),api.office()]);if(run===epoch)await home()}catch(e){gate(e.message)}
+
+if(api.db)setupRentalNavigation(api.db);

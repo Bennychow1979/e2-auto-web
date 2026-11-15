@@ -10,7 +10,7 @@
 <body>
 <header><div class="wrap">
   <div><h1>租车月供跟进 · Rental Instalment Tracker</h1></div>
-  <div class="right" id="hdr" hidden><span id="who"></span><button id="btnAdd" class="gold">+ 新增车辆 Add car</button><button id="btnSettings">⚙ 设定</button><button id="btnAccess" hidden>权限管理 Access</button><button id="btnOut">退出</button></div>
+  <div class="right" id="hdr" hidden><span id="who"></span><button id="btnAdd" class="gold">+ 新增车辆 Add car</button><button id="btnSettings">⚙ 设定</button><a href="rental-audit.html" id="auditLink" hidden>操作记录</a><button id="btnAccess" hidden>权限管理 Access</button><button id="btnOut">退出</button></div>
 </div></header>
 <main>
   <div id="login" class="card">
@@ -51,6 +51,6 @@
 <div class="drawer" id="drawer"><div class="panel" id="panel"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="e2-config.js"></script><script type="module" src="rental.js?v=1"></script>
+<script src="e2-config.js"></script><script type="module" src="rental.js?v=audit-1"></script>
 </body>
 </html>

@@ -1,3 +1,4 @@
+import {setupRentalNavigation} from './rental-navigation.mjs?v=1';
 import {setupVehicleImport,showImportReview} from './vehicle-import.mjs?v=plate-draft-2';
 import {setupVehicleTranslations} from './vehicle-translation-ui.mjs?v=auto-translation-1';
 import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
@@ -301,3 +302,5 @@ else{
   });
 }
 window.addEventListener('beforeunload',e=>{if(dirty||busy){e.preventDefault();e.returnValue=''}});
+
+if(db)setupRentalNavigation(db);

@@ -1,0 +1,25 @@
+import {chromium,expect} from '@playwright/test';
+import {readFile,mkdir} from 'node:fs/promises';
+import {createServer} from 'node:http';
+import assert from 'node:assert/strict';
+const files={'/rental-audit.html':'rental-audit.html','/rental-audit.js':'rental-audit.js','/rental-audit-view.mjs':'rental-audit-view.mjs','/rental-audit.css':'rental-audit.css','/rental-navigation.mjs':'rental-navigation.mjs','/e2-data.js':'tests/fixtures/rental-audit-sdk.mjs'};
+const server=createServer(async(req,res)=>{const path=new URL(req.url,'http://localhost').pathname;
+ if(path==='/e2-config.js'){res.setHeader('Content-Type','text/javascript');res.end('');return;}
+ if(path==='/nav.html'){res.setHeader('Content-Type','text/html');res.end('<a data-rental-link hidden>Rental</a><a data-rental-audit-link hidden>Audit</a><script type="module">import {db} from "./e2-data.js";import {setupRentalNavigation} from "./rental-navigation.mjs";setupRentalNavigation(db);</script>');return;}
+ if(!files[path]){res.writeHead(404);res.end();return;}res.setHeader('Content-Type',path.endsWith('.html')?'text/html':path.endsWith('.css')?'text/css':'text/javascript');res.end(await readFile(files[path]));
+});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port;let browser;const errors=[],external=[];
+try{browser=await chromium.launch(process.platform==='win32'?{channel:'msedge'}:{});await mkdir('test-results',{recursive:true});
+ for(const [name,width,role] of [['desktop',1440,'super_admin'],['mobile',390,'super_admin'],['admin',390,'admin'],['office',390,'office_admin'],['anon',390,'anon']]){
+  const context=await browser.newContext({viewport:{width,height:900}});await context.route('**/*',r=>{if(new URL(r.request().url()).origin!==origin){external.push(r.request().url());return r.abort();}return r.continue();});const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(origin+'/rental-audit.html?role='+role);
+  if(role==='super_admin'){
+   await expect(page.locator('.record')).toHaveCount(20);await expect(page.locator('#records')).toContainText('operator@example.test');await expect(page.locator('#records')).toContainText('03:00:00 MYT');assert.equal(await page.evaluate(()=>auditFixture.snapshot().details),0);
+   await page.locator('#next').click();await expect(page.locator('.record')).toHaveCount(1);await expect(page.locator('#records')).toContainText('OTHER1');await page.locator('#previous').click();await expect(page.locator('.record')).toHaveCount(20);
+   await page.locator('.record button').first().click();await expect(page.locator('#changes')).toContainText('付款日期');await expect(page.locator('#changes')).toContainText('TRANSFER');await expect(page.locator('#changes img')).toHaveCount(0);await expect(page.locator('#changes')).toContainText('<img src=x onerror=alert(1)>');assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'test-results/rental-audit-'+name+'.png',fullPage:true});await page.locator('#closeDetail').click();
+   await page.locator('#plate').fill('NO-MATCH');await page.locator('#filters').evaluate(e=>e.requestSubmit());await expect(page.locator('#status')).toContainText('没有符合');await page.locator('#plate').fill('DEMO1');await page.locator('#refresh').click();await expect(page.locator('.record')).toHaveCount(20);
+   if(name==='desktop'){await page.evaluate(()=>auditFixture.revoke());await expect(page.locator('#content')).toBeHidden();await expect(page.locator('#records')).toBeEmpty();}
+   else{await page.evaluate(()=>auditFixture.delay=true);await page.locator('.record button').first().click();await page.evaluate(()=>auditFixture.logout());await page.evaluate(()=>auditFixture.release());await expect(page.locator('#content')).toBeHidden();await expect(page.locator('#changes')).toBeEmpty();}
+  }else{await expect(page.locator('#gateMessage')).toContainText(/Super Admin/);await expect(page.locator('#content')).toBeHidden();assert.equal(await page.evaluate(()=>auditFixture.snapshot().reads),0);}
+  await page.goto(origin+'/nav.html?role='+role);if(role==='anon'){await expect(page.locator('[data-rental-link]')).toBeHidden();}else{await expect(page.locator('[data-rental-link]')).toBeVisible();}if(role==='super_admin')await expect(page.locator('[data-rental-audit-link]')).toBeVisible();else await expect(page.locator('[data-rental-audit-link]')).toBeHidden();await page.evaluate(()=>auditFixture.logout());await expect(page.locator('[data-rental-link]')).toBeHidden();await expect(page.locator('[data-rental-audit-link]')).toBeHidden();await context.close();
+ }
+ assert.deepEqual(errors,[]);assert.deepEqual(external,[]);console.log('PASS audit desktop/mobile, paging, search, safe diffs, staff menu, denied roles, revocation and late sign-out response');
+}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
