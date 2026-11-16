@@ -30,6 +30,7 @@ export function customerSwitchURL(href,lang){
  if(params.get('mode')==='register')url.searchParams.set('mode','register');
  const keys=current.pathname==='/my-e2.html'?['application','car','sales']:current.pathname==='/documents.html'?['application','staff']:current.pathname==='/intake.html'?['invite']:[];
  for(const key of keys)if(params.has(key))url.searchParams.set(key,params.get(key));
+ if(current.pathname==='/intake.html'&&params.get('source')==='aira')url.searchParams.set('source','aira');
  return url.href;
 }
 export function refreshCustomerLanguageLinks(){
