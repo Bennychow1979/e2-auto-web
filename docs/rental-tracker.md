@@ -130,3 +130,29 @@ unique; the retained UUID remains the authoritative identity.
 Apply `20261116033047_rental_profile_actor_names.sql` before publishing the new
 frontend. The old audit list RPC remains available for cached clients. This
 migration does not rewrite contracts, payments or historical audit rows.
+
+## Add a rental vehicle from website stock
+
+The add-car form offers a partial plate filter over the inventory visible to the
+current staff account. It reads only `id`, `plate`, `brand`, `model`, `variant`,
+`year` and `stock_status` from active `vehicles`, using the existing staff client
+and inventory RLS. Office Admins retain their existing inventory visibility;
+this feature does not expand access to private stock. Archived/trash vehicles
+are excluded; sold/booked active vehicles remain selectable for rental tracking.
+
+Selecting a result fills plate, brand, model plus variant, and year. It does not
+copy the advertised price into a loan amount or overwrite owner/loan inputs.
+Existing rental plates are disabled in the picker. Manual entry remains available
+for missing/inaccessible stock or connection failures. The normal rental form
+validation and `rental_save` revision checks still apply.
+
+A selected vehicle's ID is stored as optional `stock_vehicle_id` in the existing
+contract JSON. This is a source reference, not a foreign-key constraint or an
+identity/authorization claim. Basic vehicle fields are a snapshot at selection;
+stock changes do not rewrite existing rental records. Manually changing the plate
+to another plate before saving removes the pending association.
+
+Inventory results are scoped to the current form and auth epoch, never persisted
+in browser storage. Late results after closing, changing panels or signing out
+are ignored. Tests cover pagination, denied access, partial plate filtering,
+autofill/save, duplicates, manual fallback, failed reads/retry and late responses.

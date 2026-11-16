@@ -1,5 +1,6 @@
 import {db as sb,configured,check} from './e2-data.js?v=rental-1';
 import {createRentalStore} from './rental-data.mjs?v=1';
+import {loadRentalStock,plateKey,rentalStockMatches,rentalStockDetails} from './rental-stock.mjs?v=1';
 let authEpoch=0,currentUser=null;
 async function authorized(){
  const token=authEpoch;
@@ -45,7 +46,7 @@ function resetPanel(kind=''){
 const fieldValue=el=>el.type==='checkbox'?el.checked:el.value;
 function trackDraft(event){
   const el=event.target;
-  if(!el.matches('input,select,textarea')||el.readOnly||!el.id)return;
+  if(!el.matches('input,select,textarea')||el.readOnly||!el.id||el.hasAttribute('data-no-draft'))return;
   panelDrafts.set(el.id,fieldValue(el));window.__dirty=true;discardArmed=false;
 }
 $('#panel').addEventListener('input',trackDraft);
@@ -505,10 +506,52 @@ function validate(){
   v.bank = f?.bank || null;
   return {ok, v};
 }
+function stockPickerHTML(){
+ return `<section class="stockPicker" aria-labelledby="stockPickerTitle">
+  <h3 id="stockPickerTitle">从网站库存选车 / Choose from Stock List</h3>
+  <label for="stockPlate">筛选车牌 / Filter plate</label>
+  <input id="stockPlate" data-no-draft autocomplete="off" placeholder="输入部分车牌，例如 ABC / 1234">
+  <p id="stockStatus" class="hint" role="status">正在读取库存 / Loading stock…</p>
+  <div id="stockResults" class="stockResults"></div>
+  <button type="button" id="stockRetry" class="btn" hidden>重试 / Retry</button>
+  <p id="stockSelected" class="hint" role="status"></p>
+  <p class="hint">选车后带入车牌、品牌、型号和年份；车主及贷款资料另填。找不到的车可在下方手动填写。<br>Select a car to fill its details, or enter them manually below.</p>
+ </section>`;
+}
+function setupStockPicker(onSelect){
+ const token=authEpoch,version=panelVersion;
+ const current=()=>token===authEpoch&&version===panelVersion&&panelKind==='form';
+ let cars=null;
+ const draw=()=>{
+  if(!current()||!cars)return;
+  const matches=rentalStockMatches(cars,$('#stockPlate').value),shown=matches.slice(0,20);
+  $('#stockStatus').textContent=matches.length?`${matches.length} 台匹配 / matches${matches.length>20?' · 显示前 20 台，请继续输入车牌 / Type more to narrow results':''}`:'没有匹配车辆，可换车牌或在下方手动填写 / No matching stock; try another plate or enter manually.';
+  $('#stockResults').replaceChildren();
+  for(const car of shown){
+   const duplicate=rows.some(r=>plateKey(r.plate)===plateKey(car.plate));
+   const button=document.createElement('button');button.type='button';button.className='btn stockChoice';button.disabled=duplicate;
+   const plate=document.createElement('b');plate.textContent=car.plate;
+   const detail=document.createElement('span');detail.textContent=[car.brand,car.model,car.variant,car.year,car.stock_status,duplicate?'已在租车记录 / Already added':''].filter(Boolean).join(' · ');
+   button.append(plate,detail);button.onclick=()=>{
+    if(!current())return;
+    if(rows.some(r=>plateKey(r.plate)===plateKey(car.plate))){draw();toast('这个车牌已在租车记录 / Already added');return;}
+    onSelect(car);
+   };$('#stockResults').append(button);
+  }
+ };
+ const load=async()=>{
+  if(!current())return;
+  $('#stockRetry').hidden=true;$('#stockStatus').textContent='正在读取库存 / Loading stock…';
+  try{const result=await loadRentalStock(sb,authorized);if(!current())return;cars=result;draw();}
+  catch{if(!current())return;$('#stockStatus').textContent='暂时无法读取库存，可重试或在下方手动填写 / Stock unavailable; retry or enter manually.';$('#stockRetry').hidden=false;}
+ };
+ $('#stockPlate').oninput=draw;$('#stockRetry').onclick=load;void load();
+}
 function openForm(r){
   if (!canEdit()) return;
   resetPanel('form');
-  $('#panel').innerHTML = `<h2>${r?'修改车辆资料 Edit '+esc(r.plate):'新增车辆 Add car'}<button class="x" onclick="closeDrawer()">×</button></h2>
+  let selectedStock=null;
+  $('#panel').innerHTML = `<h2>${r?'修改车辆资料 Edit '+esc(r.plate):'新增车辆 Add car'}<button class="x" onclick="closeDrawer()">×</button></h2>${r?'':stockPickerHTML()}
     <p class="hint">Admin 栏位：贷款与车主资料。户口号码只能从 LOU 抄，格式不对存不进去。 Admin section: loan & owner data. Copy the account number from the LOU only.</p>` + formHtml(r||{});
   window.__editingId = r ? r.id : null;
   if (r) { $('#f_plate').readOnly = true; }
@@ -519,11 +562,27 @@ function openForm(r){
     const o = owners().find(x => x.name === $('#f_owner_name').value.trim().toUpperCase());
     if (o) { if (!$('#f_owner_phone').value) $('#f_owner_phone').value = o.phone; if (!$('#f_agent').value && o.agent) $('#f_agent').value = o.agent; validate(); toast(`已带入 ${o.name} 的资料 Owner found`); }
   });
+  if(!r){
+    setupStockPicker(car=>{
+      selectedStock=car;
+      for(const [key,value] of Object.entries(rentalStockDetails(car))){
+        const el=$('#f_'+key);el.value=value;trackDraft({target:el});
+      }
+      $('#stockSelected').textContent='已选 / Selected: '+car.plate+' · '+[car.brand,car.model,car.year].filter(Boolean).join(' ');
+      validate();$('#f_owner_name').focus();
+    });
+    $('#f_plate').addEventListener('input',()=>{
+      if(selectedStock&&plateKey($('#f_plate').value)!==plateKey(selectedStock.plate)){
+        selectedStock=null;$('#stockSelected').textContent='已切换手动填写 / Manual entry';
+      }
+    });
+  }
   validate();
   $('#btnCancel').onclick = () => r ? openDetail(r.id) : closeDrawer();
   $('#btnSave').onclick = async () => {
     const {ok, v} = validate();
     if (!ok) { toast($('#sanity').hidden ? '还有栏位不对，请看红色提示 Fix the red fields' : '月供和贷款额对不上，请先对 LOU 再勾确认 Check LOU first'); return; }
+    if(selectedStock&&plateKey(v.plate)===plateKey(selectedStock.plate))v.stock_vehicle_id=selectedStock.id;
     $('#btnSave').disabled = true;
     try { await saveContract(v, r); }
     catch (e) { if($('#btnSave'))$('#btnSave').disabled = false; toast('保存失败 Save failed: ' + (e.message || e.code)); return; }
