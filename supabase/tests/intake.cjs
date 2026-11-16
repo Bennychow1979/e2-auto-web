@@ -122,5 +122,31 @@ await service();check((await scalar('select public.e2_intake_context($1)',[undec
 await as(sales);await db.query('select public.e2_revoke_intake_link($1)',[undecided.id]);await service();await rejects('select public.e2_intake_context($1)',[undecided.id],'Undecided invitation revocation enforced');
 await db.exec('reset role');check(await scalar("select has_function_privilege('anon','public.e2_intake_assign_vehicle(uuid,uuid,bigint)','execute')"),false,'Assignment is not anonymous');
 
+// Public AIRA entry: separate from expiring invitations and private customer data.
+await db.exec('reset role');
+const aira='2700f7df-7787-4a18-b1bb-eaba47882537';
+await db.query("insert into intake_links(id,salesperson,expires_at) values($1,$2,now()-interval '3 days')",[aira,owner]);
+await db.exec(fs.readFileSync('supabase/migrations/20261116152527_aira_public_intake.sql','utf8'));
+await service();const airaContext=await scalar("select e2_intake_public_entry('aira')");
+check(airaContext.source,'aira','Dedicated public entry has server source');check(airaContext.invite,aira,'Old distributed invite remains valid');check(airaContext.expires_at,'infinity','AIRA does not expire');
+await rejects("select e2_intake_public_entry('other')",[],'Unknown public source denied');
+const airaNonce=crypto.randomUUID();const airaApp=await scalar('select e2_intake_begin($1,$2,$3)',[aira,airaNonce,'commission']);
+check(await scalar('select source from intake_submissions where id=$1',[airaApp.id]),'aira','New application source stamped by database');
+check((await scalar('select e2_intake_begin($1,$2,$3)',[aira,airaNonce,'commission'])).id,airaApp.id,'Retry remains idempotent');
+for(let i=0;i<10;i++)await scalar('select e2_intake_prepare_file($1,$2,$3,$4,$5,$6,$7,$8)',[airaApp.id,airaNonce,crypto.randomUUID(),'ic_front','test.pdf','application/pdf',10485760,[]]);
+await rejects('select e2_intake_prepare_file($1,$2,$3,$4,$5,$6,$7,$8)',[airaApp.id,airaNonce,crypto.randomUUID(),'ic_front','test.pdf','application/pdf',1,[]],'Aggregate 100 MB cap enforced by database');
+for(let i=0;i<9;i++)await scalar('select e2_intake_begin($1,$2,$3)',[aira,crypto.randomUUID(),'worker']);
+await rejects('select e2_intake_begin($1,$2,$3)',[aira,crypto.randomUUID(),'worker'],'AIRA keeps ten new applications per hour cap');
+for(let i=0;i<240;i++)assert.equal((await scalar("select e2_intake_rate_check('request')")).allowed,true);passed++;console.log('PASS 240 requests within rate budget');
+check((await scalar("select e2_intake_rate_check('request')")).allowed,false,'Global request rate persists across calls');
+check((await scalar("select e2_intake_rate_check('request','spoofed-client')")).allowed,false,'Request counter cannot be bypassed with a new subject');
+for(let i=0;i<60;i++)await scalar("select e2_intake_rate_check('upload_session',$1)",[airaApp.id]);
+check((await scalar("select e2_intake_rate_check('upload_session',$1)",[airaApp.id])).allowed,false,'Upload session rate cap');
+await db.exec('reset role');await db.exec("insert into e2_intake_private.rate_windows values('upload_bytes','global',date_trunc('day',now() at time zone 'UTC') at time zone 'UTC',2147483648)");await service();
+check((await scalar("select e2_intake_rate_check('upload_bytes','',1)")).allowed,false,'Cumulative daily bytes do not depend on removable files');
+for(const role of ['anon','authenticated']){await db.exec('reset role');for(const fn of ['e2_intake_public_entry(text)','e2_intake_rate_check(text,text,bigint)'])check(await scalar('select has_function_privilege($1,$2,$3)',[role,'public.'+fn,'execute']),false,'Public callers cannot invoke privileged AIRA or rate RPC');}
+await as(owner);const personal=await call('select * from e2_create_intake_link(null)');check(personal.source,'staff','Staff creation never reuses AIRA entry');check(personal.id!==aira,true,'Staff gets separate expiring invitation');
+await db.query('select e2_revoke_intake_link($1)',[aira]);await service();await rejects("select e2_intake_public_entry('aira')",[],'Permanent entry still respects revocation');
+
 await db.close();console.log(passed+' guest intake privacy and workflow checks passed.');
 })().catch(e=>{console.error(e);process.exit(1)});

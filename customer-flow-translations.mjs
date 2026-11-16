@@ -297,6 +297,8 @@ This page is scanned or has no extractable text. Download it to use your device�
 This page could not be previewed. Download the file to open it on your device.|Halaman ini tidak dapat dipratonton. Muat turun fail untuk membukanya pada peranti anda.|此页无法预览，请下载文件后在设备上打开。
 PDF preview unavailable. The file may be protected or damaged. Download it to open it on your device.|Pratonton PDF tidak tersedia. Fail mungkin dilindungi atau rosak. Muat turun untuk membukanya pada peranti anda.|无法预览 PDF，文件可能受保护或已损坏。请下载后在设备上打开。
 Could not load this document. Close this preview and try again. If access has changed, sign in again.|Dokumen tidak dapat dimuatkan. Tutup pratonton dan cuba lagi. Jika akses berubah, log masuk semula.|无法载入文件，请关闭预览后重试。若访问权限已变更，请重新登录。
+Maximum 100 MB of files per application.|Maksimum 100 MB fail bagi setiap permohonan.|每份申请的文件总容量最多 100 MB。
+Too many requests. Please try later or contact E2 on WhatsApp.|Terlalu banyak permintaan. Cuba lagi nanti atau hubungi E2 melalui WhatsApp.|操作过于频繁，请稍后重试，或通过 WhatsApp 联系 E2。
 `.trim().split('\n').map(line=>{const [source,...values]=line.split('|');return [source,values]}));
 Object.assign(flowTranslations,Object.fromEntries(`
 Connection interrupted. Please try again.|Sambungan terputus. Sila cuba lagi.|连接中断，请重试。
