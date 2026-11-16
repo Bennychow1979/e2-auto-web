@@ -2,7 +2,13 @@ import {db as sb,configured,check} from './e2-data.js?v=rental-1';
 import {createRentalStore} from './rental-data.mjs?v=1';
 let authEpoch=0,currentUser=null;
 async function authorized(){
- if(!configured||check(await sb.rpc('rental_ok'))!==true){gate('未获租车模块权限，请联系 Super Admin。 Rental access has not been granted.');throw Error('Rental access denied');}
+ const token=authEpoch;
+ let identity;
+ try{if(!configured)throw Error('Not configured');identity=check(await sb.rpc('rental_identity'));}
+ catch(error){if(token===authEpoch)gate('未获租车模块权限，请联系 Super Admin。 Rental access has not been granted.');throw error;}
+ if(token!==authEpoch||!identity?.user_id||(currentUser&&identity.user_id!==currentUser))throw Error('Rental session changed');
+ if(me){me.name=identity.display_name;$('#who').textContent=me.name;}
+ return identity;
 }
 const rentalServices={async use(cap){if(cap==='downloads')return {async save({filename,data}){await authorized();const url=URL.createObjectURL(new Blob([data],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}};return null;}};
 function gate(message='请用已获授权的员工账号登录。'){
@@ -84,11 +90,12 @@ $('#btnOut').onclick=async()=>{gate('正在退出…');try{check(await sb.auth.s
 async function boot(session){
  gate();if(!session)return;const token=authEpoch;
  try{
-  const user=check(await sb.auth.getUser()).user;await authorized();if(token!==authEpoch)return;
-  me={id:user.id,name:user.email};currentUser=user.id;writable=true;
+  const user=check(await sb.auth.getUser()).user;const identity=await authorized();if(token!==authEpoch)return;
+  if(identity.user_id!==user.id)throw Error('Rental session changed');
+  me={id:user.id,name:identity.display_name||user.email};currentUser=user.id;writable=true;
   const isSuper=check(await sb.rpc('e2_is_super_admin'));if(token!==authEpoch)return;
   db=createRentalStore(sb,authorized);
-  $('#login').hidden=true;$('#app').hidden=false;$('#hdr').hidden=false;$('#who').textContent=user.email;
+  $('#login').hidden=true;$('#app').hidden=false;$('#hdr').hidden=false;$('#who').textContent=me.name;
   $('#btnAccess').hidden=isSuper!==true;$('#auditLink').hidden=isSuper!==true;$('#returnDashboard').hidden=isSuper!==true;
   unsub=db.collection('contracts').onSnapshot(async snap=>{
    const sd=await db.doc('settings/lists').get();if(token!==authEpoch)return;

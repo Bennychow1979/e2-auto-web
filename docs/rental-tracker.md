@@ -88,17 +88,17 @@ Dashboard, Admin vehicle workspace and Office Admin intake workspace all expose
 the rental link only when `rental_ok()` succeeds. The audit link additionally
 requires active Super Admin. Menu visibility is not the security boundary.
 
-The read-only `rental_audit_list` and `rental_audit_detail` RPCs independently
+The read-only `rental_audit_list_v2` (and retained v1 `rental_audit_list`) and `rental_audit_detail` RPCs independently
 require `auth.uid()` and active Super Admin on every call. Neither grants direct
 access to `auth.users`. The SECURITY DEFINER join is needed only to resolve the
-actor UUID to its current account email; anonymous execution is revoked. Admin
+actor UUID to its Portal profile display name, falling back to email; anonymous execution is revoked. Admin
 and Office Admin cannot read audit data even with a rental grant. No client can
 edit or delete audit records. No changes to contract or payment data are needed
 for this feature.
 
 The list uses a bounded 20-record page, descending identity cursor and optional
 plate search. Snapshots load only when opening one record. The view shows MYT,
-vehicle plate, current actor email (or retained UUID for deleted accounts), and
+vehicle plate, actor display name (email fallback; retained UUID if unavailable), and
 field-level before/after changes including payment and handover arrays. System
 or import actions without an authenticated actor are explicitly labelled.
 Historical import records do not establish who originally edited the source CSV.
@@ -111,3 +111,22 @@ information cannot be recalled. No snapshots are stored in browser storage.
 Tests use synthetic records for unauthorized roles, inactive Super Admin,
 pagination, filtering, before/after payments, XSS text, mobile layout and
 late responses after sign-out.
+
+## Actor display names
+
+`rental_identity()` returns only the current authorized rental user's ID and
+trimmed `staff_profiles.display_name`, falling back to the account email.
+The rental page uses this label for new payment, handover and history entries.
+Existing business JSON is not rewritten. Names refresh during access checks.
+
+`rental_audit.actor` remains the authenticated UUID. The database trigger stores
+an additional `actor_display_name` snapshot for new actions, resolving the name
+from the authenticated account itself. Client `x-actor` headers are not trusted.
+A later profile rename does not change that snapshot. Historical rows without a
+snapshot resolve the current profile name, then email. System/import entries
+without an account retain their explicit system label. Display names need not be
+unique; the retained UUID remains the authoritative identity.
+
+Apply `20261116033047_rental_profile_actor_names.sql` before publishing the new
+frontend. The old audit list RPC remains available for cached clients. This
+migration does not rewrite contracts, payments or historical audit rows.

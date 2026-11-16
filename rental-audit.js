@@ -1,5 +1,5 @@
 import {db,configured,check} from './e2-data.js?v=rental-audit-1';
-import {changes,fieldLabel,valueLabel,actorLabel,timeLabel,kindLabel} from './rental-audit-view.mjs?v=1';
+import {changes,fieldLabel,valueLabel,actorLabel,timeLabel,kindLabel} from './rental-audit-view.mjs?v=profile-actor-1';
 const $=s=>document.querySelector(s);
 let epoch=0,request=0,currentUser=null,cursors=[null],page=0,filter='',busy=false,detailRequest=0;
 function node(tag,text,className){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(className)e.className=className;return e;}
@@ -10,7 +10,7 @@ async function load(reset=false){
  if(busy)return;if(reset){page=0;cursors=[null];filter=$('#plate').value.trim();}
  const token=epoch,serial=++request;busy=true;$('#previous').disabled=true;$('#next').disabled=true;$('#records').replaceChildren();clearDetail();$('#status').textContent='正在读取…';
  try{
-  const rows=check(await db.rpc('rental_audit_list',{p_before:cursors[page],p_plate:filter,p_limit:20}));
+  const rows=check(await db.rpc('rental_audit_list_v2',{p_before:cursors[page],p_plate:filter,p_limit:20}));
   if(token!==epoch||serial!==request)return;
   for(const row of rows){
    const card=node('article',undefined,'record'),head=node('div',undefined,'recordHead');head.append(node('div',kindLabel(row.kind),'kind'));
