@@ -17,7 +17,7 @@ function gate(message='请用已获授权的员工账号登录。'){
  $('#app').hidden=true;$('#hdr').hidden=true;$('#login').hidden=false;$('#btnAccess').hidden=true;$('#auditLink').hidden=true;$('#returnDashboard').hidden=true;
  $('#stats').replaceChildren();$('#rows').replaceChildren();$('#panel').replaceChildren();$('#drawer').classList.remove('open');
  $('#who').textContent='';$('#fQ').value='';$('#fPartner').innerHTML='<option value="">全部租客来源 / All sources</option>';$('#rentalStatus').textContent='';$('#toast').textContent='';$('#toast').classList.remove('show');$('#selCount').textContent='';$('#selbar').hidden=true;
- window.__openId=null;window.__editingId=null;window.__dirty=false;
+ window.__openId=null;window.__editingId=null;window.__dirty=false;resetPanel();
  $('#loginErr').textContent=message;
 }
 
@@ -35,6 +35,50 @@ const AGENTS = [];
 const FINS = [];
 let fins = FINS, rows = [], me = null, db = null, writable = true, unsub = null;
 const selected = new Set();
+// Drafts live only in this panel; never persist customer input across sign-out.
+let panelVersion=0,panelKind='',discardArmed=false,panelRecord=null;
+const panelDrafts=new Map();
+function resetPanel(kind=''){
+  panelVersion++;panelKind=kind;panelRecord=null;panelDrafts.clear();discardArmed=false;window.__dirty=false;
+  window.__openId=null;window.__editingId=null;
+}
+const fieldValue=el=>el.type==='checkbox'?el.checked:el.value;
+function trackDraft(event){
+  const el=event.target;
+  if(!el.matches('input,select,textarea')||el.readOnly||!el.id)return;
+  panelDrafts.set(el.id,fieldValue(el));window.__dirty=true;discardArmed=false;
+}
+$('#panel').addEventListener('input',trackDraft);
+$('#panel').addEventListener('change',trackDraft);
+function canRefreshDetail(){
+  return panelKind==='detail'&&!window.__dirty&&!panelDrafts.size&&
+    !$('#panel').contains(document.activeElement);
+}
+async function saveDetail(r,data,action,prefix){
+  const token=authEpoch,version=panelVersion,sent=new Map(panelDrafts);
+  const saved=await db.collection('contracts').doc(r.id).update({...data,history:stamp(r,action)},r._rental_revision);
+  if(token!==authEpoch||version!==panelVersion)return;
+  const updated={id:r.id,...derive(saved.data())};
+  rows=rows.map(row=>row.id===r.id?updated:row);sortRows();render();
+  // Only discard fields included in this successful save. Other sections and
+  // text entered while the request was pending remain drafts.
+  const remaining=new Map([...panelDrafts].filter(([id,value])=>!id.startsWith(prefix)||sent.get(id)!==value));
+  const focused=document.activeElement?.id;
+  await openDetail(r.id);
+  if(token!==authEpoch)return;
+  for(const [id,value] of remaining){
+    if(id.startsWith('vr_')&&!document.getElementById(id))askVoid(r.id,Number(id.slice(3)));
+    const el=document.getElementById(id);if(!el)continue;
+    if(el.type==='checkbox')el.checked=value;else el.value=value;
+    panelDrafts.set(id,value);
+  }
+  window.__dirty=panelDrafts.size>0;
+  if([...panelDrafts.keys()].some(id=>id.startsWith('x_'))&&$('#btnExtras')){
+    $('#btnExtras').classList.add('primary');$('#btnExtras').textContent='💾 保存 Save — 有改动未保存 unsaved';
+  }
+  if(focused)document.getElementById(focused)?.focus();
+}
+
 function selBar(){ $('#selbar').hidden = selected.size === 0; $('#selCount').textContent = `已选 ${selected.size} 台 / ${selected.size} selected`; }
 $('#btnSelWA').onclick = () => copyWA([...selected]);
 $('#btnSelClear').onclick = () => { selected.clear(); render(); };
@@ -106,7 +150,7 @@ async function boot(session){
    $('#fPartner').innerHTML='<option value="">全部租客来源 / All sources</option><option value="DIRECT">直接租客 Direct</option>'+allPartners().map(a=>'<option value="'+esc(a)+'">'+esc(a)+'</option>').join('');
    $('#fPartner').value=cur;render();
    $('#rentalStatus').textContent='已读取 '+rows.length+' 台 · '+new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Kuala_Lumpur',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date())+' MYT';
-   if($('#drawer').classList.contains('open')&&window.__openId&&!window.__dirty)openDetail(window.__openId,true);
+   if($('#drawer').classList.contains('open')&&window.__openId&&canRefreshDetail())openDetail(window.__openId,true);
   },()=>{if(token===authEpoch)gate('无法读取租车资料或权限已撤销，请重新登录。');});
  }catch{if(token===authEpoch)gate('无法验证租车权限，请联系 Super Admin 或重试。');}
 }
@@ -225,7 +269,7 @@ async function saveContract(v, existing){
 }
 async function addPayment(r, p){
   const pays = [...r.payments, p];
-  await db.collection('contracts').doc(r.id).update({ payments: pays, history: stamp(r, `记录第 ${p.seq} 期付款`) }, r._rental_revision);
+  await saveDetail(r,{payments:pays},`记录第 ${p.seq} 期付款`,'p_');
 }
 async function removePayment(r, seq){
   const pays = r.payments.filter(p => p.seq !== seq).map((p,i) => ({...p, seq: (Number(r.paid_count_excel)||0) + i + 1}));
@@ -322,6 +366,7 @@ function copyWA(ids, mode){
   const text = waMsg(list, mode);
   const ok = () => toast(`已复制 ${list.length} 台车的 WhatsApp 信息`);
   const fallback = () => {
+    resetPanel('copy');
     $('#panel').innerHTML = `<h2>复制这段文字<button class="x" onclick="closeDrawer()">×</button></h2>
       <p class="hint">这部手机不允许自动复制。长按下面文字 → 全选 → 复制，再贴到 WhatsApp。</p>
       <textarea id="waText" style="width:100%;min-height:60vh;font:13px/1.5 inherit" readonly>${esc(text)}</textarea>
@@ -348,6 +393,7 @@ function allAgents(){ return [...new Set([...AGENTS, ...settings.agents, ...rows
 async function saveSettings(){ const saved=await db.doc('settings/lists').set({ ...settings, updated_at: new Date().toISOString(), by: me.name || me.id || '?' },settingsRevision); settingsRevision=saved.data()._rental_revision; }
 function openSettings(){
   if (!canEdit()) return;
+  resetPanel('settings');
   $('#panel').innerHTML = `<h2>设定 Settings<button class="x" onclick="closeDrawer()">×</button></h2>
   <h2 style="margin-top:12px">Agents</h2>
   <div class="hint">${allAgents().map(esc).join(' · ')}</div>
@@ -461,6 +507,7 @@ function validate(){
 }
 function openForm(r){
   if (!canEdit()) return;
+  resetPanel('form');
   $('#panel').innerHTML = `<h2>${r?'修改车辆资料 Edit '+esc(r.plate):'新增车辆 Add car'}<button class="x" onclick="closeDrawer()">×</button></h2>
     <p class="hint">Admin 栏位：贷款与车主资料。户口号码只能从 LOU 抄，格式不对存不进去。 Admin section: loan & owner data. Copy the account number from the LOU only.</p>` + formHtml(r||{});
   window.__editingId = r ? r.id : null;
@@ -481,19 +528,22 @@ function openForm(r){
     try { await saveContract(v, r); }
     catch (e) { if($('#btnSave'))$('#btnSave').disabled = false; toast('保存失败 Save failed: ' + (e.message || e.code)); return; }
     if(!me)return;if($('#btnSave'))$('#btnSave').disabled = false;
+    panelDrafts.clear();window.__dirty=false;
     toast(r ? '已保存 Saved' : '已新增 Added ' + v.plate); r ? openDetail(r.id) : closeDrawer();
   };
 }
 $('#btnAdd').onclick = () => openForm(null);
 function closeDrawer(){
-  if (window.__dirty) { window.__dirty = false; toast('⚠ 租车那段有改动还没保存！要放弃就再按一次关闭 Unsaved changes — press close again to discard'); const b = $('#btnExtras'); if (b) b.scrollIntoView({behavior:'smooth',block:'center'}); return; }
-  $('#drawer').classList.remove('open'); window.__openId = null; window.__editingId = null;
+  if ((window.__dirty||panelDrafts.size)&&!discardArmed) {
+    discardArmed=true;toast('⚠ 有资料还没保存！再按一次关闭才放弃 Unsaved changes — press close again to discard');return;
+  }
+  $('#drawer').classList.remove('open');resetPanel();
 }
 $('#drawer').addEventListener('click', e => { if (e.target === e.currentTarget) closeDrawer(); });
 
 /* ---------- rental ops (rental team): rent out / return / void / extras ---------- */
-async function patch(r, data, action){
-  await db.collection('contracts').doc(r.id).update({ ...data, history: stamp(r, action) }, r._rental_revision);
+async function patch(r, data, action,prefix='c_'){
+  await saveDetail(r,data,action,prefix);
 }
 async function rentOut(r){
   const to = $('#h_to').value.trim().toUpperCase(), phone = $('#h_phone').value.trim(), d = $('#h_date').value, rent = Number($('#h_rent').value) || null, note = UP($('#h_note').value.trim());
@@ -503,7 +553,7 @@ async function rentOut(r){
   if (!phone) { toast('请填电话 Phone'); return; }
   if (!d) { toast('请选日期 Date'); return; }
   const h = { type:'OUT', to, phone, partner, date:d, rent, note, by: me.name || me.id || '?', at: new Date().toISOString() };
-  await patch(r, { handovers: [...r.handovers, h], actual_rent: rent ?? r.actual_rent ?? null }, `租出给 ${to}${rent?' RM'+rent:''}`);
+  await patch(r, { handovers: [...r.handovers, h], actual_rent: rent ?? r.actual_rent ?? null }, `租出给 ${to}${rent?' RM'+rent:''}`,'h_');
   toast(`${r.plate} 已租出给 ${to}`);
 }
 async function returnCar(r){
@@ -511,7 +561,7 @@ async function returnCar(r){
   if (!how) { toast('请选拉回方式 Type'); return; }
   if (!d) { toast('请选日期 Date'); return; }
   const h = { type:'IN', how, to:'', date:d, note, by: me.name || me.id || '?', at: new Date().toISOString() };
-  await patch(r, { handovers: [...r.handovers, h] }, `拉回 ${how} ${note||''}`.trim());
+  await patch(r, { handovers: [...r.handovers, h] }, `拉回 ${how} ${note||''}`.trim(),'r_');
   toast(`${r.plate} 已记录拉回`);
 }
 function askVoid(cid, idx){
@@ -520,11 +570,11 @@ function askVoid(cid, idx){
   document.getElementById('vr_'+idx).focus();
 }
 async function voidHand(cid, idx){
-  const r = rows.find(x => x.id === cid); if (!r) return;
+  const r = panelRecord?.id===cid?panelRecord:null; if (!r) return;
   const reason = UP((document.getElementById('vr_'+idx)?.value || '').trim());
   if (!reason) { toast('请填作废原因 Reason required'); return; }
   const list = r.handovers.map((h,i) => i === idx ? { ...h, void: true, void_by: me.name || me.id || '?', void_at: new Date().toISOString(), void_reason: reason } : h);
-  try { await patch(r, { handovers: list }, `作废交接 #${idx+1}: ${reason}`); toast('已作废 Voided'); }
+  try { await patch(r, { handovers: list }, `作废交接 #${idx+1}: ${reason}`,'vr_'); toast('已作废 Voided'); }
   catch (e) { toast('失败 Failed: ' + (e.message||e.code)); }
 }
 async function closeContract(r){
@@ -553,7 +603,7 @@ async function saveExtras(r){
     notes: UP($('#x_notes').value.trim()),
     check_note: UP($('#x_check').value.trim()),
   };
-  await patch(r, data, '更新租车资料 / 备注');
+  await patch(r, data, '更新租车资料 / 备注','x_');
   toast('已保存 Saved');
 }
 
@@ -567,7 +617,7 @@ function handoverRow(h, i, id){
 }
 async function openDetail(id, refresh){
   const r = rows.find(x => x.id === id); if (!r) return;
-  window.__openId = id; if (!refresh) window.__dirty = false;
+  resetPanel('detail');window.__openId=id;panelRecord=r;
   const pays = r.payments;
   const next = r.paid_count + 1;
   const checkChip = r.check ? `<div class="card" style="border-color:var(--warn);background:var(--warn-bg);color:var(--warn);margin-top:8px"><b>⚠ 待核实 To confirm：</b>${esc(r.check_note)}</div>` : '';
@@ -663,10 +713,10 @@ async function openDetail(id, refresh){
   const wrap = fn => async () => { try { await fn(r); } catch (e) { toast('失败 Failed: ' + (e.message||e.code)); } };
   if ($('#btnOwnerWA')) $('#btnOwnerWA').onclick = () => copyWA($('#btnOwnerWA').dataset.ids.split(','), 'owner');
   if ($('#btnExtras')) {
-    $('#btnExtras').onclick = async () => { await wrap(saveExtras)(); window.__dirty = false; };
+    $('#btnExtras').onclick = wrap(saveExtras);
     ['x_target','x_adv','x_gps','x_key','x_notes','x_check','x_advok'].forEach(id => { const el = $('#'+id); if (el) el.addEventListener('input', () => { window.__dirty = true; const b = $('#btnExtras'); b.classList.add('primary'); b.textContent = '💾 保存 Save — 有改动未保存 unsaved'; }); });
   }
-  if ($('#btnRentOut')) { $('#btnRentOut').onclick = wrap(rentOut); $('#h_partner').onchange = () => { const v = $('#h_partner').value; if (v && v !== 'DIRECT') { $('#h_to').value = v; $('#h_phone').value = partnerPhone(v); } else { $('#h_to').value = ''; $('#h_phone').value = ''; } }; }
+  if ($('#btnRentOut')) { $('#btnRentOut').onclick = wrap(rentOut); $('#h_partner').onchange = () => { const v = $('#h_partner').value; if (v && v !== 'DIRECT') { $('#h_to').value = v; $('#h_phone').value = partnerPhone(v); } else { $('#h_to').value = ''; $('#h_phone').value = ''; } for(const id of ['h_to','h_phone'])trackDraft({target:$('#'+id)}); }; }
   if ($('#btnReturn')) $('#btnReturn').onclick = wrap(returnCar);
   if ($('#btnClose')) $('#btnClose').onclick = () => { const b = $('#btnClose'); if (b.dataset.armed) { wrap(closeContract)(); } else { b.dataset.armed = '1'; b.textContent = '再按一次确定 Press again to confirm'; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = '结束合约 Close'; } }, 4000); } };
   if ($('#btnReopen')) $('#btnReopen').onclick = wrap(reopenContract);
@@ -699,7 +749,7 @@ $('#btnStock').onclick = () => {
   const list = filtered().filter(r => r.status !== 'CLOSED' && !r.rented);
   if (!list.length) { toast('没有在库的车 No cars in stock in this filter'); return; }
   const text = stockMsg(list);
-  const show = () => { $('#panel').innerHTML = `<h2>库存清单 Stock list · ${list.length} 台<button class="x" onclick="closeDrawer()">×</button></h2>
+  const show = () => { resetPanel('stock');$('#panel').innerHTML = `<h2>库存清单 Stock list · ${list.length} 台<button class="x" onclick="closeDrawer()">×</button></h2>
     <p class="hint">只有车款和 target 租金，没有车主 / 贷款资料，可以直接发给租车 agent。 Model & target rent only — no owner or loan data — safe to send to rental agents.</p>
     <textarea id="stockText" style="width:100%;min-height:50vh;font:13px/1.5 inherit" readonly>${esc(text)}</textarea>
     <button class="btn primary" style="margin-top:8px" onclick="navigator.clipboard.writeText($('#stockText').value).then(()=>toast('已复制 Copied'),()=>{const t=$('#stockText');t.focus();t.select();})">📋 复制 Copy</button>`;
@@ -713,6 +763,7 @@ async function openAccess(){
  await authorized();
  const members=check(await sb.rpc('rental_list_access'));
  if(token!==authEpoch)return;
+ resetPanel('access');
  $('#panel').innerHTML='<h2>租车权限 / Rental access <button class="x" id="closeAccess">×</button></h2><p class="hint">逐个授权已启用的 Admin / Office Admin。撤销后，下次请求即停止访问。</p><div class="accessList">'+members.map(m=>'<div class="card accessRow"><span>'+esc(m.email)+'<br><small>'+esc(m.role)+(m.active?'':' · Inactive')+'</small></span><button class="btn" data-grant="'+m.user_id+'" '+(!m.enabled&&(!m.active||!['admin','office_admin'].includes(m.role))?'disabled':'')+'>'+(m.enabled?'撤销 Revoke':'授权 Grant')+'</button></div>').join('')+'</div><p id="accessError" role="status"></p>';
  $('#drawer').classList.add('open');window.__openId=null;$('#closeAccess').onclick=closeDrawer;
  document.querySelectorAll('[data-grant]').forEach(button=>button.onclick=async()=>{
