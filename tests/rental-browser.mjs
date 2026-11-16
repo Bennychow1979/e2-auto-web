@@ -2,7 +2,7 @@ import {chromium,expect} from '@playwright/test';
 import {readFile,mkdir} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
-const files={'/rental.html':'rental.html','/rental.js':'rental.js','/rental.css':'rental.css','/rental-data.mjs':'rental-data.mjs','/e2-data.js':'tests/fixtures/rental-sdk.mjs'};
+const files={'/rental-stock.mjs':'rental-stock.mjs','/rental.html':'rental.html','/rental.js':'rental.js','/rental.css':'rental.css','/rental-data.mjs':'rental-data.mjs','/e2-data.js':'tests/fixtures/rental-sdk.mjs'};
 const server=createServer(async(req,res)=>{const p=new URL(req.url,'http://localhost').pathname;
  if(p==='/e2-config.js'){res.setHeader('Content-Type','text/javascript');res.end('');return;}
  if(!files[p]){res.writeHead(404);res.end();return;}
