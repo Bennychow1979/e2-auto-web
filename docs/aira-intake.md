@@ -7,8 +7,9 @@ The entry is public and reusable; it does not open submitted applications or fil
 The server resolves the `aira` source to its configured generic invitation. Its
 expiry is PostgreSQL `infinity`; no renewal job is required. The previously sent
 invitation `2700f7df-7787-4a18-b1bb-eaba47882537` remains valid, so customers can
-also reopen older messages. Ordinary staff invitations still expire after 14 days
-and cannot accidentally reuse the AIRA invitation. Revocation and the assigned
+also reopen older messages. Staff invitations are also permanent and cannot accidentally reuse the AIRA
+invitation. Existing enabled staff links are extended; revoked links are not
+reactivated. Revocation and the assigned
 staff account's active/eligible status remain enforced. Draft upload sessions
 still expire after two hours; the permanent entry does not extend write secrets.
 
@@ -60,7 +61,7 @@ contact available for upload errors or connection interruptions.
 
 ## Deployment and AIRA handoff
 
-Apply the AIRA migration, deploy `e2-guest-intake` with its existing
+Apply the AIRA and permanent-staff-invitation migrations, deploy `e2-guest-intake` with its existing
 `verify_jwt=false` guest setting, then publish the frontend. Preserve the existing
 staff-only document access and nonce validation. Do not expose service keys.
 

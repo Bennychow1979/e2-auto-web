@@ -145,8 +145,19 @@ check((await scalar("select e2_intake_rate_check('upload_session',$1)",[airaApp.
 await db.exec('reset role');await db.exec("insert into e2_intake_private.rate_windows values('upload_bytes','global',date_trunc('day',now() at time zone 'UTC') at time zone 'UTC',2147483648)");await service();
 check((await scalar("select e2_intake_rate_check('upload_bytes','',1)")).allowed,false,'Cumulative daily bytes do not depend on removable files');
 for(const role of ['anon','authenticated']){await db.exec('reset role');for(const fn of ['e2_intake_public_entry(text)','e2_intake_rate_check(text,text,bigint)'])check(await scalar('select has_function_privilege($1,$2,$3)',[role,'public.'+fn,'execute']),false,'Public callers cannot invoke privileged AIRA or rate RPC');}
-await as(owner);const personal=await call('select * from e2_create_intake_link(null)');check(personal.source,'staff','Staff creation never reuses AIRA entry');check(personal.id!==aira,true,'Staff gets separate expiring invitation');
+await as(owner);const personal=await call('select * from e2_create_intake_link(null)');check(personal.source,'staff','Staff creation never reuses AIRA entry');check(personal.id!==aira,true,'Staff gets a separate invitation');
 await db.query('select e2_revoke_intake_link($1)',[aira]);await service();await rejects("select e2_intake_public_entry('aira')",[],'Permanent entry still respects revocation');
+
+// Owner-approved permanent staff links: existing enabled links and future defaults.
+await db.exec('reset role');await db.query("update intake_links set expires_at=now()-interval '1 day' where id=$1",[personal.id]);
+await db.exec(fs.readFileSync('supabase/migrations/20261116153733_permanent_staff_intake_links.sql','utf8'));
+await service();check((await scalar('select e2_intake_context($1)',[personal.id])).expires_at,'infinity','Existing enabled staff link no longer expires');
+await db.exec('reset role');const futureLink=await call('insert into intake_links(salesperson,vehicle_id) values($1,$2) returning id,expires_at::text',[owner,cars[1]]);
+check(futureLink.expires_at,'infinity','New staff invitation default has no expiry');
+check(await scalar('select active from intake_links where id=$1',[aira]),false,'Revoked link not reactivated');
+await db.query('update staff_memberships set active=false where user_id=$1',[owner]);await service();await rejects('select e2_intake_context($1)',[personal.id],'Disabled staff invalidates permanent invitation');
+await db.exec('reset role');await db.query('update staff_memberships set active=true where user_id=$1',[owner]);await db.query("update vehicles set publication='draft' where id=$1",[cars[1]]);await db.query("update vehicles set stock_status='Sold' where id=$1",[cars[1]]);await service();await rejects('select e2_intake_context($1)',[futureLink.id],'Sold vehicle invalidates permanent invitation');
+await as(owner);await db.query('select e2_revoke_intake_link($1)',[personal.id]);await service();await rejects('select e2_intake_context($1)',[personal.id],'Revocation invalidates permanent staff invitation');
 
 await db.close();console.log(passed+' guest intake privacy and workflow checks passed.');
 })().catch(e=>{console.error(e);process.exit(1)});
