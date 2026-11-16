@@ -23,8 +23,9 @@ export function createHandler(admin){
     if(!uuid(target)||!uuid(nonce)||!uuid(file_id)||!file||typeof file==='string'||!file.name||file.name.length>160||file.size<1||file.size>10485760)throw Error('Choose a valid file up to 10 MB.');
     const mime=await detectMime(file);let months;try{months=JSON.parse(form.get('months')||'[]')}catch{throw Error('Choose statement months.')};if(!Array.isArray(months)||months.length>6||months.some(m=>typeof m!=='string'))throw Error('Choose statement months.');
     const category=form.get('category');if(typeof category!=='string'||category.length>40)throw Error('Choose a document category.');
-    await throttle('upload_session',target);
     const reserved=await rpc('e2_intake_prepare_file',{target,nonce,file_id,doc_category:category,file_name:file.name,file_mime:mime,file_bytes:file.size,months});
+    // Only validated sessions may allocate per-session counter rows.
+    await throttle('upload_session',target);
     if(reserved.state!=='ready'){
      await throttle('upload_bytes','',file.size);
      const uploaded=await bucket().upload(reserved.path,file,{contentType:mime,cacheControl:'0',upsert:false});
