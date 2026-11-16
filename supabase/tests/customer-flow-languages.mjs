@@ -28,6 +28,18 @@ test('all customer page links preserve application context and language without 
  assert.equal(loanRoute(`?application=${id}&lang=zh&redirect=https://evil.example`),`my-e2.html?application=${id}&lang=zh`);
  assert.equal(chooseCustomerLanguage('https://e2auto.my/documents.html?lang=ms','zh'),'ms');
 });
+test('AIRA entry and staff invitations survive language round trips without copying credentials',()=>{
+ for(const from of ['en','ms','zh'])for(const to of ['en','ms','zh']){
+  const original=`https://e2auto.my/intake.html?source=aira&lang=${from}&access_token=secret&code=secret#refresh_token=secret`;
+  const next=new URL(customerSwitchURL(original,to));
+  assert.equal(next.searchParams.get('source'),'aira');assert.equal(next.searchParams.get('lang'),to);
+  assert.deepEqual([...next.searchParams.keys()].sort(),['lang','source']);assert.equal(next.hash,'');
+  const back=new URL(customerSwitchURL(next.href,from));assert.equal(back.searchParams.get('source'),'aira');
+  const staff=new URL(customerSwitchURL(`https://e2auto.my/intake.html?invite=${id}&lang=${from}`,to));
+  assert.equal(staff.searchParams.get('invite'),id);assert.equal(staff.searchParams.get('lang'),to);
+ }
+ assert.equal(new URL(customerSwitchURL('https://e2auto.my/intake.html?source=unrecognised','zh')).searchParams.get('source'),null);
+});
 test('loan option labels translate while submitted values and customer text stay unchanged',()=>{
  for(const lang of ['en','ms','zh']){
   const translate=(s,v)=>ct(s,v,lang),details={name:'Single',company:'Draft',address:'Address',marital:'Married',guarantor:'Yes',credit:'Yes',debt:'123',g_name:'Not provided'};

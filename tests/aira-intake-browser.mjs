@@ -27,10 +27,24 @@ try{
    if(failed)return route.fulfill({status:400,json:{error:'This invitation is unavailable. Ask your salesperson for a new link.'}});
    if(route.request().headers()['content-type']?.startsWith('multipart/')){calls.push({action:'upload'});return route.fulfill({json:{uploaded:true}});}
    const b=route.request().postDataJSON();calls.push(b);
+   if(b.action==='context'&&b.source!=='aira'&&b.invite!==id)return route.fulfill({status:400,json:{error:'Open a valid invitation.'}});
    const response=b.action==='context'?{invite:id,source:'aira',vehicle:{id:null,name:'Not decided yet',price:null},contact:{name:'Synthetic E2',whatsapp:null},expires_at:'infinity'}:b.action==='begin'?{id,received:false}:{reference:id,received:true};
    return route.fulfill({json:response});
   });
   await page.goto(origin+'/intake.html?source=aira&lang='+lang);await expect(page.locator('#kind')).toBeVisible();assert.equal(calls[0].source,'aira');
+  for(const target of ['ms','zh','en',lang]){
+   await page.locator(`[data-customer-language="${target}"]`).click();
+   await page.waitForURL(url=>url.searchParams.get('lang')===target);
+   assert.equal(new URL(page.url()).searchParams.get('source'),'aira');
+   await expect(page.locator('#kind')).toBeVisible();assert.equal(calls.at(-1).source,'aira');
+  }
+  await page.goto(origin+'/intake.html?invite='+id+'&lang='+lang);
+  for(const target of ['ms','zh','en']){
+   await page.locator(`[data-customer-language="${target}"]`).click();
+   await page.waitForURL(url=>url.searchParams.get('lang')===target);
+   assert.equal(new URL(page.url()).searchParams.get('invite'),id);await expect(page.locator('#kind')).toBeVisible();
+  }
+  await page.goto(origin+'/intake.html?source=aira&lang='+lang);await expect(page.locator('#kind')).toBeVisible();
   await page.locator('#kind').selectOption('worker');
   for(let step=0;step<6;step++){
    await page.locator('#intakeForm').evaluate((form,data)=>{for(const el of form.elements)if(el.name&&Object.hasOwn(data,el.name))el.value=data[el.name];},details);
