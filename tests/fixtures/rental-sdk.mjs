@@ -11,6 +11,7 @@ export const db={
   signInWithPassword:async()=>{current={id:'00000000-0000-4000-8000-000000000001',email:'demo@example.test'};allowed=true;listeners.forEach(fn=>fn('SIGNED_IN',{user:current}));return success({session:{user:current}});},
   signOut:async()=>{current=null;allowed=false;listeners.forEach(fn=>fn('SIGNED_OUT',null));return success({});}},
  rpc:async(name,p={})=>{
+  if(name==='rental_identity')return current&&allowed?success({user_id:current.id,display_name:role==='super_admin'?'Demo Manager':current.email}):fail('Denied');
   if(name==='rental_ok')return success(!!current&&allowed);
   if(name==='e2_is_super_admin')return success(role==='super_admin');
   if(name==='rental_list_access')return role==='super_admin'?success([{user_id:'00000000-0000-4000-8000-000000000002',email:'office@example.test',role:'office_admin',active:true,enabled:false,revision:0}]):fail('Denied');

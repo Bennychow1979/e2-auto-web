@@ -12,5 +12,5 @@ test('null, missing, empty, zero and false remain distinct; nested order does no
  assert.equal(changes({payments:[{amount:500}]},{payments:[]})[0].after,undefined);
 });
 test('historical identities and Malaysia dates are explicit',()=>{
- assert.match(actorLabel({actor:null}),/系统/);assert.match(actorLabel({actor:'deleted'}),/deleted/);assert.equal(actorLabel({actor_email:'staff@example.test'}),'staff@example.test');assert.match(timeLabel('2026-11-15T19:00:00Z'),/2026.11.16.*03:00:00 MYT/);
+ assert.equal(actorLabel({actor_display_name:'  Demo Name  ',actor_email:'staff@example.test'}),'Demo Name');assert.equal(actorLabel({actor_display_name:'  ',actor_email:'staff@example.test'}),'staff@example.test');assert.match(actorLabel({actor:null}),/系统/);assert.match(actorLabel({actor:'deleted'}),/deleted/);assert.equal(actorLabel({actor_email:'staff@example.test'}),'staff@example.test');assert.match(timeLabel('2026-11-15T19:00:00Z'),/2026.11.16.*03:00:00 MYT/);
 });

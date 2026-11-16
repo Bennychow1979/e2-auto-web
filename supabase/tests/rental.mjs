@@ -6,6 +6,7 @@ await db.exec(`create role anon;create role authenticated;create role service_ro
  create schema auth;create table auth.users(id uuid primary key,email text);
  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
  grant usage on schema auth,public to anon,authenticated,service_role;
+ create table public.staff_profiles(user_id uuid primary key,display_name text);
  create table public.staff_memberships(user_id uuid primary key,role text,active boolean default true);
  alter table public.staff_memberships enable row level security;
  grant select on public.staff_memberships to authenticated;
@@ -19,6 +20,8 @@ const ids={};let i=1;for(const role of ['super_admin','admin','office_admin','sa
 }
 await db.exec(await readFile(new URL('../migrations/20261115180050_rental_staff_tracker.sql',import.meta.url),'utf8'));
 await db.exec(await readFile(new URL('../migrations/20261115183217_rental_audit_viewer.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../migrations/20261116033047_rental_profile_actor_names.sql',import.meta.url),'utf8'));
+await db.query('insert into staff_profiles values($1,$2),($3,$4)',[ids.admin,'  Demo Admin  ',ids.office_admin,'   ']);
 const as=async role=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[ids[role]||'']);await db.exec('set role '+(role==='anon'?'anon':'authenticated'));};
 const q=async(sql,args=[])=> (await db.query(sql,args)).rows;
 const can=async()=> (await q('select public.rental_ok() value'))[0].value;
@@ -29,20 +32,21 @@ for(const role of ['anon','admin','office_admin','sales','runner','account','cus
  for(const table of ['rental_contracts','rental_settings','rental_contracts_flat','rental_audit']){
   if(role==='anon')await assert.rejects(()=>q('select * from '+table));else assert.equal((await q('select * from '+table)).length,0,role+' '+table);
  }
- await assert.rejects(()=>grant('admin',true,0));await assert.rejects(()=>save('contracts','DEMO1',{plate:'DEMO1',payments:[]},0));
- await assert.rejects(()=>q('select * from rental_audit_list()'));await assert.rejects(()=>q('select rental_audit_detail(1)'));
+ await assert.rejects(()=>q('select rental_identity()'));await assert.rejects(()=>grant('admin',true,0));await assert.rejects(()=>save('contracts','DEMO1',{plate:'DEMO1',payments:[]},0));
+ await assert.rejects(()=>q('select * from rental_audit_list_v2()'));await assert.rejects(()=>q('select * from rental_audit_list()'));await assert.rejects(()=>q('select rental_audit_detail(1)'));
 }
 await as('super_admin');assert.equal(await can(),true);assert.equal((await q('select * from rental_list_access()')).length,3);
 await assert.rejects(()=>grant('sales',true,0));await assert.rejects(()=>grant('inactive',true,0));
 await grant('admin',true,0);await grant('office_admin',true,0);await assert.rejects(()=>grant('admin',false,0));
-await as('admin');assert.equal(await can(),true);
+await as('admin');assert.equal(await can(),true);assert.equal((await q('select rental_identity() x'))[0].x.display_name,'Demo Admin');
+await q("select set_config('request.headers','{\"x-actor\":\"Forged Name\"}',false)");
 await save('contracts','DEMO1',{plate:'DEMO1',first_payment_date:'2026-08-12',payments:[],handovers:[],monthly:500},0);
 assert.equal((await q('select first_payment_date::text d from rental_contracts'))[0].d,'2026-08-12');
 await assert.rejects(()=>q("update rental_contracts set data='{}'"));await assert.rejects(()=>q('delete from rental_contracts'));await assert.rejects(()=>q('update rental_access set enabled=true'));
 await assert.rejects(()=>save('contracts','DEMO1',{payments:[{amount:500}]},0,true));
 await save('contracts','DEMO1',{payments:[{amount:500}]},1,true);
-await as('office_admin');assert.equal(await can(),true);assert.equal((await q('select * from rental_contracts')).length,1);
-await assert.rejects(()=>q('select * from rental_audit_list()'));await assert.rejects(()=>q('select rental_audit_detail(1)'));
+await as('office_admin');assert.equal(await can(),true);assert.equal((await q('select rental_identity() x'))[0].x.display_name,'office_admin@example.test');assert.equal((await q('select * from rental_contracts')).length,1);
+await assert.rejects(()=>q('select * from rental_audit_list_v2()'));await assert.rejects(()=>q('select * from rental_audit_list()'));await assert.rejects(()=>q('select rental_audit_detail(1)'));
 await assert.rejects(()=>save('contracts','DEMO1',{payments:[{amount:600}]},1,true));
 assert.deepEqual((await q('select data from rental_contracts'))[0].data.payments,[{amount:500}]);
 await save('settings','lists',{agents:['DEMO'],financiers:[],partners:[]},1);
@@ -55,8 +59,16 @@ const first=await q("select * from rental_audit_list(null,'DEMO1',1)");const sec
 assert.equal((await q("select * from rental_audit_list(null,'NO-MATCH',20)")).length,0);
 await assert.rejects(()=>q('select * from rental_audit_list(null,\'\',21)'));await assert.rejects(()=>q('select rental_audit_detail(99999999)'));
 await assert.rejects(()=>q('delete from rental_audit'));await assert.rejects(()=>q("update rental_audit set actor=null"));
+// Audit snapshot survives profile renames; legacy rows resolve the current name.
+const named=await q("select * from rental_audit_list_v2(null,'DEMO1',20)");assert.equal(named[0].actor,ids.admin);assert.equal(named[0].actor_display_name,'Demo Admin');assert.equal(named[1].actor_display_name,'Demo Admin');
+assert.equal((await q("select * from rental_audit_list_v2(null,'',20)")).find(x=>x.tbl==='rental_settings').actor_display_name,'office_admin@example.test');
+await db.exec('reset role');await db.query('update staff_profiles set display_name=$1 where user_id=$2',['Renamed Admin',ids.admin]);
+await db.query('update rental_audit set actor_display_name=null where id=$1',[named[1].id]);
+await as('super_admin');const renamed=await q("select * from rental_audit_list_v2(null,'DEMO1',20)");assert.equal(renamed[0].actor_display_name,'Demo Admin');assert.equal(renamed[1].actor_display_name,'Renamed Admin');
+assert.equal((await q('select rental_identity() x'))[0].x.display_name,'super_admin@example.test');
+await assert.rejects(()=>q("select * from rental_audit_list_v2(null,'',21)"));
 await grant('admin',false,1);await as('admin');assert.equal(await can(),false);assert.equal((await q('select * from rental_contracts_flat')).length,0);await assert.rejects(()=>save('contracts','DEMO1',{monthly:1},2,true));
 await db.exec('reset role');await db.query('update staff_memberships set active=false where user_id=$1',[ids.office_admin]);await as('office_admin');assert.equal(await can(),false);
 await db.exec('reset role');await db.query("update staff_memberships set active=true,role='sales' where user_id=$1",[ids.office_admin]);await as('office_admin');assert.equal(await can(),false);
-await db.exec('reset role');await db.query('update staff_memberships set active=false where user_id=$1',[ids.super_admin]);await as('super_admin');await assert.rejects(()=>q('select * from rental_audit_list()'));await assert.rejects(()=>q('select rental_audit_detail(1)'));
+await db.exec('reset role');await db.query('update staff_memberships set active=false where user_id=$1',[ids.super_admin]);await as('super_admin');await assert.rejects(()=>q('select * from rental_audit_list_v2()'));await assert.rejects(()=>q('select * from rental_audit_list()'));await assert.rejects(()=>q('select rental_audit_detail(1)'));
 await db.close();console.log('PASS rental RLS, explicit grants, revocation, inactive/demoted roles, audit, settings, ISO dates and concurrent payment protection');

@@ -8,10 +8,10 @@
 <section id="gate" class="card" role="status"><p id="gateMessage">正在验证 Super Admin 权限…</p><a href="rental.html">员工登录 / 返回租车页</a></section>
 <section id="content" hidden>
 <form id="filters" class="card filters"><label for="plate">车牌 / Plate<input id="plate" maxlength="60" placeholder="输入完整或部分车牌" autocomplete="off"></label><button type="submit">搜索</button><button type="button" id="refresh">刷新最新记录</button></form>
-<p class="note">时间为马来西亚时间（MYT）。操作人显示账号邮箱；系统／导入记录可能没有员工账号。这里只能查看，不能修改或删除记录。</p>
+<p class="note">时间为马来西亚时间（MYT）。操作人显示操作时的姓名，无姓名则显示邮箱；旧记录使用当前档案姓名；系统／导入记录可能没有员工账号。这里只能查看，不能修改或删除记录。</p>
 <p id="status" role="status" aria-live="polite"></p><div id="records"></div>
 <nav class="pagination" aria-label="操作记录分页"><button id="previous">上一页</button><button id="next">下一页</button></nav>
 </section>
 <dialog id="detail" aria-labelledby="detailTitle"><div class="dialogHead"><h2 id="detailTitle">修改前后</h2><button id="closeDetail" aria-label="关闭对比">关闭 ×</button></div><p id="detailMeta"></p><p class="note">仅列出有变化的字段；“未设置”与空值、0、否分别显示。数组按项目顺序对比。</p><div id="changes"></div></dialog>
-</main><script src="e2-config.js"></script><script type="module" src="rental-audit.js?v=return-nav-1"></script>
+</main><script src="e2-config.js"></script><script type="module" src="rental-audit.js?v=profile-actor-1"></script>
 </body></html>
