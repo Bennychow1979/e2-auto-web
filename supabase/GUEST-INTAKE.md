@@ -7,7 +7,7 @@ Vehicle invitation -> customer seven-step form + optional attachments -> assigne
 - Only this function uses `verify_jwt=false`. Existing invitation/admin function stays authenticated. Service role remains on the server, never in page source.
 - Database RPCs used by this endpoint are executable only by service_role; explicit revokes account for Supabase default grants.
 - Active assigned salesperson and Super Admin read submitted enquiries. Selected active Office Admin receives read/file access only after recorded handover. Staff cannot rewrite customer answers. Other sales/admin/account/customer users have no access.
-- Invitation UUID expires in 14 days. Per-submission random write nonce is held only in page memory, stored hashed server-side, valid for two hours, and never grants read access.
+- Enabled staff and AIRA invitation URLs have no date expiry. Revocation, active eligible staff and available published vehicle checks remain in force. See `../docs/aira-intake.md` for the public entry, source attribution and resource limits. Per-submission random write nonce is held only in page memory, stored hashed server-side, valid for two hours, and never grants read access.
 - Files: private `intake-documents`, JPEG/PNG/PDF, 10 MB each, 30 maximum. Signature and metadata checked, opaque server-selected paths, no overwrite. Removal first locks the metadata state so concurrent submission cannot receive a file being deleted.
 
 ## Operations and limits

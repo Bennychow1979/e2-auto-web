@@ -1,7 +1,7 @@
 import {createHandler,detectMime} from '../functions/e2-guest-intake/handler.mjs';
 import assert from 'node:assert/strict';
-const id='00000000-0000-4000-8000-000000000001',calls=[],objects=[];
-const admin={rpc:async(n,args)=>{calls.push([n,args]);return {data:n==='e2_intake_expired_files'?[]:n==='e2_intake_prepare_file'?{path:'opaque/path',state:'uploading'}:n==='e2_intake_context'?{vehicle:{name:'Test car'}}:n==='e2_intake_begin'?{id,received:false}:{reference:id,received:true}}},storage:{from:b=>({upload:async(p,f,o)=>{objects.push({b,p,size:f.size,o});return{}},remove:async()=>({})})}};
+const id='00000000-0000-4000-8000-000000000001',calls=[],objects=[];let blockedScope=null,invalidSession=false;
+const admin={rpc:async(n,args)=>{calls.push([n,args]);if(n==='e2_intake_prepare_file'&&invalidSession)return {error:{message:'Upload session unavailable.'}};return {data:n==='e2_intake_rate_check'?{allowed:args.scope!==blockedScope,retry_after:60}:n==='e2_intake_public_entry'?{invite:id,source:'aira',vehicle:{name:'Not decided yet'}}:n==='e2_intake_expired_files'?[]:n==='e2_intake_prepare_file'?{path:'opaque/path',state:'uploading'}:n==='e2_intake_context'?{vehicle:{name:'Test car'}}:n==='e2_intake_begin'?{id,received:false}:{reference:id,received:true}}},storage:{from:b=>({upload:async(p,f,o)=>{objects.push({b,p,size:f.size,o});return{}},remove:async()=>({})})}};
 const handler=createHandler(admin);let passed=0;
 const check=(v,e,label)=>{assert.deepEqual(v,e);passed++;console.log('PASS '+label)};
 const request=(body,origin='https://e2auto.my')=>handler(new Request('https://example.test',{method:'POST',headers:{'Content-Type':'application/json',Origin:origin},body:JSON.stringify(body)}));
@@ -11,7 +11,7 @@ check((await request({action:'context',invite:'not-a-uuid'})).status,400,'Invali
 check((await request({action:'context',invite:id,website:'bot'})).status,400,'Honeypot rejected');
 check((await request({action:'read',target:id,nonce:id})).status,400,'No public read action');
 check((await request({action:'download',target:id,nonce:id})).status,400,'No public document action');
-check(calls.length,0,'Rejected requests never reach privileged RPC');
+check(calls.filter(([n])=>n!=='e2_intake_rate_check').length,0,'Rejected requests only consume the rate counter');
 const context=await request({action:'context',invite:id});check(context.headers.get('Cache-Control'),'no-store','Private response cache disabled');check((await context.json()).vehicle.name,'Test car','Sanitized context delivered');
 check((await request({action:'begin',invite:id,nonce:id,kind:'worker'})).status,200,'Begin dispatch accepted');
 check((await request({action:'submit',target:id,nonce:id,details:{},consent:'true',accurate:true,contacts:true})).status,200,'Submit dispatch reaches database validator');check(calls.at(-1)[1].consent,false,'String true cannot bypass consent');
@@ -21,4 +21,11 @@ await assert.rejects(()=>detectMime(new Blob(['<html>'],{type:'application/pdf'}
 const upload=async(content)=>{const f=new FormData();for(const [k,v] of Object.entries({target:id,nonce:id,file_id:id,category:'ic_front',months:'[]'}))f.set(k,v);f.set('file',new Blob([content],{type:'application/pdf'}),'synthetic.pdf');return handler(new Request('https://example.test',{method:'POST',headers:{Origin:'https://e2auto.my'},body:f}))};
 check((await upload('<html>')).status,400,'Disguised document blocked before storage');check(objects.length,0,'Rejected content not uploaded');check((await upload('%PDF-1.4 synthetic')).status,200,'Valid upload finalized');check(objects[0].b,'intake-documents','Only private intake bucket used');check(objects[0].p,'opaque/path','Server reservation chooses storage path');check(objects[0].o.upsert,false,'Overwrite disabled');
 check(calls.some(([n])=>n.includes('auth')||n.includes('handoff')),false,'Guest endpoint does not create accounts or invoke staff actions');
+const publicContext=await request({action:'context',source:'aira'});check(publicContext.status,200,'AIRA fixed entry resolves');check((await publicContext.json()).invite,id,'AIRA resolves server configured invitation');
+blockedScope='request';const before=calls.length;const rateReply=await request({action:'begin',invite:id,nonce:id,kind:'worker'});check(rateReply.status,429,'Shared frequency limiter blocks before business RPC');check(rateReply.headers.get('Retry-After'),'60','Retry delay supplied');check(calls.length,before+1,'Denied request does not begin an application');
+blockedScope='upload_session';const beforeUploads=objects.length;check((await upload('%PDF-1.4 synthetic')).status,429,'Per-session upload attempts limited');check(objects.length,beforeUploads,'Throttled session cannot reach Storage');
+blockedScope='upload_bytes';check((await upload('%PDF-1.4 synthetic')).status,429,'Daily cumulative byte budget enforced');check(objects.length,beforeUploads,'Byte budget stops Storage writes');
+blockedScope=null;check((await upload(new Uint8Array(10485760+1))).status,400,'File size enforced on server');check(objects.length,beforeUploads,'Oversized file not uploaded');
+invalidSession=true;const beforeInvalid=calls.length;check((await upload('%PDF-1.4 synthetic')).status,400,'Invalid upload session denied');check(calls.slice(beforeInvalid).some(([n,a])=>n==='e2_intake_rate_check'&&a.scope==='upload_session'),false,'Invalid session cannot allocate a counter row');
 console.log(passed+' guest endpoint checks passed.');
+
