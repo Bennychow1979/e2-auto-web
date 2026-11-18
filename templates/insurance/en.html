@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Car Insurance Calculator Malaysia 2026 (Premium Estimate) | E2 Auto</title>
-<meta name="description" content="Estimate your car insurance premium by car value, engine cc and NCD — comprehensive, TPFT or third party. Includes 8% SST and stamp duty.">
+<title>Car Insurance & Road Tax Calculator Malaysia 2026 | E2 Auto</title>
+<meta name="description" content="Estimate car insurance and road tax together — by car value, cc, NCD, saloon / non-saloon and region. Includes 8% SST and stamp duty.">
 <link rel="canonical" href="https://e2auto.my/car-insurance-calculator/">
 <link rel="alternate" hreflang="ms" href="https://e2auto.my/ms/kalkulator-insurans-kereta/">
 <link rel="alternate" hreflang="en" href="https://e2auto.my/car-insurance-calculator/">
@@ -42,6 +42,8 @@
 .rt-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;margin:2px 0 0}
 .rt-total strong{font-size:clamp(38px,11vw,54px);line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .rt-total span{color:var(--mute);font-variant-numeric:tabular-nums}
+.rt-sub{margin:4px 0 0;color:var(--mute);font-variant-numeric:tabular-nums}
+.rt-steps li.hd{border-top:1px solid var(--line);padding-top:12px;font-weight:600;color:var(--ink)}
 .rt-empty{color:var(--mute);margin:6px 0 0}
 .rt-steps{list-style:none;margin:16px 0 0;padding:0;font-size:15px}
 .rt-steps li{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:1px dashed var(--line);font-variant-numeric:tabular-nums}
@@ -72,8 +74,8 @@
 <main class="rt">
 <div class="rt-wrap">
   <nav class="rt-lang" aria-label="Language"><a href="/ms/kalkulator-insurans-kereta/" hreflang="ms">BM</a> <a href="/car-insurance-calculator/" aria-current="page" hreflang="en">EN</a> <a href="/zh/car-insurance-calculator/" hreflang="zh-Hans">中文</a></nav>
-  <h1>Car Insurance Calculator Malaysia 2026</h1>
-  <p class="rt-lead">A yearly premium estimate based on the PIAM motor tariff for private cars. Actual prices depend on the insurer.</p>
+  <h1>Car Insurance & Road Tax Calculator 2026</h1>
+  <p class="rt-lead">A yearly estimate of insurance (PIAM motor tariff) and road tax (JPJ schedule) for private cars. Actual insurance prices depend on the insurer.</p>
 
   <form class="rt-card" id="in-form" onsubmit="return false" novalidate>
     <fieldset class="rt-field">
@@ -87,12 +89,29 @@
     <div class="rt-grid">
       <div class="rt-field">
         <label for="in-region">Region</label>
-        <select id="in-region" name="region"><option value="west">Peninsular Malaysia</option><option value="east">Sabah / Sarawak / Labuan</option></select>
+        <select id="in-region" name="region"><option value="pen">Peninsular Malaysia</option><option value="em">Sabah / Sarawak</option><option value="lgk">Langkawi / Pangkor</option><option value="lbn">Labuan</option></select>
       </div>
       <div class="rt-field">
         <label for="in-ncd">NCD (no claim discount)</label>
         <select id="in-ncd" name="ncd"><option value="0">0%</option><option value="25">25%</option><option value="30">30%</option><option value="38.33">38.33%</option><option value="45">45%</option><option value="55">55%</option></select>
       </div>
+    </div>
+    <div class="rt-grid">
+      <fieldset class="rt-field">
+        <legend>Vehicle class (JPJ)</legend>
+        <div class="rt-seg">
+          <label><input type="radio" name="body" value="sal" checked>Saloon</label>
+          <label><input type="radio" name="body" value="non">Non-saloon</label>
+        </div>
+        <p class="rt-help">As on the geran, not the SUV / MPV label in an advert.</p>
+      </fieldset>
+      <fieldset class="rt-field">
+        <legend>Owner</legend>
+        <div class="rt-seg">
+          <label><input type="radio" name="owner" value="ind" checked>Individual</label>
+          <label><input type="radio" name="owner" value="co">Company</label>
+        </div>
+      </fieldset>
     </div>
     <div class="rt-grid">
       <div class="rt-field" id="in-si-box">
@@ -108,10 +127,11 @@
     </div>
 
     <div class="rt-out" aria-live="polite">
-      <p class="rt-out-label">Estimated yearly premium</p>
+      <p class="rt-out-label">Estimated insurance + road tax per year</p>
       <p class="rt-empty" id="in-empty">Enter the car value and cc to start.</p>
       <div id="in-result" hidden>
-        <p class="rt-total"><strong id="in-total"></strong><span id="in-month"></span></p>
+        <p class="rt-total"><strong id="in-total"></strong></p>
+        <p class="rt-sub" id="in-split"></p>
         <ul class="rt-steps" id="in-steps" aria-label="How it is worked out"></ul>
         <p class="rt-note">Estimate only, based on the old motor tariff. Since 2017 each insurer sets its own price (driver age, claims record, car model). Add-ons such as windscreen or flood cover are not included.</p>
       </div>
@@ -164,30 +184,83 @@ var E2INS = (function () {
   }
   return {T: T, PER: PER, NCD: NCD, SST: SST, calc: calc};
 })();
+/* E2 Auto road tax calculator — rate data + logic (JPJ LKM schedule; EV schedule effective 1 Jan 2026) */
+var E2RT = (function () {
+  // each row: [max cc of band, base RM, RM per cc above the previous band's max]
+  var T = {
+    pen_sal_ind: [[1000,20,0],[1200,55,0],[1400,70,0],[1600,90,0],[1800,200,0.40],[2000,280,0.50],[2500,380,1.00],[3000,880,2.50],[Infinity,2130,4.50]],
+    pen_sal_co:  [[1000,20,0],[1200,110,0],[1400,140,0],[1600,180,0],[1800,400,0.80],[2000,560,1.00],[2500,760,3.00],[3000,2260,7.50],[Infinity,6010,13.50]],
+    pen_non:     [[1000,20,0],[1200,85,0],[1400,100,0],[1600,120,0],[1800,300,0.30],[2000,360,0.40],[2500,440,0.80],[3000,840,1.60],[Infinity,1640,1.60]],
+    em_sal:      [[1000,20,0],[1200,44,0],[1400,56,0],[1600,72,0],[1800,160,0.32],[2000,224,0.25],[2500,274,0.50],[3000,524,1.00],[Infinity,1024,1.35]],
+    em_non:      [[1000,20,0],[1200,42.5,0],[1400,50,0],[1600,60,0],[1800,165,0.17],[2000,199,0.22],[2500,243,0.44],[3000,463,0.88],[Infinity,903,1.20]]
+  };
+  // EV groups above 100 kW: [from kW (exclusive), to kW (inclusive), RM for first 10 kW block, RM per further started 10 kW block]
+  var EV = [[100,210,80,20],[210,310,305,30],[310,410,615,50],[410,510,1140,100],[510,610,2165,150],[610,710,3690,200],[710,810,5715,250],[810,910,8240,300],[910,1010,11265,350]];
+  function r2(x) { return Math.round(x * 100) / 100; }
+  function tableKey(region, body, owner) {
+    if (region === 'pen' || region === 'lgk') return body === 'non' ? 'pen_non' : (owner === 'co' ? 'pen_sal_co' : 'pen_sal_ind');
+    return body === 'non' ? 'em_non' : 'em_sal';
+  }
+  // region: pen | em (Sabah/Sarawak) | lgk (Langkawi/Pangkor) | lbn (Labuan); body: sal | non; owner: ind | co
+  function ice(region, body, owner, cc) {
+    cc = Math.floor(Number(cc));
+    if (!(cc >= 1)) return null;
+    var rows = T[tableKey(region, body, owner)], prev = 0, i, row;
+    for (i = 0; i < rows.length; i++) { if (cc <= rows[i][0]) break; prev = rows[i][0]; }
+    row = rows[i];
+    var extra = row[2] ? cc - prev : 0;
+    var full = r2(row[1] + extra * row[2]);
+    var half = (region === 'lgk' || region === 'lbn') && cc > 1000;
+    return { total: half ? r2(full / 2) : full, base: row[1], rate: row[2], over: prev, extra: extra, full: full, half: half,
+             bandFrom: prev + 1, bandTo: row[0] };
+  }
+  function ev(kw) {
+    kw = Number(kw);
+    if (!(kw > 0)) return null;
+    var blocks = function (from) { return Math.ceil((kw - from) / 10 - 1e-9); };
+    if (kw <= 50) return { total: 20, base: 20, inc: 0, blocks: 0 };
+    if (kw <= 100) return { total: 20 + blocks(50) * 10, base: 20, inc: 10, blocks: blocks(50) };
+    if (kw > 1010) return { total: 20000, base: 20000, inc: 0, blocks: 0 };
+    for (var i = 0; i < EV.length; i++) if (kw <= EV[i][1]) {
+      var b = blocks(EV[i][0]) - 1;
+      return { total: EV[i][2] + b * EV[i][3], base: EV[i][2], inc: EV[i][3], blocks: b };
+    }
+  }
+  return { T: T, EV: EV, ice: ice, ev: ev };
+})();
 (function () {
-  var S = {"month": "≈ {m} a month", "first": "Base rate (first RM1,000)", "extra": "{u} × RM{p} (each further RM1,000)", "tpft75": "75% of the comprehensive premium", "tpbase": "Third party basic premium", "ncdl": "NCD {n}%", "sst": "SST 8%", "stamp": "Stamp duty"};
+  var S = {"first": "Base rate (first RM1,000)", "extra": "{u} × RM{p} (each further RM1,000)", "tpft75": "75% of the comprehensive premium", "tpbase": "Third party basic premium", "ncdl": "NCD {n}%", "sst": "SST 8%", "stamp": "Stamp duty", "split": "Insurance {i} + road tax {r}", "inshd": "Insurance", "rthd": "Road tax", "band": "Base rate ({a}–{b} cc)", "bandtop": "Base rate (above {a} cc)", "prog": "{x} cc above {o} cc × RM{r}", "half": "Island rate: 50%"};
   var f = document.getElementById('in-form'), $ = function (id) { return document.getElementById(id); };
   function rm(x) { return 'RM' + x.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function t(s, o) { return s.replace(/\{(\w)\}/g, function (_, k) { return o[k]; }); }
   function row(a, b) { var li = document.createElement('li'), x = document.createElement('span'), y = document.createElement('span'); x.textContent = a; y.textContent = b; li.appendChild(x); li.appendChild(y); return li; }
+  function hd(a, b) { var li = row(a, b); li.className = 'hd'; return li; }
   function calc() {
-    var cover = f.cover.value, tp = cover === 'tp';
+    var cover = f.cover.value, tp = cover === 'tp', region = f.region.value;
     $('in-si-box').hidden = tp;
-    var r = E2INS.calc(f.region.value, cover, tp ? 0 : f.si.value, f.cc.value, f.ncd.value);
-    if (!r || Number(f.cc.value) > 9999) { $('in-result').hidden = true; $('in-empty').hidden = false; return; }
+    var ir = (region === 'em' || region === 'lbn') ? 'east' : 'west';
+    var r = E2INS.calc(ir, cover, tp ? 0 : f.si.value, f.cc.value, f.ncd.value);
+    var x = E2RT.ice(region, f.body.value, f.owner.value, f.cc.value);
+    if (!r || !x || Number(f.cc.value) > 9999) { $('in-result').hidden = true; $('in-empty').hidden = false; return; }
     $('in-empty').hidden = true; $('in-result').hidden = false;
-    $('in-total').textContent = rm(r.total);
-    $('in-month').textContent = t(S.month, { m: rm(Math.round(r.total / 12 * 100) / 100) });
+    var sum = Math.round((r.total + x.total) * 100) / 100;
+    $('in-total').textContent = rm(sum);
+    $('in-split').textContent = t(S.split, { i: rm(r.total), r: rm(x.total) });
     var ul = $('in-steps'); ul.textContent = '';
+    ul.appendChild(hd(S.inshd, rm(r.total)));
     if (tp) ul.appendChild(row(S.tpbase, rm(r.basic)));
     else {
       ul.appendChild(row(S.first, rm(r.first)));
-      ul.appendChild(row(t(S.extra, { u: r.units, p: f.region.value === 'east' ? '20.30' : '26' }), rm(r.extra)));
+      ul.appendChild(row(t(S.extra, { u: r.units, p: ir === 'east' ? '20.30' : '26' }), rm(r.extra)));
       if (cover === 'tpft') ul.appendChild(row(S.tpft75, rm(r.basic)));
     }
     if (r.disc) ul.appendChild(row(t(S.ncdl, { n: r.ncd }), '−' + rm(r.disc)));
     ul.appendChild(row(S.sst, rm(r.tax)));
     ul.appendChild(row(S.stamp, rm(r.stamp)));
+    ul.appendChild(hd(S.rthd, rm(x.total)));
+    ul.appendChild(row(x.bandTo === Infinity ? t(S.bandtop, { a: x.over.toLocaleString('en-MY') }) : t(S.band, { a: x.bandFrom.toLocaleString('en-MY'), b: x.bandTo.toLocaleString('en-MY') }), rm(x.base)));
+    if (x.extra && x.rate) ul.appendChild(row(t(S.prog, { x: x.extra.toLocaleString('en-MY'), o: x.over.toLocaleString('en-MY'), r: x.rate.toFixed(2) }), rm(Math.round(x.extra * x.rate * 100) / 100)));
+    if (x.half) ul.appendChild(row(S.half, rm(x.total)));
   }
   f.addEventListener('input', calc); f.addEventListener('change', calc); calc();
 })();

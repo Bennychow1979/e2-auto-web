@@ -45,7 +45,7 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
  for(const lang of ['en','ms','zh']){
   const insurance=await readFile(join(out,insurancePaths[lang].slice(1),'index.html'),'utf8');
   assert(insurance.includes('rel="canonical" href="https://e2auto.my'+insurancePaths[lang]+'"'));
-  assert(insurance.includes('id="in-form"')&&insurance.includes('var E2INS ='));
+  assert(insurance.includes('id="in-form"')&&insurance.includes('var E2INS =')&&insurance.includes('var E2RT =')&&insurance.includes('id="in-split"'));
   assert.equal((insurance.match(/<table>/g)||[]).length,3);
   assert.equal((insurance.match(/<details>/g)||[]).length,4);
   const loan=await readFile(join(out,loanGuidePaths[lang].slice(1),'index.html'),'utf8');

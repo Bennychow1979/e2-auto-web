@@ -10,14 +10,26 @@ import {buildVehicleSite} from '../../scripts/build-vehicle-pages.mjs';
 import {vehicleA,vehicleSold} from '../../tests/fixtures/vehicle-pages.mjs';
 import {localizedURL} from '../../i18n.mjs';
 const root=new URL('../../',import.meta.url),home=await readFile(new URL('index.html',root),'utf8');
+const core=(source,name)=>{const match=source.match(new RegExp('var '+name+' = \\([\\s\\S]*?\\n\\}\\)\\(\\);'));assert(match,name+' core is present');return match[0]};
 for(const lang of ['en','ms','zh']){
  const source=await readFile(new URL('templates/insurance/'+lang+'.html',root),'utf8'),parts=insuranceParts(source);
- test(lang+': supplied insurance calculation matches all three requested totals',()=>{
-  const core=/var E2INS = \([\s\S]*?\n\}\)\(\);/.exec(parts.js)?.[0];assert(core);
-  const context={};runInNewContext(core,context,{timeout:1000});
+ const roadtax=await readFile(new URL('templates/roadtax/'+lang+'.html',root),'utf8');
+ test(lang+': supplied combined calculator matches the three requested totals and original insurance amounts',()=>{
+  const context={};runInNewContext(core(parts.js,'E2INS')+'\n'+core(parts.js,'E2RT'),context,{timeout:1000});
   assert.equal(context.E2INS.calc('west','comp',50000,1468,25).total,1289.39);
   assert.equal(context.E2INS.calc('west','comp',99990,2494,55).total,1442.05);
   assert.equal(context.E2INS.calc('west','tp',0,1468,25).total,119.35);
+  for(const [region,body,insurance,tax,total] of [['pen','sal',1442.05,874,2316.05],['pen','non',1442.05,835.2,2277.25],['em','non',1116.23,460.36,1576.59]]){
+   const premium=context.E2INS.calc(region==='em'?'east':'west','comp',99990,2494,55).total,road=context.E2RT.ice(region,body,'ind',2494).total;
+   assert.equal(premium,insurance);assert.equal(road,tax);assert.equal(Math.round((premium+road)*100)/100,total);
+  }
+ });
+ test(lang+': road tax is the identical standalone engine for every region, owner, body and valid cc',()=>{
+  assert.equal(core(parts.js,'E2RT'),core(roadtax,'E2RT'),'Keep the supplied road tax engine identical on both pages');
+  const combined={},standalone={};runInNewContext(core(parts.js,'E2RT'),combined);runInNewContext(core(roadtax,'E2RT'),standalone);
+  for(const region of ['pen','em','lgk','lbn'])for(const body of ['sal','non'])for(const owner of ['ind','co'])for(let cc=1;cc<=9999;cc++){
+   assert.equal(combined.E2RT.ice(region,body,owner,cc).total,standalone.E2RT.ice(region,body,owner,cc).total);
+  }
  });
  test(lang+': shell preserves the supplied metadata, CSS, entire script, static tables and FAQ',()=>{
   const html=renderInsurance(source,home,lang);

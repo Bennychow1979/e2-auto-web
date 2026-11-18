@@ -102,12 +102,25 @@ for(const [lang,path] of Object.entries({en:'/car-insurance-calculator/',ms:'/ms
   await fixture();await page.goto(path);
   await expect(page.locator('header.galleryNav')).toBeVisible();await expect(page.locator('footer.demoFooter')).toBeAttached();
   await expect(page.locator('#in-empty')).toBeVisible();await expect(page.locator('#in-result')).toBeHidden();
-  await page.locator('#in-region').selectOption('west');await page.locator('#in-ncd').selectOption('25');await page.locator('#in-si').fill('50000');await page.locator('#in-cc').fill('1468');
-  await expect(page.locator('#in-total')).toHaveText('RM1,289.39');
-  await page.locator('#in-si').fill('99990');await page.locator('#in-cc').fill('2494');await page.locator('#in-ncd').selectOption('55');
-  await expect(page.locator('#in-total')).toHaveText('RM1,442.05');
+  await page.locator('#in-region').selectOption('pen');await page.locator('#in-ncd').selectOption('55');await page.locator('#in-si').fill('99990');await page.locator('#in-cc').fill('2494');
+  await expect(page.locator('#in-total')).toHaveText('RM2,316.05');
+  await expect(page.locator('#in-split')).toContainText('RM1,442.05');await expect(page.locator('#in-split')).toContainText('RM874.00');
+  await page.locator('input[name=body][value=non]').check();await expect(page.locator('#in-total')).toHaveText('RM2,277.25');
+  await expect(page.locator('#in-split')).toContainText('RM835.20');
+  await page.locator('#in-region').selectOption('em');await expect(page.locator('#in-total')).toHaveText('RM1,576.59');
+  await expect(page.locator('#in-steps .hd')).toHaveText([/RM1,116.23/,/RM460.36/]);
+  const roadtax=await page.context().newPage();await roadtax.goto((lang==='en'?'':'/'+lang)+'/roadtax-calculator/');
+  for(const region of ['pen','em','lgk','lbn'])for(const body of ['sal','non'])for(const owner of ['ind','co']){
+   await page.locator('#in-region').selectOption(region);await page.locator('input[name=body][value='+body+']').check();await page.locator('input[name=owner][value='+owner+']').check();
+   const tax=await roadtax.evaluate(({region,body,owner})=>'RM'+window.E2RT.ice(region,body,owner,2494).total.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}),{region,body,owner});
+   await expect(page.locator('#in-steps .hd').last()).toContainText(tax);await expect(page.locator('#in-split')).toContainText(tax);
+  }
+  await roadtax.close();
+  await page.locator('#in-region').selectOption('pen');await page.locator('input[name=body][value=sal]').check();await page.locator('input[name=owner][value=ind]').check();
   await page.locator('#in-cc').fill('1468');await page.locator('#in-ncd').selectOption('25');await page.locator('input[name=cover][value=tp]').check();
-  await expect(page.locator('#in-total')).toHaveText('RM119.35');await expect(page.locator('#in-si-box')).toBeHidden();
+  await expect(page.locator('#in-total')).toHaveText('RM209.35');await expect(page.locator('#in-split')).toContainText('RM119.35');await expect(page.locator('#in-si-box')).toBeHidden();
+  await page.locator('input[name=cover][value=comp]').check();await page.locator('#in-cc').fill('2494');await page.locator('#in-ncd').selectOption('55');
+  await expect(page.locator('#in-total')).toHaveText('RM2,316.05');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   await page.screenshot({path:info.outputPath('insurance-'+lang+'.png'),fullPage:true});
   const target=lang==='ms'?'zh':'ms',destination=target==='ms'?'/ms/kalkulator-insurans-kereta/':'/zh/car-insurance-calculator/';
