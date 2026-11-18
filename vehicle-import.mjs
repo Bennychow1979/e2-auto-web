@@ -1,3 +1,10 @@
+export function mileageLines(mileage){
+ if(!mileage)return [];
+ return [...(mileage.updated||[]).map(c=>c.plate+' · Mileage '+Number(c.mileage).toLocaleString('en-MY')+' km · Draft, pending confirmation / 里程待核实'),
+ ...(mileage.review||[]).map(c=>c.plate+' · Mileage review / 里程待核实: '+c.issue),
+ ...(mileage.budget_paused?['Mileage paused: monthly RM5 allowance reached. Draft import continues. / 里程识别已达本月预算，Draft 导入继续。']:[]),
+ ...(mileage.error?[mileage.error]:[])];
+}
 export function setupVehicleImport({db,canManage,onFinished}) {
   const button=document.getElementById('importDriveVehicles'),output=document.getElementById('importDriveResult');
   async function refreshSchedule() {
@@ -14,8 +21,9 @@ export function setupVehicleImport({db,canManage,onFinished}) {
       parts.push('Last run: '+new Date(run.started_at).toLocaleString('en-MY',{timeZone:'Asia/Kuala_Lumpur'})+' · '+run.status);
       if(summary.created?.length)parts.push(summary.created.map(c=>c.plate+(c.updated?' · Updated existing draft':'')+' · RM'+Number(c.price).toLocaleString('en-MY')+' · '+c.photos+' photos · private draft').join('\n'));
       if(summary.blocked?.length)parts.push(summary.blocked.map(c=>c.plate+' · Needs review: '+c.issue).join('\n'));
+      parts.push(...mileageLines(summary.mileage));
       if(summary.error)parts.push(summary.error);
-      if(run.status==='completed'&&!summary.created?.length&&!summary.blocked?.length)parts.push('No new drafts or changed issues.');
+      if(run.status==='completed'&&!summary.created?.length&&!summary.blocked?.length&&!mileageLines(summary.mileage).length)parts.push('No new drafts or changed issues.');
     }
     status.textContent=parts.join('\n');
   }
@@ -31,12 +39,13 @@ export function setupVehicleImport({db,canManage,onFinished}) {
         result=response.data;
         for(const car of result.created||[])lines.push(car.plate+(car.updated?' · Updated existing draft':'')+' · RM'+Number(car.price).toLocaleString('en-MY')+' · '+car.photos+' photos · Private draft'+(car.skipped?' · '+car.skipped+' unsupported or duplicate files skipped':''));
         for(const car of result.blocked||[])lines.push(car.plate+' · Needs review: '+car.issue);
+        lines.push(...mileageLines(result.mileage));
         if(result.error)throw Error(result.error);
         output.textContent=lines.join('\n')+(result.remaining?'\nContinuing remaining vehicles…':'');
       }while(result.remaining&&++batches<100);
       if(result.remaining)lines.push('Batch limit reached. Run again to continue safely.');
       output.textContent=lines.join('\n')||'No new drafts or changed issues. Existing vehicles were skipped.';
-      if(lines.some(line=>line.includes('Private draft')))output.textContent+='\nReview fuel type, stock availability, spec, photos and cover before publishing. Mileage remains unknown.';
+      if(lines.some(line=>line.includes('Private draft')))output.textContent+='\nReview fuel type, stock availability, spec, photos, cover and mileage before publishing. M-photo readings need human confirmation.';
     }catch(error){output.textContent=[...lines,error.message].join('\n')}
     finally{button.disabled=false;await onFinished();await refreshSchedule()}
   };
@@ -49,5 +58,8 @@ export async function showImportReview(db,car) {
   if(!car)return;
   const {data,error}=await db.from('vehicle_import_jobs').select('review_notes').eq('vehicle_id',car.id).eq('status','completed').maybeSingle();
   if(error)throw Error('Import review notes could not be loaded. Refresh before publishing.');
-  if(data?.review_notes?.length){element.textContent='IMPORT REVIEW\n'+data.review_notes.join('\n');element.hidden=false}
+  if(data?.review_notes?.length){element.textContent='IMPORT REVIEW\n'+data.review_notes.map(note=>note.replace('Mileage is unknown.', 'Mileage requires human confirmation.')).join('\n');element.hidden=false}
+  const mileage=await db.from('drive_mileage_receipts').select('reading,status,issue,created_at').eq('vehicle_id',car.id).order('created_at',{ascending:false}).limit(1);
+  if(mileage.error)throw Error('Mileage import notes could not be loaded. Refresh before publishing.');
+  if(mileage.data?.[0]){const r=mileage.data[0];element.textContent+='\nM PHOTO / 里程照片 · '+(r.status==='applied'?Number(r.reading).toLocaleString('en-MY')+' km · Pending human confirmation / 待人工确认':r.issue||'Recognition incomplete; review M photo manually.');element.hidden=false;}
 }

@@ -4,6 +4,7 @@ import JSZip from 'npm:jszip@3.10.2';
 import {SaxesParser} from 'npm:saxes@5.0.1';
 import {googleDrive} from '../e2-drive-photos/google.mjs';
 import {runImport} from './run.mjs';
+import {runMileage,recognizeMileage} from './mileage.mjs';
 import {createWorkbookLoader,createRowCache} from './workbook.mjs';
 // Parse only the current-month worksheet; older months made full parses exceed the CPU limit.
 const loadWorkbook=createWorkbookLoader({ExcelJS,JSZip,SaxesParser}),rowCache=createRowCache();
@@ -16,7 +17,7 @@ const drive=googleDrive(credentials),root=Deno.env.get('E2_DRIVE_ROOT_FOLDER_ID'
 const checked=r=>{if(r.error)throw Error('Inventory import could not finish. Refresh before retrying.');return r.data};
 async function all(table,columns) {
   const rows=[];
-  for(let offset=0;;offset+=500){const batch=checked(await admin.from(table).select(columns).order(table==='vehicles'?'id':'folder_id').range(offset,offset+499));rows.push(...batch);if(batch.length<500)return rows}
+  for(let offset=0;;offset+=500){const batch=checked(await admin.from(table).select(columns).order(table==='vehicle_import_jobs'?'folder_id':'id').range(offset,offset+499));rows.push(...batch);if(batch.length<500)return rows}
 }
 const store={
   inventory:()=>all('vehicles','id,plate,publication,import_pending,vehicle_photos(id)'),
@@ -29,6 +30,12 @@ const store={
     const links=checked(await admin.from('vehicle_drive_photos').select('photo_id,file_id').eq('vehicle_id',id));
     return {...car,photos:album.map(p=>({...p,file_id:links.find(l=>l.photo_id===p.id)?.file_id}))};
   }
+};
+const mileageStore={
+ inventory:()=>all('vehicles','id,plate,publication,mileage,mileage_confirmed,updated_at'),
+ receipts:()=>all('drive_mileage_receipts','id,vehicle_id,checksum'),
+ claim:async args=>checked(await admin.rpc('e2_claim_drive_mileage',args)),
+ finish:async args=>checked(await admin.rpc('e2_finish_drive_mileage',args))
 };
 Deno.serve(async req=>{
   const origin=req.headers.get('Origin')||'';
@@ -67,6 +74,16 @@ Deno.serve(async req=>{
       return reply(503,{error:'Automatic import is not enabled. MASTERLIST read-only access needs approval and a connection test.'});
     }
     output=await runImport({drive,store,root,actor,retry:!scheduled&&body.retry===true,loadWorkbook,rowCache});
+    // Finish new-draft batches first. Mileage failures/budget exhaustion never
+    // stop the ordinary draft import or trigger an unbounded automatic retry.
+    if(!output.error&&!output.remaining){
+      try{
+        const apiKey=Deno.env.get('E2_MILEAGE_OPENAI_API_KEY');
+        if(!apiKey)throw Error('Mileage recognition needs the dedicated OpenAI API configuration.');
+        output.mileage=await runMileage({drive,store:mileageStore,root,actor,recognize:(bytes,mime)=>recognizeMileage(bytes,mime,{apiKey})});
+        output.remaining=output.mileage.remaining;
+      }catch{output.mileage={updated:[],review:[],remaining:0,error:'Mileage check needs attention. Draft import is unaffected.'};}
+    }
     if(scheduled) {
       checked(await admin.rpc('e2_finish_scheduled_import',{dispatch:scheduled.dispatch_id,result:output}));
       // Keep vehicle details out of the pg_net HTTP response/log; private run receipts contain them.
