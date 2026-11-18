@@ -44,12 +44,13 @@ async function refresh() {
 }
 async function sessionChanged(session) {
   const token=++epoch;activeUser=null;clear();$('dashboard').hidden=true;$('access').hidden=false;
-  if(!session){$('accessMessage').textContent='请使用 Super Admin 员工账号登录。';return}
+  $('accessSignIn').hidden=true;
+  if(!session){$('accessSignIn').hidden=false;$('accessMessage').textContent='请使用 Super Admin 员工账号登录。';return}
   try{
     const allowed=check(await db.rpc('e2_is_super_admin'));if(token!==epoch)return;
-    if(allowed!==true){$('accessMessage').textContent='此总览仅供已启用的 Super Admin 使用。';return}
+    if(allowed!==true){$('accessSignIn').hidden=false;$('accessMessage').textContent='此总览仅供已启用的 Super Admin 使用。';return}
     activeUser=session.user.id;$('access').hidden=true;$('dashboard').hidden=false;await refresh();
-  }catch{if(token===epoch)$('accessMessage').textContent='暂时无法验证权限，请重新登录。';}
+  }catch{if(token===epoch){$('accessSignIn').hidden=false;$('accessMessage').textContent='暂时无法验证权限，请重新登录。';}}
 }
 $('refresh').onclick=refresh;
 $('menu').onclick=()=>{const open=$('navigation').classList.toggle('open');$('menu').setAttribute('aria-expanded',String(open))};
@@ -58,7 +59,7 @@ $('signOut').onclick=async()=>{++epoch;activeUser=null;clear();$('dashboard').hi
 if(!configured)$('accessMessage').textContent='数据库连接尚未配置。';
 else db.auth.onAuthStateChange((event,session)=>{
   if(event==='PASSWORD_RECOVERY'){location.replace('portal.html'+location.hash);return}
-  if(event==='SIGNED_OUT'){++epoch;activeUser=null;clear();$('dashboard').hidden=true;$('access').hidden=false;$('accessMessage').textContent='已退出登录。';return}
+  if(event==='SIGNED_OUT'){$('accessSignIn').hidden=false;++epoch;activeUser=null;clear();$('dashboard').hidden=true;$('access').hidden=false;$('accessMessage').textContent='已退出登录。';return}
   if(event==='INITIAL_SESSION'||(event==='SIGNED_IN'&&session?.user.id!==activeUser))setTimeout(()=>sessionChanged(session),0);
 });
 

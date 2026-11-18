@@ -239,16 +239,17 @@ $('publishVehicle').onclick=async()=>{
 async function showSession(session){
   lifecycle.reset();
   const epoch=++authEpoch;
-  if(!session){draftSaved=null;draftOpened=false;if($('manageMileage'))$('manageMileage').hidden=true;vehicleTranslations.stop();$('manageLoans').hidden=true;$('manageCustomers').hidden=true;$('myProfileLink').hidden=true;$('manageUsers').hidden=true;if($('manageInstitutions'))$('manageInstitutions').hidden=true;role=null;cars=[];$('stockList').replaceChildren();$('workspace').hidden=true;$('entry').hidden=false;$('vehicleEditor').close();return}
+  if(session&&!recovery){$('entry').hidden=true;$('sessionLoading').hidden=false;$('sessionLoadingError').textContent='';$('retrySession').hidden=true;}
+  if(!session){$('sessionLoading').hidden=true;draftSaved=null;draftOpened=false;if($('manageMileage'))$('manageMileage').hidden=true;vehicleTranslations.stop();$('manageLoans').hidden=true;$('manageCustomers').hidden=true;$('myProfileLink').hidden=true;$('manageUsers').hidden=true;if($('manageInstitutions'))$('manageInstitutions').hidden=true;role=null;cars=[];$('stockList').replaceChildren();$('workspace').hidden=true;$('entry').hidden=false;$('vehicleEditor').close();return}
   if(recovery)return;
   try{
     const membership=check(await db.from('staff_memberships').select('role,active').eq('user_id',session.user.id).maybeSingle());if(epoch!==authEpoch)return;
-    if(!membership?.active||!Object.hasOwn(roleLabels,membership.role)){$('entry').hidden=false;$('workspace').hidden=true;await db.auth.signOut();throw new Error('This account has no inventory access. Ask the E2 administrator to activate your staff membership.')}
+    if(!membership?.active||!Object.hasOwn(roleLabels,membership.role)){$('sessionLoading').hidden=true;$('entry').hidden=false;$('workspace').hidden=true;await db.auth.signOut();throw new Error('This account has no inventory access. Ask the E2 administrator to activate your staff membership.')}
     role=membership.role;
     if($('manageDashboard'))$('manageDashboard').hidden=role!=='super_admin'||window.E2_CONFIG?.managementDashboard!==true;
     if(dispatchDraft){
       if(!canManageStock())throw new Error('Only Admin / Super Admin can add a vehicle. / 只有 Admin / Super Admin 可以新增车辆。');
-      $('entry').hidden=true;$('workspace').hidden=true;
+      $('sessionLoading').hidden=true;$('entry').hidden=true;$('workspace').hidden=true;
       if(!draftOpened){
         await refresh();if(epoch!==authEpoch)return;
         draftOpened=true;await openEditor();
@@ -261,8 +262,8 @@ async function showSession(session){
       return;
     }
     if(role==='super_admin'&&window.E2_CONFIG?.managementDashboard===true&&new URLSearchParams(location.search).get('view')!=='inventory'){location.replace('dashboard.html');return}
-    if(['runner','account'].includes(role)){location.replace('operations.html');return}if($('manageOperations'))$('manageOperations').hidden=!['super_admin','admin'].includes(role);if(role==='inspector'){location.replace('inspections.html');return}if($('manageInspections'))$('manageInspections').hidden=!['super_admin','admin'].includes(role);if($('manageMileage'))$('manageMileage').hidden=window.E2_CONFIG?.mileageChecks!==true||!['super_admin','admin','sales'].includes(role);if(role==='office_admin'){location.replace('intake-workspace.html');return}$('manageLoans').hidden=!['super_admin','admin','sales'].includes(role);$('manageCustomers').hidden=!['super_admin','admin'].includes(role);$('myProfileLink').hidden=role==='customer';$('profileName').textContent=session.user.email;$('profileRole').textContent=roleLabels[role];$('manageUsers').hidden=role!=='super_admin';if($('manageInstitutions'))$('manageInstitutions').hidden=role!=='super_admin';$('addVehicle').hidden=!canManageStock();vehicleImporter.update();$('entry').hidden=true;$('workspace').hidden=false;await refresh();
-  }catch(error){if(dispatchDraft){$('entry').hidden=false;$('workspace').hidden=true;$('vehicleEditor').close();}message('authMessage',friendlyError(error),true)}
+    if(['runner','account'].includes(role)){location.replace('operations.html');return}if($('manageOperations'))$('manageOperations').hidden=!['super_admin','admin'].includes(role);if(role==='inspector'){location.replace('inspections.html');return}if($('manageInspections'))$('manageInspections').hidden=!['super_admin','admin'].includes(role);if($('manageMileage'))$('manageMileage').hidden=window.E2_CONFIG?.mileageChecks!==true||!['super_admin','admin','sales'].includes(role);if(role==='office_admin'){location.replace('intake-workspace.html');return}$('manageLoans').hidden=!['super_admin','admin','sales'].includes(role);$('manageCustomers').hidden=!['super_admin','admin'].includes(role);$('myProfileLink').hidden=role==='customer';$('profileName').textContent=session.user.email;$('profileRole').textContent=roleLabels[role];$('manageUsers').hidden=role!=='super_admin';if($('manageInstitutions'))$('manageInstitutions').hidden=role!=='super_admin';$('addVehicle').hidden=!canManageStock();vehicleImporter.update();$('sessionLoading').hidden=true;$('entry').hidden=true;$('workspace').hidden=false;await refresh();
+  }catch(error){if(epoch!==authEpoch)return;if(dispatchDraft)$('vehicleEditor').close();$('workspace').hidden=true;if($('entry').hidden){$('sessionLoading').hidden=false;$('sessionLoadingError').textContent=friendlyError(error);$('retrySession').hidden=false;}else message('authMessage',friendlyError(error),true)}
 }
 $('loginForm').onsubmit=async e=>{
   e.preventDefault();const button=$('loginForm').querySelector('button[type=submit]');button.disabled=true;message('authMessage','Signing in…');
@@ -293,11 +294,12 @@ $('passwordForm').onsubmit=async e=>{
   try{check(await db.auth.updateUser({password:f.elements.password.value}));f.reset();recovery=false;f.hidden=true;$('loginForm').hidden=false;await db.auth.signOut();message('authMessage','Password saved. Sign in with your new password.')}
   catch(error){message('authMessage',friendlyError(error),true)}finally{f.querySelector('button').disabled=false}
 };
-if(!configured){message('connectionState','Sign-in will be available after the E2 database project is connected.');}
+$('retrySession').onclick=()=>location.reload();
+if(!configured){$('sessionLoading').hidden=true;$('entry').hidden=false;message('connectionState','Sign-in will be available after the E2 database project is connected.');}
 else{
   message('connectionState','E2 staff sign-in');$('loginForm').querySelector('button[type=submit]').disabled=false;updateResetButton();
   db.auth.onAuthStateChange((event,session)=>{
-    if(event==='PASSWORD_RECOVERY'){recovery=true;$('entry').hidden=false;$('workspace').hidden=true;$('loginForm').hidden=true;$('passwordForm').hidden=false;message('authMessage','Choose a new password of at least 12 characters.');return}
+    if(event==='PASSWORD_RECOVERY'){$('sessionLoading').hidden=true;recovery=true;$('entry').hidden=false;$('workspace').hidden=true;$('loginForm').hidden=true;$('passwordForm').hidden=false;message('authMessage','Choose a new password of at least 12 characters.');return}
     if(['INITIAL_SESSION','SIGNED_IN','SIGNED_OUT'].includes(event))setTimeout(()=>showSession(session),0);
   });
 }
