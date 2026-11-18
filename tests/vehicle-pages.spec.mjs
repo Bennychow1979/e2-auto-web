@@ -96,3 +96,42 @@ if(process.env.E2_TEST_BASELINE==='1')test('production source comparison reprodu
  const source=execFileSync('git',['show','e2e32cc688bdd6472320148ce1d3fb8d3ca93f90:car.js'],{encoding:'utf8',windowsHide:true});await fixture({photoMode:'hold'});await context.route('**/car.js?*',r=>r.fulfill({contentType:'text/javascript',body:source}));await page.goto('/car.html?id='+vehicleA.id);
  await expect.poll(()=>page.evaluate(()=>window.__vehicleFixture.state.calls.includes('photos'))).toBe(true);await expect(page.locator('#carMain')).toBeHidden();await expect(page.locator('#carState')).toContainText('Loading');await page.screenshot({path:info.outputPath('baseline-waits-for-photos.png')});await page.evaluate(()=>window.__vehicleFixture.release('photos'));await expect(page.locator('#model')).toHaveText('VIOS');
 });
+
+for(const [lang,path] of Object.entries({en:'/car-insurance-calculator/',ms:'/ms/kalkulator-insurans-kereta/',zh:'/zh/car-insurance-calculator/'})){
+ test('insurance '+lang+' accepts owner examples and switches to the matching language route',async({page,fixture},info)=>{
+  await fixture();await page.goto(path);
+  await expect(page.locator('header.galleryNav')).toBeVisible();await expect(page.locator('footer.demoFooter')).toBeAttached();
+  await expect(page.locator('#in-empty')).toBeVisible();await expect(page.locator('#in-result')).toBeHidden();
+  await page.locator('#in-region').selectOption('pen');await page.locator('#in-ncd').selectOption('55');await page.locator('#in-si').fill('99990');await page.locator('#in-cc').fill('2494');
+  await expect(page.locator('#in-total')).toHaveText('RM2,316.05');
+  await expect(page.locator('#in-split')).toContainText('RM1,442.05');await expect(page.locator('#in-split')).toContainText('RM874.00');
+  await page.locator('input[name=body][value=non]').check();await expect(page.locator('#in-total')).toHaveText('RM2,277.25');
+  await expect(page.locator('#in-split')).toContainText('RM835.20');
+  await page.locator('#in-region').selectOption('em');await expect(page.locator('#in-total')).toHaveText('RM1,576.59');
+  await expect(page.locator('#in-steps .hd')).toHaveText([/RM1,116.23/,/RM460.36/]);
+  const roadtax=await page.context().newPage();await roadtax.goto((lang==='en'?'':'/'+lang)+'/roadtax-calculator/');
+  for(const region of ['pen','em','lgk','lbn'])for(const body of ['sal','non'])for(const owner of ['ind','co']){
+   await page.locator('#in-region').selectOption(region);await page.locator('input[name=body][value='+body+']').check();await page.locator('input[name=owner][value='+owner+']').check();
+   const tax=await roadtax.evaluate(({region,body,owner})=>'RM'+window.E2RT.ice(region,body,owner,2494).total.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}),{region,body,owner});
+   await expect(page.locator('#in-steps .hd').last()).toContainText(tax);await expect(page.locator('#in-split')).toContainText(tax);
+  }
+  await roadtax.close();
+  await page.locator('#in-region').selectOption('pen');await page.locator('input[name=body][value=sal]').check();await page.locator('input[name=owner][value=ind]').check();
+  await page.locator('#in-cc').fill('1468');await page.locator('#in-ncd').selectOption('25');await page.locator('input[name=cover][value=tp]').check();
+  await expect(page.locator('#in-total')).toHaveText('RM209.35');await expect(page.locator('#in-split')).toContainText('RM119.35');await expect(page.locator('#in-si-box')).toBeHidden();
+  await page.locator('input[name=cover][value=comp]').check();await page.locator('#in-cc').fill('2494');await page.locator('#in-ncd').selectOption('55');
+  await expect(page.locator('#in-total')).toHaveText('RM2,316.05');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.screenshot({path:info.outputPath('insurance-'+lang+'.png'),fullPage:true});
+  const target=lang==='ms'?'zh':'ms',destination=target==='ms'?'/ms/kalkulator-insurans-kereta/':'/zh/car-insurance-calculator/';
+  await page.locator('header [data-language='+target+']').click();await expect(page).toHaveURL(new RegExp(destination+'$'));
+  await expect(page.locator('#in-form')).toBeVisible();
+ });
+ test('insurance '+lang+' exposes rates and FAQ without JavaScript',async({browser,baseURL},info)=>{
+  const context=await browser.newContext({javaScriptEnabled:false,viewport:info.project.use.viewport});const page=await context.newPage();await page.goto(baseURL+path);
+  await expect(page.locator('.rt table')).toHaveCount(3);await expect(page.locator('.rt details')).toHaveCount(4);
+  await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href','https://e2auto.my'+path);
+  await page.locator('.rt summary').first().click();await expect(page.locator('.rt details').first().locator('p')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);await context.close();
+ });
+}

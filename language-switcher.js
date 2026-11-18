@@ -1,4 +1,4 @@
-import {language,localizedURL} from './i18n.mjs?v=loan-guide-20261115';
+import {language,localizedURL} from './i18n.mjs?v=insurance-20261118';
 const links = document.querySelectorAll('[data-language]');
 function update(){for(const link of links){
   const lang=link.dataset.language;

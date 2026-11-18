@@ -1,3 +1,4 @@
+import {insurancePaths} from '../insurance-routes.mjs';
 import {readFile, writeFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
 import {pathToFileURL} from 'node:url';
@@ -20,6 +21,9 @@ export function renderSitemap(rows,{staticPages=false,slugs,includeSold=true,cat
     const roadtax=Object.fromEntries(LANGUAGES.map(lang=>[lang,SITE_URL+(lang==='en'?'':lang+'/')+'roadtax-calculator/']));
     const roadtaxAlternates=[...LANGUAGES.map(lang=>'<xhtml:link rel="alternate" hreflang="'+({en:'en',ms:'ms',zh:'zh-Hans'}[lang])+'" href="'+roadtax[lang]+'"/>'),'<xhtml:link rel="alternate" hreflang="x-default" href="'+roadtax.en+'"/>'].join('');
     entries.push(...LANGUAGES.map(lang=>'  <url><loc>'+roadtax[lang]+'</loc>'+roadtaxAlternates+'</url>'));
+    const insurance=Object.fromEntries(LANGUAGES.map(lang=>[lang,new URL(insurancePaths[lang],SITE_URL).href]));
+    const insuranceAlternates=[...LANGUAGES.map(lang=>'<xhtml:link rel="alternate" hreflang="'+({en:'en',ms:'ms',zh:'zh-Hans'}[lang])+'" href="'+insurance[lang]+'"/>'),'<xhtml:link rel="alternate" hreflang="x-default" href="'+insurance.en+'"/>'].join('');
+    entries.push(...LANGUAGES.map(lang=>'  <url><loc>'+insurance[lang]+'</loc>'+insuranceAlternates+'</url>'));
     const loans=Object.fromEntries(LANGUAGES.map(lang=>[lang,new URL(loanGuidePaths[lang],SITE_URL).href]));
     const loanAlternates=[...LANGUAGES.map(lang=>'<xhtml:link rel="alternate" hreflang="'+({en:'en',ms:'ms',zh:'zh-Hans'}[lang])+'" href="'+loans[lang]+'"/>'),'<xhtml:link rel="alternate" hreflang="x-default" href="'+loans.ms+'"/>'].join('');
     entries.push(...LANGUAGES.map(lang=>'  <url><loc>'+loans[lang]+'</loc>'+loanAlternates+'</url>'));

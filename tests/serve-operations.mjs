@@ -77,6 +77,7 @@ export async function startPreview({port=0,seed=true,showcase=false,lifecycle=fa
  const allowed=new Set(['operations.html','operations.js','operations-files.js','runner-message.mjs','profile-utils.js','operations.css','partner.css','assets/e2-logo.png']);
  allowed.add('rental-navigation.mjs');allowed.add('rental-navigation.css'); // Staff menu dependencies in the embedded editor.
  allowed.add('loan-guide-routes.mjs'); // Shared i18n dependency used by the embedded stock editor.
+ allowed.add('insurance-routes.mjs'); // Shared i18n dependency for the insurance language routes.
  allowed.add('vehicle-notices.mjs'); // Warranty labels import the shared notices in the embedded editor.
  for(const file of ['portal.html','portal.js','portal-demo.css','production.css','team.css','drive-photos.css','vehicle-translation.css','vehicle-benefits.css','vehicle-lifecycle.mjs','vehicle-lifecycle.css','inspections.html','inspections.js','inspections.css','inspection-photos.js','vehicle-import.mjs','vehicle-translation-ui.mjs','photo-sort.js','drive-photo-picker.mjs','year-spec-select.mjs','model-year-reference.mjs','vehicle-benefits-editor.mjs','vehicle-benefits.mjs','verified-model-years.json','i18n.mjs','translations.mjs','vehicle-routes.mjs','booking-translations.mjs','sales-team-translations.mjs'])allowed.add(file);
  const server=http.createServer(async(req,res)=>{

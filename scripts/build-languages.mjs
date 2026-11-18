@@ -1,3 +1,4 @@
+import {insurancePaths,isInsurancePath} from '../insurance-routes.mjs';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {LANGUAGES,languageTags,translateHTML,publicPageNames,escapeHTML,t} from '../i18n.mjs';
@@ -37,6 +38,7 @@ export function localizedPage(source,file,lang){
    return attr+'="'+escapeHTML(url.href)+'"';
   }
   if(attr==='href' && /^\/?(customer|saved)\.html(?:[?#]|$)/.test(value)){const url=new URL(value.replace(/&amp;/g,'&'),'https://e2auto.my/');url.searchParams.set('lang',lang);return attr+'="..'+escapeHTML(url.pathname+url.search+url.hash)+'"';}
+  if(attr==='href' && isInsurancePath(new URL(value,'https://e2auto.my/').pathname))return attr+'="'+insurancePaths[lang]+'"';
   if(attr==='href' && isLoanGuidePath(new URL(value,'https://e2auto.my/').pathname))return attr+'="'+loanGuidePaths[lang]+'"';
   if(/^(?:[a-z]+:|\/)/i.test(value))return whole;
   const path=value.split(/[?#]/)[0];
