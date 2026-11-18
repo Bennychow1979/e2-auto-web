@@ -74,7 +74,7 @@ export async function startPreview({port=0,seed=true,showcase=false,lifecycle=fa
  };
  `;
  const banner=`<aside id="previewBanner" style="background:#f5e8bf;color:#4b390a;padding:12px 20px;font:14px system-ui;display:flex;gap:18px;align-items:center;flex-wrap:wrap"><strong>LOCAL PREVIEW · 测试资料 · 未上线</strong><label style="margin:0">Preview role / 体验身份 <select id="previewRole" style="width:auto;min-height:40px;margin:0"><option value="runner">Runner A</option><option value="runner2">Runner B</option><option value="admin">Admin</option><option value="inspector">Inspector</option><option value="account">Account</option></select></label><small>Disposable local records. No real login, email or payments. / 本机模拟身份，重启后重置。</small></aside><script>const rolePicker=document.getElementById('previewRole');rolePicker.value=new URLSearchParams(location.search).get('previewRole')||'runner';rolePicker.onchange=()=>location.href='/operations.html?previewRole='+rolePicker.value;</script>`;
- const allowed=new Set(['operations.html','operations.js','operations-files.js','runner-message.mjs','profile-utils.js','operations.css','partner.css','assets/e2-logo.png']);
+ const allowed=new Set(['workspace-theme.css','operations.html','operations.js','operations-files.js','runner-message.mjs','profile-utils.js','operations.css','partner.css','assets/e2-logo.png']);
  allowed.add('rental-navigation.mjs');allowed.add('rental-navigation.css'); // Staff menu dependencies in the embedded editor.
  allowed.add('loan-guide-routes.mjs'); // Shared i18n dependency used by the embedded stock editor.
  allowed.add('insurance-routes.mjs'); // Shared i18n dependency for the insurance language routes.

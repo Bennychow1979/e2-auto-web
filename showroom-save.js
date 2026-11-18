@@ -1,12 +1,12 @@
 import {t} from './i18n.mjs';
 import {db,customer,savedRows,setSaved} from './saved-data.js';
-import {rememberSave} from './saved-intent.js';
+import {rememberSave,clearSave,saveReturnURL} from './saved-intent.js?v=mail-save-20261119';
 import {createFavourites} from './showroom-favourites.mjs';
 
 export function setupShowroomSave(){
   const root=document.getElementById('filterResults'),note=document.getElementById('showroomSaveStatus');
   const dialog=document.getElementById('saveAccountDialog');
-  let pendingId=null;
+  let pendingId=null,continuing=false;
   function paint(state,message){
     for(const button of root.querySelectorAll('[data-save-vehicle]')){
       const saved=state.ids.has(button.dataset.saveVehicle);
@@ -18,15 +18,17 @@ export function setupShowroomSave(){
     if(message!==undefined)note.textContent=t(message);
   }
   const favourites=createFavourites({customer,savedRows,setSaved,onChange:paint,onAuthRequired:id=>{
-    pendingId=id;dialog.showModal();
+    pendingId=id;continuing=false;rememberSave(id);
+    dialog.querySelectorAll('[data-save-auth]').forEach(link=>{link.href=saveReturnURL(link.href)});dialog.showModal();
   }});
   root.addEventListener('click',event=>{
     const button=event.target.closest('[data-save-vehicle]');
     if(button&&root.contains(button)){event.preventDefault();void favourites.toggle(button.dataset.saveVehicle)}
   });
-  dialog.querySelectorAll('[data-save-auth]').forEach(link=>link.addEventListener('click',()=>{if(pendingId)rememberSave(pendingId)}));
+
+  dialog.querySelectorAll('[data-save-auth]').forEach(link=>link.addEventListener('click',()=>{continuing=true}));
   document.getElementById('closeSaveAccount').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>{pendingId=null});
+  dialog.addEventListener('close',()=>{if(!continuing&&pendingId)clearSave(pendingId);pendingId=null});
   db?.auth.onAuthStateChange(event=>{
     if(event==='SIGNED_OUT')favourites.reset();
     else if(event==='SIGNED_IN'){favourites.reset();setTimeout(favourites.refresh,0)}

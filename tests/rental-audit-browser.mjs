@@ -2,7 +2,7 @@ import {chromium,expect} from '@playwright/test';
 import {readFile,mkdir} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import assert from 'node:assert/strict';
-const files={'/rental-audit.html':'rental-audit.html','/rental-audit.js':'rental-audit.js','/rental-audit-view.mjs':'rental-audit-view.mjs','/rental-audit.css':'rental-audit.css','/rental-navigation.mjs':'rental-navigation.mjs','/e2-data.js':'tests/fixtures/rental-audit-sdk.mjs'};
+const files={'/workspace-theme.css':'workspace-theme.css','/rental-audit.html':'rental-audit.html','/rental-audit.js':'rental-audit.js','/rental-audit-view.mjs':'rental-audit-view.mjs','/rental-audit.css':'rental-audit.css','/rental-navigation.mjs':'rental-navigation.mjs','/e2-data.js':'tests/fixtures/rental-audit-sdk.mjs'};
 const server=createServer(async(req,res)=>{const path=new URL(req.url,'http://localhost').pathname;
  if(path==='/e2-config.js'){res.setHeader('Content-Type','text/javascript');res.end('');return;}
  if(path==='/nav.html'){res.setHeader('Content-Type','text/html');res.end('<a data-rental-link hidden>Rental</a><a data-rental-audit-link hidden>Audit</a><script type="module">import {db} from "./e2-data.js";import {setupRentalNavigation} from "./rental-navigation.mjs";setupRentalNavigation(db);</script>');return;}

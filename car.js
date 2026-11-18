@@ -55,7 +55,7 @@ if($('inventoryNotice')){$('inventoryNotice').textContent=vehicleCopy('verified'
 let contact=await publicContact(params.get('sales'),window.E2_CONFIG);
 setupCarSharing(car,()=>contact);
 $('applyLoan').hidden=preview||car.stock_status!=='Available';$('applyLoan').href='/my-e2.html?car='+encodeURIComponent(car.id)+(contact?'&sales='+encodeURIComponent(contact.user_id):'')+'&lang='+language;
-if(!preview)import('./car-save.js?v=languages-1').then(m=>m.setupCarSave(car)).catch(()=>{$('saveCarStatus').textContent=t('Saved cars are temporarily unavailable. Please reload.')});
+if(!preview)import('./car-save.js?v=mail-save-20261119').then(m=>m.setupCarSave(car)).catch(()=>{$('saveCarStatus').textContent=t('Saved cars are temporarily unavailable. Please reload.')});
 const pageLink=()=>vehiclePageURL(location.href,car.id,contact?.user_id);
 const wa=(text,previousLink)=>enquiryURL(contact,withVehicleLink(text,pageLink(),previousLink));
 const vehicleIntro=t('I am enquiring about {car} (Plate {plate}). ',{car:[car.year,car.name,car.variant].filter(Boolean).join(' '),plate:car.plate});

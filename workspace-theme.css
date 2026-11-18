@@ -1,0 +1,57 @@
+/* Shared staff-only palette. Public/customer pages do not load this file. */
+:root[data-workspace-theme] {
+  --paper:#f5f5f2; --panel:#fcfcfa; --white:#fcfcfa; --ink:#111214;
+  --muted:#6b6f66; --line:#dedfd8; --soft:#eeefe8; --surface:#f5f5f2;
+  --gold:#87691f; --gold-soft:#f1ead7; --accent:#87691f;
+  --navy:#111214; --dark:#111214; --on-action:#fcfcfa;
+  --nav-text:#e8e9e4; --nav-muted:#bdc1b4; --nav-gold:#d4b768;
+  --nav-active:#303229; --focus:#a88636;
+  color:var(--ink); background:var(--paper);
+}
+:root[data-workspace-theme] body {color:var(--ink);background:var(--paper)}
+:root[data-workspace-theme] :is(button,a,input,select,textarea,summary):focus-visible {outline-color:var(--focus)}
+:root[data-workspace-theme] :is(.sidebar,body>header,.entryStory) {background:var(--navy);color:var(--nav-text);border-color:var(--line)}
+:root[data-workspace-theme] body>header {border-bottom-color:var(--gold)}
+:root[data-workspace-theme] :is(.sidebar,body>header) :is(a,.quiet,.textButton) {color:var(--nav-text)}
+:root[data-workspace-theme] :is(.sidebar,body>header) :is(small,.brand small,.opsBrand small) {color:var(--nav-muted)}
+:root[data-workspace-theme] :is(.sidebar nav,body>header nav) :is(a,button):hover {background:var(--nav-active);color:var(--nav-text)}
+:root[data-workspace-theme] :is(.sidebar nav,body>header nav) [aria-current=page] {background:var(--nav-active);color:var(--nav-gold)}
+:root[data-workspace-theme] :is(.returnNav a,#auditLink) {color:var(--nav-gold);border-color:#907a44}
+:root[data-workspace-theme] :is(.eyebrow,.queue td a,.state,.termResult) {color:var(--gold)}
+:root[data-workspace-theme] .entryStory .eyebrow {color:var(--nav-gold)}
+:root[data-workspace-theme] :is(.topbar:not(body>header),.dialogHead,.dialogTitle,.documentPreviewActions) {background:var(--panel);color:var(--ink);border-color:var(--line)}
+:root[data-workspace-theme] :is(dialog,.panel,.metric,.card,.record,.stat,.job,.viewingRow,.rotationPanel,.accountCard,.documentCard,.typePanel,.appRow,.profileForm,.wizardBody,.previewPanel,#institutions>details) {background:var(--panel);color:var(--ink);border-color:var(--line)}
+:root[data-workspace-theme] :is(.summaryCard,.tabs,.detailBox,.fileTools,.journey span,.intakeFiles,.statusPanel,.diff h3,.rentalShortcuts a) {background:var(--soft);border-color:var(--line)}
+:root[data-workspace-theme] :is(input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea) {background:var(--panel);color:var(--ink);border-color:#bec0b9}
+:root[data-workspace-theme] input[readonly] {background:var(--soft);color:var(--muted)}
+:root[data-workspace-theme] :is(input[type=checkbox],input[type=radio]) {accent-color:var(--gold)}
+:root[data-workspace-theme] :is(.primary,.btn.primary,.tabs [aria-pressed=true],.tabs [aria-current=page],.journey .current) {background:var(--ink);color:var(--on-action);border-color:var(--ink)}
+:root[data-workspace-theme] header button.gold {background:var(--nav-gold);border-color:var(--nav-gold);color:#111214}
+:root[data-workspace-theme] :is(.secondary,.iconButton,.close,.rotationPerson button,.deliveryStatus+button,.previewStrip) {background:var(--soft);color:var(--ink);border-color:var(--line)}
+:root[data-workspace-theme] :is(.muted,.fine,.hint,.subtitle,.note,.record small,.record p,.summaryCard span,.meta span,.value b,.userRow small,.profilePreview p,.stockItem p,.stockItem small,.customerRows dt) {color:var(--muted)}
+:root[data-workspace-theme] :is(.notice,.intakeRoleNote,.financeDraftBadge,.reviewNotice,.notificationPreview) {background:var(--gold-soft);color:var(--gold);border-color:var(--gold)}
+:root[data-workspace-theme] .notificationCard {background:var(--panel);border-color:var(--line)}
+:root[data-workspace-theme] :is(th,td,.stockItem,.userRow,.historyItem,.historyRow,.fileCard,.defectCard,.diff,.value+.value) {border-color:var(--line)}
+:root[data-workspace-theme] :is(th,p#status) {color:var(--muted)}
+:root[data-workspace-theme] :is(.viewingRow[data-status=Completed],.viewingRow[data-status=Cancelled]) {background:var(--soft)}
+:root[data-workspace-theme] .rentalShortcuts a {color:var(--ink)}
+/* The rental tracker already has a theme setting. Keep it, using neutral
+   charcoal surfaces rather than the previous blue palette. Status colours
+   (overdue, due soon, paid, errors, WhatsApp) retain their existing meaning. */
+@media(prefers-color-scheme:dark) {
+  :root[data-workspace-theme=rental]:not([data-theme=light]) {
+    --paper:#171816;--panel:#20221e;--white:#20221e;--ink:#f5f5f2;
+    --muted:#bbc0b4;--line:#3b3f35;--soft:#2b2e26;--gold:#d4b768;
+    --gold-soft:#302b1d;--navy:#111214;--on-action:#111214;--focus:#d4b768;
+  }
+}
+:root[data-workspace-theme=rental][data-theme=dark] {
+  --paper:#171816;--panel:#20221e;--white:#20221e;--ink:#f5f5f2;
+  --muted:#bbc0b4;--line:#3b3f35;--soft:#2b2e26;--gold:#d4b768;
+  --gold-soft:#302b1d;--navy:#111214;--on-action:#111214;--focus:#d4b768;
+}
+
+:root[data-workspace-theme] .field.err :is(input,select) {border-color:var(--fail);background:var(--fail-bg)}
+:root[data-workspace-theme] .notice.error {color:#982820;background:#fff0ec;border-color:#982820}
+
+:root[data-workspace-theme] main a:not(.primary):not(.secondary):not(.btn) {color:var(--gold)}

@@ -5,7 +5,7 @@ import {createShowroomFlow} from './showroom-flow.js?v=languages-1';
 import {esc,rm,getVehicles,photoURLs,friendlyError} from './e2-data.js?v=drive-2';
 import {budgets,matchesBudget} from './vehicle-discovery.mjs';
 import {emptyFilters,readPreferences,savePreferences,sortedCars} from './showroom-preferences.mjs';
-import {setupShowroomSave} from './showroom-save.js?v=1';
+import {setupShowroomSave} from './showroom-save.js?v=mail-save-20261119?v=1';
 const $=id=>document.getElementById(id), blank=emptyFilters;
 let preferenceStorage;try{preferenceStorage=window.sessionStorage}catch{}
 const saved=readPreferences(preferenceStorage);
