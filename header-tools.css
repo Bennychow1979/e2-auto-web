@@ -1,5 +1,5 @@
 .headerTools{display:flex;align-items:center;justify-content:space-between;gap:12px 24px;width:min(1240px,calc(100% - 80px));margin:0 auto;border-bottom:1px solid #d7d8d2;color:#494c46;font-size:.8125rem;line-height:1.4}
-.headerToolsGroup{display:flex;align-items:center;gap:24px;min-width:0}
+.headerToolsGroup{display:flex;flex-wrap:wrap;align-items:center;gap:24px;min-width:0}
 .headerTools a{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:6px 0;color:inherit;text-decoration:none;box-sizing:border-box}
 .headerTools svg{width:16px;height:16px;flex:0 0 16px;stroke:#81631b}
 .headerTools a:hover{color:#111214;text-decoration:underline;text-underline-offset:4px}
