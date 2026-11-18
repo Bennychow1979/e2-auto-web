@@ -32,10 +32,10 @@ const store={
   }
 };
 const mileageStore={
- inventory:()=>all('vehicles','id,plate,publication,mileage,mileage_confirmed,updated_at'),
+ inventory:()=>all('vehicles','id,plate,publication,mileage,mileage_confirmed,updated_at,lifecycle_state'),
  receipts:()=>all('drive_mileage_receipts','id,vehicle_id,checksum'),
  claim:async args=>checked(await admin.rpc('e2_claim_drive_mileage',args)),
- finish:async args=>checked(await admin.rpc('e2_finish_drive_mileage',args))
+ finish:async args=>checked(await admin.rpc('e2_finish_drive_mileage_verified',args))
 };
 Deno.serve(async req=>{
   const origin=req.headers.get('Origin')||'';

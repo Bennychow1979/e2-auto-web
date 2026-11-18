@@ -1,6 +1,6 @@
 export function mileageLines(mileage){
  if(!mileage)return [];
- return [...(mileage.updated||[]).map(c=>c.plate+' · Mileage '+Number(c.mileage).toLocaleString('en-MY')+' km · Draft, pending confirmation / 里程待核实'),
+ return [...(mileage.updated||[]).map(c=>c.plate+' · Mileage '+Number(c.mileage).toLocaleString('en-MY')+' km · Draft, '+(c.confirmed?'photo reading confirmed / 照片里程已确认':'pending confirmation / 待确认')),
  ...(mileage.review||[]).map(c=>c.plate+' · Mileage review / 里程待核实: '+c.issue),
  ...(mileage.budget_paused?['Mileage paused: monthly RM5 allowance reached. Draft import continues. / 里程识别已达本月预算，Draft 导入继续。']:[]),
  ...(mileage.error?[mileage.error]:[])];
@@ -45,7 +45,7 @@ export function setupVehicleImport({db,canManage,onFinished}) {
       }while(result.remaining&&++batches<100);
       if(result.remaining)lines.push('Batch limit reached. Run again to continue safely.');
       output.textContent=lines.join('\n')||'No new drafts or changed issues. Existing vehicles were skipped.';
-      if(lines.some(line=>line.includes('Private draft')))output.textContent+='\nReview fuel type, stock availability, spec, photos, cover and mileage before publishing. M-photo readings need human confirmation.';
+      if(lines.some(line=>line.includes('Private draft')))output.textContent+='\nReview fuel type, stock availability, spec, photos, cover and mileage before publishing. Unclear or conflicting M-photo readings are left for your confirmation.';
     }catch(error){output.textContent=[...lines,error.message].join('\n')}
     finally{button.disabled=false;await onFinished();await refreshSchedule()}
   };
@@ -58,8 +58,8 @@ export async function showImportReview(db,car) {
   if(!car)return;
   const {data,error}=await db.from('vehicle_import_jobs').select('review_notes').eq('vehicle_id',car.id).eq('status','completed').maybeSingle();
   if(error)throw Error('Import review notes could not be loaded. Refresh before publishing.');
-  if(data?.review_notes?.length){element.textContent='IMPORT REVIEW\n'+data.review_notes.map(note=>note.replace('Mileage is unknown.', 'Mileage requires human confirmation.')).join('\n');element.hidden=false}
-  const mileage=await db.from('drive_mileage_receipts').select('reading,status,issue,created_at').eq('vehicle_id',car.id).order('created_at',{ascending:false}).limit(1);
+  if(data?.review_notes?.length){element.textContent='IMPORT REVIEW\n'+data.review_notes.map(note=>note.replace('Mileage is unknown.', 'Check the mileage confirmation status below.')).join('\n');element.hidden=false}
+  const mileage=await db.from('drive_mileage_receipts').select('reading,status,issue,created_at,verification').eq('vehicle_id',car.id).order('created_at',{ascending:false}).limit(1);
   if(mileage.error)throw Error('Mileage import notes could not be loaded. Refresh before publishing.');
-  if(mileage.data?.[0]){const r=mileage.data[0];element.textContent+='\nM PHOTO / 里程照片 · '+(r.status==='applied'?Number(r.reading).toLocaleString('en-MY')+' km · Pending human confirmation / 待人工确认':r.issue||'Recognition incomplete; review M photo manually.');element.hidden=false;}
+  if(mileage.data?.[0]){const r=mileage.data[0];element.textContent+='\nM PHOTO / 里程照片 · '+(r.status==='applied'?Number(r.reading).toLocaleString('en-MY')+' km · '+(r.verification?.length===2?'Two matching clear readings; confirmed / 两次清晰读数一致，已确认':'Pending human confirmation / 待人工确认'):r.issue||'Recognition incomplete; review M photo manually.');element.hidden=false;}
 }

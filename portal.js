@@ -1,5 +1,5 @@
 import {setupRentalNavigation} from './rental-navigation.mjs?v=1';
-import {setupVehicleImport,showImportReview} from './vehicle-import.mjs?v=mileage-20261119';
+import {setupVehicleImport,showImportReview} from './vehicle-import.mjs?v=mileage-verified-20261119';
 import {setupVehicleTranslations} from './vehicle-translation-ui.mjs?v=auto-translation-1';
 import {enablePhotoDrag} from './photo-sort.js?v=drag-1';
 import {setupDrivePhotoPicker} from './drive-photo-picker.mjs?v=drive-1';
