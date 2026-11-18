@@ -1,5 +1,7 @@
 // Trusted customer UI copy only. Never translate customer-entered data.
 export const customerTranslations={
+ 'Check your inbox and Spam / Junk for the E2 confirmation email. Open the newest link to verify your account and save your chosen car automatically.':['Semak peti masuk dan Spam / Junk untuk e-mel pengesahan E2. Buka pautan terkini untuk mengesahkan akaun dan menyimpan kereta pilihan anda secara automatik.','请检查收件箱和垃圾邮件中的 E2 验证邮件。打开最新链接验证账号后，刚才选择的车辆会自动加入收藏。'],
+  'Could not save this car. Tap Refresh to retry.':['Kereta ini belum dapat disimpan. Tekan Muat semula untuk cuba lagi.','暂时无法收藏这辆车，请点刷新重试。'],
  'My E2 | Customer account':['My E2 | Akaun pelanggan','My E2 | 顾客账号'],
  'Language':['Bahasa','语言'],
  'Your next drive.':['Kereta anda yang seterusnya.','你的下一辆车。'],

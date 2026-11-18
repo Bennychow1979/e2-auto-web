@@ -1,6 +1,6 @@
-import {ct,accountURL} from './customer-language.mjs?v=flow-20261113';
+import {ct,accountURL} from './customer-language.mjs?v=mail-save-20261119';
 import {takeLoan} from './loan-intent.js?v=flow-20261113';
-import {pendingSave} from './saved-intent.js';
+import {pendingSave,captureSave,bindSave,clearSave,saveReturnURL} from './saved-intent.js?v=mail-save-20261119';
 import {customerDB as db,check,fields} from './customer-data.js?v=customer-1';
 import {normalizeWhatsApp} from './profile-utils.js';
 import {createSessionIdentity} from './customer-session.mjs';
@@ -9,7 +9,8 @@ let user=null,saved=null,busy=false,epoch=0,dirty=false,recovery=false;
 const sessionIdentity=createSessionIdentity();
 try{recovery=sessionStorage.getItem('e2-customer-recovery')==='1'}catch{}
 let emailWait=0;try{const n=Number(sessionStorage.getItem('e2-customer-email-wait'));if(n>Date.now()&&n<Date.now()+61000)emailWait=n}catch{}
-const redirect=()=>new URL('customer.html',location.href).href;
+const redirect=(withSave=true)=>withSave?saveReturnURL(accountURL('/customer.html')):accountURL('/customer.html');
+captureSave();
 function note(id,text,bad=false){$(id).textContent=ct(text);$(id).classList.toggle('error',bad)}
 function mailControls(){const left=Math.max(0,Math.ceil((emailWait-Date.now())/1000));$('customerForgot').disabled=busy||left>0;$('customerResend').disabled=busy||left>0;$('customerResend').textContent=left?ct('Try again in {seconds}s',{seconds:left}):ct('Resend confirmation');register.querySelector('[type=submit]').disabled=busy||left>0}
 function lock(value){busy=value;document.querySelectorAll('form input,form select,form button,#showSignIn,#showRegister,#customerSignOut').forEach(el=>el.disabled=value);mailControls()}
@@ -32,7 +33,7 @@ async function hydrate(session){
       try{const created=check(await db.rpc('e2_save_customer_profile',{details:initial,expected_revision:0,accept_privacy:true}));if(run!==epoch)return;saved=Array.isArray(created)?created[0]:created}catch{if(run!==epoch)return}
     }
     const loanReturn=takeLoan();if(loanReturn){location.replace(accountURL(loanReturn));return}
-    if(pendingSave()){location.replace(accountURL('saved.html'));return}
+    if(pendingSave(user.id)){bindSave(user.id);location.replace(saveReturnURL(accountURL('saved.html')));return}
     fillProfile();$('customerAuth').hidden=true;$('customerRecovery').hidden=true;$('customerAccount').hidden=false;note('customerProfileMessage',saved?'Your saved details are ready.':'Complete your details to finish setting up your customer profile.');
   }catch(error){if(run===epoch){gate();note('customerAuthMessage',error.message||'Could not load your account. Please try again.',true)}}
 }
@@ -44,13 +45,13 @@ register.onsubmit=async event=>{
  let phone;try{phone=normalizeWhatsApp(register.elements.phone.value);if(!phone)throw Error('Enter your mobile number.')}catch(e){note('customerAuthMessage',e.message,true);return}
  lock(true);waitForMail();note('customerAuthMessage','Creating your account…');
  try{const email=register.elements.email.value.trim();const result=check(await db.auth.signUp({email,password:register.elements.password.value,options:{emailRedirectTo:redirect(),data:{e2_customer_signup:true,full_name:register.elements.full_name.value.trim(),phone,privacy_version:'2026-09-13'}}}));register.reset();login.elements.email.value=email;mode(false);
- if(result.session)await hydrate(result.session);else note('customerAuthMessage','Check your inbox and Spam / Junk for an E2 confirmation email. Open the newest link, then sign in. If you already have an account, sign in or use Forgot password.');
+ if(result.session)await hydrate(result.session);else note('customerAuthMessage',pendingSave()?'Check your inbox and Spam / Junk for the E2 confirmation email. Open the newest link to verify your account and save your chosen car automatically.':'Check your inbox and Spam / Junk for an E2 confirmation email. Open the newest link, then sign in. If you already have an account, sign in or use Forgot password.');
  }catch(e){note('customerAuthMessage',e.status===429?'Please wait before trying again. Email sending limits may apply.':'Could not complete registration. Please try again, or sign in if you already have an account.',true)}finally{lock(false)}
 };
 async function requestEmail(type){
  if(busy||Date.now()<emailWait)return;const email=login.elements.email;if(!email.reportValidity())return;
  lock(true);waitForMail();note('customerAuthMessage','Requesting email…');
- try{check(type==='reset'?await db.auth.resetPasswordForEmail(email.value.trim(),{redirectTo:redirect()}):await db.auth.resend({type:'signup',email:email.value.trim(),options:{emailRedirectTo:redirect()}}));note('customerAuthMessage','If this email is eligible, an email has been requested. Check Inbox and Spam / Junk, and use the newest link.')}
+ try{check(type==='reset'?await db.auth.resetPasswordForEmail(email.value.trim(),{redirectTo:redirect(false)}):await db.auth.resend({type:'signup',email:email.value.trim(),options:{emailRedirectTo:redirect()}}));note('customerAuthMessage','If this email is eligible, an email has been requested. Check Inbox and Spam / Junk, and use the newest link.')}
  catch{note('customerAuthMessage','The email request could not be completed. Wait and try again, or contact E2.',true)}finally{lock(false)}
 }
 $('customerForgot').onclick=()=>requestEmail('reset');$('customerResend').onclick=()=>requestEmail('confirm');
@@ -66,10 +67,10 @@ if(!db){lock(true);note('customerAuthMessage','Customer accounts are being prepa
  db.auth.onAuthStateChange((event,session)=>{
   const changed=sessionIdentity.observe(session);
   if(event==='PASSWORD_RECOVERY'){recovery=true;try{sessionStorage.setItem('e2-customer-recovery','1')}catch{}showRecovery()}
-  else if(event==='SIGNED_OUT'||changed){clearRecovery();gate()}
+  else if(event==='SIGNED_OUT'||changed){if(event==='SIGNED_OUT'||user)clearSave();clearRecovery();gate()}
  });
  const badLink=new URLSearchParams(location.hash.slice(1)).has('error')||new URLSearchParams(location.search).has('error');
- try{await hydrate(check(await db.auth.getSession()).session)}catch{gate();note('customerAuthMessage','This sign-in link could not be used. Please request a new email.',true)}
+ if(!badLink)try{await hydrate(check(await db.auth.getSession()).session)}catch{gate();note('customerAuthMessage','This sign-in link could not be used. Please request a new email.',true)}
  history.replaceState(null,'',location.pathname);
  if(badLink){clearRecovery();gate();note('customerAuthMessage','This email link has expired or was already used. Sign in, resend confirmation, or request a new password reset.',true)}
 }

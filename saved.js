@@ -1,10 +1,13 @@
 import {vehiclePath} from './vehicle-routes.mjs';
-import {customerLanguage} from './customer-language.mjs?v=flow-20261113';
+import {customerLanguage} from './customer-language.mjs?v=mail-save-20261119';
 import {db,customer,savedRows,setSaved} from './saved-data.js';
-import {pendingSave,clearSave} from './saved-intent.js';
+import {pendingSave,clearSave,captureSave,bindSave} from './saved-intent.js?v=mail-save-20261119';
 import {getVehicles,coverURL,esc,rm} from './e2-data.js';
-import {ct,accountURL,setupCustomerLanguage} from './customer-language.mjs?v=flow-20261113';
+import {ct,accountURL,setupCustomerLanguage} from './customer-language.mjs?v=mail-save-20261119';
+captureSave();
 setupCustomerLanguage();
+// Consume URL context once; retryable intent remains in this tab until saved.
+const cleanURL=new URL(location.href);cleanURL.searchParams.delete('save');cleanURL.searchParams.delete('save_at');history.replaceState(null,'',cleanURL.pathname+cleanURL.search);
 const $=id=>document.getElementById(id);let epoch=0,busy=false;
 function savedCard(row,c){
  const name=c?c.brand+' '+c.model:ct('unavailable vehicle');
@@ -17,8 +20,8 @@ async function load(){
  if(busy)return;busy=true;const run=++epoch;$('refreshSaved').disabled=true;$('savedMessage').textContent=ct('Loading your saved cars…');
  try{
   const user=await customer();if(run!==epoch)return;if(!user){gate();$('savedMessage').textContent='';return}
-  $('savedGate').hidden=true;let message='';const intent=pendingSave();
-  if(intent){try{await setSaved(intent,true);message='Your car has been saved.'}catch(e){message=e.message||'Could not save this car. Open the vehicle and try again.'}clearSave()}
+  $('savedGate').hidden=true;let message='';const intent=pendingSave(user.id);bindSave(user.id);
+  if(intent){try{const kept=await setSaved(intent,true);if(run!==epoch)return;if(!kept)throw Error('Could not save this car. Tap Refresh to retry.');clearSave(intent);message='Your car has been saved.'}catch{if(run!==epoch)return;message='Could not save this car. Tap Refresh to retry.'}}
   const rows=await savedRows();const cars=rows.length?await getVehicles():[];if(run!==epoch)return;
   const byId=new Map(cars.map(c=>[c.id,c]));$('savedAccount').hidden=false;$('savedCount').textContent=ct(rows.length===1?'{count} saved car':'{count} saved cars',{count:rows.length});
   $('savedGrid').innerHTML=rows.length?rows.map(row=>savedCard(row,byId.get(row.vehicle_id))).join(''):'<div class="savedEmpty"><h2>'+ct('Your next favourite is out there.')+'</h2><p>'+ct('Tap ♡ Save car on a vehicle’s page to add it here.')+'</p><a href="'+esc(accountURL('showroom.html#cars'))+'">'+ct('Explore the selection ↗')+'</a></div>';
@@ -29,5 +32,5 @@ async function load(){
  finally{busy=false;$('refreshSaved').disabled=false}
 }
 $('refreshSaved').onclick=load;
-db?.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'){gate();$('savedMessage').textContent=ct('Sign in to view your saved cars.')}else if(event==='SIGNED_IN')setTimeout(load,0)});
+db?.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'){clearSave();gate();$('savedMessage').textContent=ct('Sign in to view your saved cars.')}else if(event==='SIGNED_IN')setTimeout(load,0)});
 window.addEventListener('focus',load);setInterval(()=>{if(!document.hidden)load()},240000);await load();

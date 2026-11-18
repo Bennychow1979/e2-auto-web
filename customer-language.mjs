@@ -1,7 +1,7 @@
 import {t,localizedURL} from './i18n.mjs';
 import {flowTranslations} from './customer-flow-translations.mjs';
 import {privacyTranslations} from './customer-privacy-translations.mjs';
-import {customerTranslations} from './customer-translations.mjs';
+import {customerTranslations} from './customer-translations.mjs?v=mail-save-20261119';
 
 const supported=new Set(['en','ms','zh']);
 export const customerLanguageKey='e2-customer-language';
@@ -28,6 +28,7 @@ export function customerSwitchURL(href,lang){
  url.searchParams.set('lang',supported.has(lang)?lang:'en');
  const params=current.searchParams;
  if(params.get('mode')==='register')url.searchParams.set('mode','register');
+ if(['/customer.html','/saved.html'].includes(current.pathname)&&/^[0-9a-f-]{36}$/i.test(params.get('save')||'')&&/^\d{13}$/.test(params.get('save_at')||'')){url.searchParams.set('save',params.get('save'));url.searchParams.set('save_at',params.get('save_at'));}
  const keys=current.pathname==='/my-e2.html'?['application','car','sales']:current.pathname==='/documents.html'?['application','staff']:current.pathname==='/intake.html'?['invite']:[];
  for(const key of keys)if(params.has(key))url.searchParams.set(key,params.get(key));
  if(current.pathname==='/intake.html'&&params.get('source')==='aira')url.searchParams.set('source','aira');
