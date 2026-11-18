@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalkulator Insurans Kereta 2026 (Anggaran Premium) | E2 Auto</title>
+<meta name="description" content="Anggar premium insurans kereta ikut nilai kereta, cc enjin dan NCD — komprehensif, TPFT atau pihak ketiga. Termasuk SST 8% dan duti setem.">
+<link rel="canonical" href="https://e2auto.my/ms/kalkulator-insurans-kereta/">
+<link rel="alternate" hreflang="ms" href="https://e2auto.my/ms/kalkulator-insurans-kereta/">
+<link rel="alternate" hreflang="en" href="https://e2auto.my/car-insurance-calculator/">
+<link rel="alternate" hreflang="zh-Hans" href="https://e2auto.my/zh/car-insurance-calculator/">
+<link rel="alternate" hreflang="x-default" href="https://e2auto.my/car-insurance-calculator/">
+<!-- E2 INSURANCE CSS START (everything is scoped under .rt) -->
+<style>
+.rt{--ink:#17181a;--mute:#5b6068;--line:#e2dfd8;--bg:#f7f5f0;--card:#fff;--gold:#8a6614;--goldbg:#fbf4e2;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);
+  line-height:1.5;font-size:16px;margin:0;padding:24px 16px 56px}
+.rt *{box-sizing:border-box}
+.rt-wrap{max-width:720px;margin:0 auto}
+.rt-lang{display:flex;gap:6px;justify-content:flex-end;font-size:14px;margin-bottom:12px}
+.rt-lang a{color:var(--mute);text-decoration:none;padding:4px 10px;border-radius:999px}
+.rt-lang a[aria-current]{background:var(--ink);color:#fff}
+.rt h1{font-size:clamp(26px,6vw,36px);line-height:1.15;margin:0 0 8px;letter-spacing:-.01em;text-wrap:balance}
+.rt h2{font-size:21px;margin:40px 0 12px}
+.rt h3{font-size:15px;margin:24px 0 8px}
+.rt-lead{color:var(--mute);margin:0 0 20px;max-width:60ch}
+.rt-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+.rt-field{border:0;padding:0;margin:0 0 18px;min-width:0}
+.rt-field>legend,.rt-field>label{display:block;font-weight:600;font-size:14px;margin-bottom:8px;padding:0}
+.rt-seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:4px}
+.rt-seg label{position:relative;text-align:center;font-size:15px;padding:10px 8px;border-radius:7px;cursor:pointer;line-height:1.25}
+.rt-seg input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.rt-seg label:has(input:checked){background:var(--ink);color:#fff;font-weight:600}
+.rt-seg label:has(input:focus-visible){outline:3px solid var(--gold);outline-offset:2px}
+.rt select,.rt input[type=number]{width:100%;font:inherit;padding:12px;border:1px solid #bdb9b0;border-radius:10px;background:#fff;color:var(--ink)}
+.rt select:focus-visible,.rt input[type=number]:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+.rt-help{font-size:13.5px;color:var(--mute);margin:8px 0 0}
+.rt-grid{display:grid;gap:0 16px}
+@media(min-width:560px){.rt-grid{grid-template-columns:1fr 1fr}}
+.rt-out{margin-top:6px;border-top:1px solid var(--line);padding-top:18px}
+.rt-out-label{font-size:14px;color:var(--mute);margin:0}
+.rt-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;margin:2px 0 0}
+.rt-total strong{font-size:clamp(38px,11vw,54px);line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.rt-total span{color:var(--mute);font-variant-numeric:tabular-nums}
+.rt-empty{color:var(--mute);margin:6px 0 0}
+.rt-steps{list-style:none;margin:16px 0 0;padding:0;font-size:15px}
+.rt-steps li{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-top:1px dashed var(--line);font-variant-numeric:tabular-nums}
+.rt-steps li span:last-child{white-space:nowrap;font-weight:600}
+.rt-alt{background:var(--goldbg);color:#5c4409;border-radius:10px;padding:10px 12px;margin:14px 0 0;font-size:14.5px}
+.rt-note{font-size:13.5px;color:var(--mute);margin:12px 0 0}
+.rt-cta{margin-top:20px;display:grid;gap:14px;align-items:center}
+@media(min-width:560px){.rt-cta{grid-template-columns:1fr auto}}
+.rt-cta p{margin:0}.rt-cta p+p{color:var(--mute);font-size:14.5px}
+.rt-btns{display:flex;flex-wrap:wrap;gap:8px}
+.rt-btn{display:inline-block;padding:12px 16px;border-radius:10px;font-weight:600;font-size:15px;text-decoration:none;border:1px solid var(--ink);color:var(--ink)}
+.rt-btn.pri{background:var(--ink);color:#fff}
+.rt-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+.rt table{border-collapse:collapse;width:100%;font-size:14.5px;font-variant-numeric:tabular-nums}
+.rt th,.rt td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.rt th{font-size:13px;color:var(--mute);font-weight:600;background:#fcfbf8}
+.rt tr:last-child td{border-bottom:0}
+.rt td:last-child{white-space:normal;min-width:11em}
+.rt details{border-bottom:1px solid var(--line);padding:12px 0}
+.rt summary{cursor:pointer;font-weight:600}
+.rt details p{margin:8px 0 0;color:#33363b;max-width:65ch}
+.rt [hidden]{display:none!important}
+</style>
+<!-- E2 INSURANCE CSS END -->
+</head>
+<body style="margin:0">
+<!-- E2 INSURANCE START -->
+<main class="rt">
+<div class="rt-wrap">
+  <nav class="rt-lang" aria-label="Language"><a href="/ms/kalkulator-insurans-kereta/" aria-current="page" hreflang="ms">BM</a> <a href="/car-insurance-calculator/" hreflang="en">EN</a> <a href="/zh/car-insurance-calculator/" hreflang="zh-Hans">中文</a></nav>
+  <h1>Kalkulator Insurans Kereta 2026</h1>
+  <p class="rt-lead">Anggaran premium setahun berdasarkan jadual tarif motor PIAM untuk kereta persendirian. Harga sebenar ikut syarikat insurans.</p>
+
+  <form class="rt-card" id="in-form" onsubmit="return false" novalidate>
+    <fieldset class="rt-field">
+      <legend>Jenis perlindungan (TPFT = pihak ketiga, kebakaran & kecurian)</legend>
+      <div class="rt-seg">
+        <label><input type="radio" name="cover" value="comp" checked>Komprehensif</label>
+        <label><input type="radio" name="cover" value="tpft">TPFT</label>
+        <label><input type="radio" name="cover" value="tp">Pihak ketiga</label>
+      </div>
+    </fieldset>
+    <div class="rt-grid">
+      <div class="rt-field">
+        <label for="in-region">Kawasan</label>
+        <select id="in-region" name="region"><option value="west">Semenanjung Malaysia</option><option value="east">Sabah / Sarawak / Labuan</option></select>
+      </div>
+      <div class="rt-field">
+        <label for="in-ncd">NCD (diskaun tanpa tuntutan)</label>
+        <select id="in-ncd" name="ncd"><option value="0">0%</option><option value="25">25%</option><option value="30">30%</option><option value="38.33">38.33%</option><option value="45">45%</option><option value="55">55%</option></select>
+      </div>
+    </div>
+    <div class="rt-grid">
+      <div class="rt-field" id="in-si-box">
+        <label for="in-si">Nilai diinsuranskan (RM)</label>
+        <input id="in-si" name="si" type="number" inputmode="numeric" min="1000" step="100" placeholder="cth. 60000" autocomplete="off">
+        <p class="rt-help">Biasanya nilai pasaran kereta.</p>
+      </div>
+      <div class="rt-field">
+        <label for="in-cc">Kapasiti enjin (cc)</label>
+        <input id="in-cc" name="cc" type="number" inputmode="numeric" min="1" max="9999" step="1" placeholder="cth. 1497" autocomplete="off">
+        <p class="rt-help">Ikut geran (cth. 1,497 cc).</p>
+      </div>
+    </div>
+
+    <div class="rt-out" aria-live="polite">
+      <p class="rt-out-label">Anggaran premium setahun</p>
+      <p class="rt-empty" id="in-empty">Masukkan nilai kereta dan cc untuk mula.</p>
+      <div id="in-result" hidden>
+        <p class="rt-total"><strong id="in-total"></strong><span id="in-month"></span></p>
+        <ul class="rt-steps" id="in-steps" aria-label="Cara kira"></ul>
+        <p class="rt-note">Anggaran sahaja, ikut tarif motor lama. Sejak 2017 setiap syarikat insurans tetapkan harga sendiri (umur pemandu, rekod tuntutan, jenis kereta). Tidak termasuk tambahan seperti cermin depan atau banjir.</p>
+      </div>
+    </div>
+  </form>
+
+  <section class="rt-card rt-cta">
+    <div><p><strong>Beli kereta terpakai di E2 Auto?</strong></p><p>Kami boleh uruskan insurans dan roadtax sekali dengan kereta anda.</p></div>
+    <div class="rt-btns">
+      <a class="rt-btn pri" href="https://wa.me/60122785126?text=Hi%20E2%20Auto%2C%20saya%20nak%20tanya%20insurans%20untuk%20kereta." rel="noopener">WhatsApp E2 Auto</a>
+      <a class="rt-btn" href="/ms/roadtax-calculator/">Kalkulator roadtax</a>
+    </div>
+  </section>
+
+  <section>
+    <h2>Jadual tarif motor (kereta persendirian)</h2>
+    <h3>Semenanjung Malaysia — tambah RM26 bagi setiap RM1,000 seterusnya</h3><div class="rt-scroll"><table><thead><tr><th scope="col">Kapasiti enjin</th><th scope="col">Komprehensif: RM1,000 pertama</th><th scope="col">Pihak ketiga</th></tr></thead><tbody><tr><td>Hingga 1,400 cc</td><td>RM273.80</td><td>RM120.60</td></tr><tr><td>Hingga 1,650 cc</td><td>RM305.50</td><td>RM135.00</td></tr><tr><td>Hingga 2,200 cc</td><td>RM339.10</td><td>RM151.20</td></tr><tr><td>Hingga 3,050 cc</td><td>RM372.60</td><td>RM167.40</td></tr><tr><td>Hingga 4,100 cc</td><td>RM404.30</td><td>RM181.80</td></tr><tr><td>Hingga 4,250 cc</td><td>RM436.00</td><td>RM196.20</td></tr><tr><td>Hingga 4,400 cc</td><td>RM469.60</td><td>RM212.40</td></tr><tr><td>Melebihi 4,400 cc</td><td>RM501.30</td><td>RM226.80</td></tr></tbody></table></div><h3>Sabah, Sarawak & Labuan — tambah RM20.30 bagi setiap RM1,000 seterusnya</h3><div class="rt-scroll"><table><thead><tr><th scope="col">Kapasiti enjin</th><th scope="col">Komprehensif: RM1,000 pertama</th><th scope="col">Pihak ketiga</th></tr></thead><tbody><tr><td>Hingga 1,400 cc</td><td>RM196.20</td><td>RM67.50</td></tr><tr><td>Hingga 1,650 cc</td><td>RM220.00</td><td>RM75.60</td></tr><tr><td>Hingga 2,200 cc</td><td>RM243.90</td><td>RM85.20</td></tr><tr><td>Hingga 3,050 cc</td><td>RM266.50</td><td>RM93.60</td></tr><tr><td>Hingga 4,100 cc</td><td>RM290.40</td><td>RM101.70</td></tr><tr><td>Hingga 4,250 cc</td><td>RM313.00</td><td>RM110.10</td></tr><tr><td>Hingga 4,400 cc</td><td>RM336.90</td><td>RM118.20</td></tr><tr><td>Melebihi 4,400 cc</td><td>RM359.50</td><td>RM126.60</td></tr></tbody></table></div><h3>Kadar NCD</h3><div class="rt-scroll"><table><thead><tr><th scope="col">Tahun tanpa tuntutan</th><th scope="col">NCD</th></tr></thead><tbody><tr><td>Tahun pertama</td><td>0%</td></tr><tr><td>Selepas 1 tahun</td><td>25%</td></tr><tr><td>Selepas 2 tahun</td><td>30%</td></tr><tr><td>Selepas 3 tahun</td><td>38.33%</td></tr><tr><td>Selepas 4 tahun</td><td>45%</td></tr><tr><td>Selepas 5 tahun</td><td>55%</td></tr></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>Soalan lazim</h2>
+    <details><summary>Bagaimana premium dikira?</summary><p>Premium asas komprehensif = kadar bagi RM1,000 pertama (ikut cc) + RM26 bagi setiap RM1,000 seterusnya (Semenanjung). Kemudian tolak NCD, tambah SST 8% dan duti setem RM10.</p></details><details><summary>Kenapa harga syarikat insurans lain daripada anggaran ini?</summary><p>Sejak 1 Julai 2017 tarif motor diliberalisasi. Syarikat insurans boleh guna faktor lain seperti umur pemandu, rekod tuntutan dan model kereta, jadi harga boleh lebih tinggi atau lebih rendah.</p></details><details><summary>Apa itu NCD?</summary><p>Diskaun tanpa tuntutan. Setiap tahun tanpa tuntutan, diskaun naik dari 25% hingga maksimum 55%. NCD ikut pemandu, bukan kereta — boleh dipindahkan bila tukar kereta.</p></details><details><summary>Perlu komprehensif kalau ambil loan?</summary><p>Ya. Bank dan syarikat kredit biasanya mewajibkan insurans komprehensif untuk kereta yang dibiayai.</p></details>
+    <p class="rt-note">Sumber: jadual tarif motor PIAM untuk kereta persendirian; SST 8% atas premium selepas NCD (sejak 1 Mac 2024). Dikemas kini November 2026.</p>
+  </section>
+</div>
+</main>
+<!-- E2 INSURANCE END -->
+
+<!-- E2 INSURANCE JS START -->
+<script>
+/* E2 Auto car insurance estimator — classic PIAM motor tariff (private car), SST 8%, stamp duty RM10 */
+var E2INS = (function () {
+  // [cc not exceeding, West comprehensive first RM1,000, West third party, East comprehensive first RM1,000, East third party]
+  var T = [[1400,273.80,120.60,196.20,67.50],[1650,305.50,135.00,220.00,75.60],[2200,339.10,151.20,243.90,85.20],[3050,372.60,167.40,266.50,93.60],
+           [4100,404.30,181.80,290.40,101.70],[4250,436.00,196.20,313.00,110.10],[4400,469.60,212.40,336.90,118.20],[Infinity,501.30,226.80,359.50,126.60]];
+  var PER = {west: 26, east: 20.30}, NCD = [0, 25, 30, 38.33, 45, 55], SST = 0.08, STAMP = 10;
+  function r2(x) { return Math.round(x * 100) / 100; }
+  // region: west | east ; cover: comp | tpft | tp ; si: sum insured RM ; cc ; ncd: %
+  function calc(region, cover, si, cc, ncd) {
+    cc = Math.round(Number(cc)); si = Number(si); ncd = Number(ncd) || 0;
+    if (!(cc > 0)) return null;
+    if (cover !== 'tp' && !(si >= 1000)) return null;
+    var row = T.filter(function (r) { return cc <= r[0]; })[0], e = region === 'east';
+    var first = e ? row[3] : row[1], tp = e ? row[4] : row[2];
+    var units = cover === 'tp' ? 0 : Math.ceil((si - 1000) / 1000 - 1e-9), extra = r2(units * PER[e ? 'east' : 'west']);
+    var comp = r2(first + extra);
+    var basic = cover === 'comp' ? comp : cover === 'tpft' ? r2(comp * 0.75) : tp;
+    var disc = r2(basic * ncd / 100), net = r2(basic - disc), tax = r2(net * SST), total = r2(net + tax + STAMP);
+    return {first: first, units: units, extra: extra, comp: comp, basic: basic, ncd: ncd, disc: disc, net: net, tax: tax, stamp: STAMP, total: total, band: row[0]};
+  }
+  return {T: T, PER: PER, NCD: NCD, SST: SST, calc: calc};
+})();
+(function () {
+  var S = {"month": "≈ {m} sebulan", "first": "Kadar asas (RM1,000 pertama)", "extra": "{u} × RM{p} (setiap RM1,000 seterusnya)", "tpft75": "75% daripada premium komprehensif", "tpbase": "Premium asas pihak ketiga", "ncdl": "NCD {n}%", "sst": "SST 8%", "stamp": "Duti setem"};
+  var f = document.getElementById('in-form'), $ = function (id) { return document.getElementById(id); };
+  function rm(x) { return 'RM' + x.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function t(s, o) { return s.replace(/\{(\w)\}/g, function (_, k) { return o[k]; }); }
+  function row(a, b) { var li = document.createElement('li'), x = document.createElement('span'), y = document.createElement('span'); x.textContent = a; y.textContent = b; li.appendChild(x); li.appendChild(y); return li; }
+  function calc() {
+    var cover = f.cover.value, tp = cover === 'tp';
+    $('in-si-box').hidden = tp;
+    var r = E2INS.calc(f.region.value, cover, tp ? 0 : f.si.value, f.cc.value, f.ncd.value);
+    if (!r || Number(f.cc.value) > 9999) { $('in-result').hidden = true; $('in-empty').hidden = false; return; }
+    $('in-empty').hidden = true; $('in-result').hidden = false;
+    $('in-total').textContent = rm(r.total);
+    $('in-month').textContent = t(S.month, { m: rm(Math.round(r.total / 12 * 100) / 100) });
+    var ul = $('in-steps'); ul.textContent = '';
+    if (tp) ul.appendChild(row(S.tpbase, rm(r.basic)));
+    else {
+      ul.appendChild(row(S.first, rm(r.first)));
+      ul.appendChild(row(t(S.extra, { u: r.units, p: f.region.value === 'east' ? '20.30' : '26' }), rm(r.extra)));
+      if (cover === 'tpft') ul.appendChild(row(S.tpft75, rm(r.basic)));
+    }
+    if (r.disc) ul.appendChild(row(t(S.ncdl, { n: r.ncd }), '−' + rm(r.disc)));
+    ul.appendChild(row(S.sst, rm(r.tax)));
+    ul.appendChild(row(S.stamp, rm(r.stamp)));
+  }
+  f.addEventListener('input', calc); f.addEventListener('change', calc); calc();
+})();
+</script>
+<!-- E2 INSURANCE JS END -->
+</body>
+</html>

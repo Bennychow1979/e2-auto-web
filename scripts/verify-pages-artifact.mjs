@@ -1,3 +1,4 @@
+import {insurancePaths} from '../insurance-routes.mjs';
 import {loanGuidePaths} from '../loan-guide-routes.mjs';
 import assert from 'node:assert/strict';
 import {readFile,lstat,readdir} from 'node:fs/promises';
@@ -39,8 +40,14 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
   const data=/<script id="vehicleStructuredData" type="application\/ld\+json">([^<]*)<\/script>/.exec(html);assert(data);JSON.parse(data[1]);
   if(photoIDs.has(car.id))assert(html.includes(snapshot.publicImageOrigin+'/functions/v1/e2-drive-photos?public_vehicle='+car.id));
   assert(!html.includes('?ticket='));
+  assert(html.includes('href="'+insurancePaths[lang]+'"'),'Vehicle insurance link missing');
  }
  for(const lang of ['en','ms','zh']){
+  const insurance=await readFile(join(out,insurancePaths[lang].slice(1),'index.html'),'utf8');
+  assert(insurance.includes('rel="canonical" href="https://e2auto.my'+insurancePaths[lang]+'"'));
+  assert(insurance.includes('id="in-form"')&&insurance.includes('var E2INS ='));
+  assert.equal((insurance.match(/<table>/g)||[]).length,3);
+  assert.equal((insurance.match(/<details>/g)||[]).length,4);
   const loan=await readFile(join(out,loanGuidePaths[lang].slice(1),'index.html'),'utf8');
   assert(loan.includes('rel="canonical" href="https://e2auto.my'+loanGuidePaths[lang]+'"'));
   assert.equal(JSON.parse(/<script type="application\/ld\+json" id="loanFAQ">([^<]*)<\/script>/.exec(loan)[1]).mainEntity.length,9);
@@ -48,6 +55,7 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
   const calculatorPath='/'+(lang==='en'?'':lang+'/')+'roadtax-calculator/';
   const calculator=await readFile(join(out,calculatorPath.slice(1),'index.html'),'utf8');
   assert(calculator.includes('rel="canonical" href="https://e2auto.my'+calculatorPath+'"'));
+  assert(calculator.includes('href="'+insurancePaths[lang]+'"'));
   assert(calculator.includes('id="rt-form"')&&calculator.includes('var E2RT ='));
   assert.equal((calculator.match(/<table>/g)||[]).length,6,'Static road tax tables must be retained');
   for(const page of ['index.html','showroom.html']){
@@ -68,7 +76,8 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
   JSON.parse(/<script id="plateStructuredData" type="application\/ld\+json">([^<]*)<\/script>/.exec(html)[1]);
  }
  for(const file of ['sales-team.js','sales-team.css','sales-team-data.mjs','sales-team-motion.mjs','sales-team-navigation.mjs','sales-team-translations.mjs'])assert.deepEqual(await readFile(join(out,file)),await readFile(join(source,file)),'Team module preserved: '+file);
- const sitemap=await readFile(join(out,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,rows.length*3+16+manifest.categories.length*3);
+ const sitemap=await readFile(join(out,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,rows.length*3+19+manifest.categories.length*3);
+ for(const path of Object.values(insurancePaths))assert(sitemap.includes('<loc>https://e2auto.my'+path+'</loc>'),'Insurance sitemap entry missing');
  for(const [name,file] of [['stock','stock.txt'],['stockSold','stock-sold.txt'],['sitemap','sitemap.xml']])assert.equal(manifest.publicationHashes?.[name],createHash('sha256').update(await readFile(join(out,file))).digest('hex'),'Publication hash mismatch: '+name);
  return {vehicles:rows.length,pages:manifest.files.length,preservedFiles:preserved.length,publicImageVersion:'v2',photoBytesDownloaded:0,artifactVerified:true};
 }

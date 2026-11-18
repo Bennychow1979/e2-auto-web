@@ -1,3 +1,4 @@
+import {insurancePaths,isInsurancePath} from './insurance-routes.mjs';
 import {translations} from './translations.mjs';
 import {staticVehiclePattern} from './vehicle-routes.mjs';
 import {loanGuidePaths,isLoanGuidePath} from './loan-guide-routes.mjs';
@@ -24,6 +25,7 @@ export function localizedURL(value, lang = language, base = globalThis.location?
   const nested=staticVehiclePattern.test(new URL(base).pathname),relative=/^(?:car|booking|showroom|index|customer|saved|sales-team)\.html(?:[?#]|$)/.test(value);
   const url = new URL(value,nested&&relative?origin+'/':base);
   if(url.origin !== origin) return url.href;
+  if(isInsurancePath(url.pathname)){url.pathname=insurancePaths[lang];return url.href;}
   if(isLoanGuidePath(url.pathname)){url.pathname=loanGuidePaths[lang];return url.href;}
   const clean = url.pathname.replace(/^\/(ms|zh)(?=\/|$)/,'').replace(/^\//,'');
   if(publicPageNames.has(clean)||staticVehiclePattern.test('/'+clean)) url.pathname = '/' + (lang === 'en' ? '' : lang + '/') + (clean === 'index.html' ? '' : clean);
