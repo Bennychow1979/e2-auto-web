@@ -5,6 +5,7 @@ create function auth.uid() returns uuid language sql stable as $$select nullif(c
 create function public.e2_is_admin() returns boolean language sql stable as $$select current_setting('request.jwt.claim.sub',true)='11111111-1111-4111-8111-111111111111'$$;
 grant usage on schema public,auth to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;`);
 await db.exec(fs.readFileSync('supabase/migrations/20261119180932_campaign_attribution.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/20261119182429_campaign_registration_consent_guard.sql','utf8'));
 const id=randomUUID(),visitor=randomUUID();
 const visit=(a=id,b=visitor,c='honda_week',d='22_zh_jazz',p='/zh/used-cars/honda-jazz/',v='2026-11-20')=>db.query('select public.e2_record_campaign_visit($1,$2,$3,$4,$5,$6) token',[a,b,c,d,p,v]);
 await db.exec('set role anon');
@@ -25,9 +26,9 @@ row=(await db.query('select * from e2_campaign_private.registrations where user_
 await db.query('update auth.users set email_confirmed_at=now() where id=$1',[user]);
 assert.equal((await db.query('select count(*)::int n from e2_campaign_private.registrations')).rows[0].n,1);
 await db.query('insert into auth.users values($1,now(),$2)',[other,{e2_customer_signup:true,e2_campaign_token:'malformed'}]);
-assert.equal((await db.query('select visit_id from e2_campaign_private.registrations where user_id=$1',[other])).rows[0].visit_id,null);
+assert.equal((await db.query('select visit_id from e2_campaign_private.registrations where user_id=$1',[other])).rows.length,0);
 const expired=await visit(randomUUID(),visitor);await db.query("update e2_campaign_private.visits set created_at=now()-interval '31 days' where token=$1",[expired.rows[0].token]);
-const old=randomUUID();await db.query('insert into auth.users values($1,now(),$2)',[old,{e2_customer_signup:true,e2_campaign_token:expired.rows[0].token}]);assert.equal((await db.query('select visit_id from e2_campaign_private.registrations where user_id=$1',[old])).rows[0].visit_id,null);
+const old=randomUUID();await db.query('insert into auth.users values($1,now(),$2)',[old,{e2_customer_signup:true,e2_campaign_token:expired.rows[0].token}]);assert.equal((await db.query('select visit_id from e2_campaign_private.registrations where user_id=$1',[old])).rows.length,0);
 await visit(randomUUID(),visitor,'tracking_qa','e2_tracking_smoke','/showroom.html');
 await db.query("select set_config('request.jwt.claim.sub',$1,false)",[user]);await db.exec('set role authenticated');await assert.rejects(db.query("select * from public.e2_campaign_report(now()-interval '1 day',now()+interval '1 day')"));await assert.rejects(db.query('select * from e2_campaign_private.registrations'));
 await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",['11111111-1111-4111-8111-111111111111']);await db.exec('set role authenticated');
