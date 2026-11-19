@@ -1,3 +1,4 @@
+import {campaignSignupData} from './campaign-tracking.mjs?v=1';
 import {ct,accountURL} from './customer-language.mjs?v=mail-save-20261119';
 import {takeLoan} from './loan-intent.js?v=flow-20261113';
 import {pendingSave,captureSave,bindSave,clearSave,saveReturnURL} from './saved-intent.js?v=mail-save-20261119';
@@ -44,7 +45,7 @@ register.onsubmit=async event=>{
  if(register.elements.password.value!==register.elements.confirm.value){note('customerAuthMessage','The passwords do not match.',true);return}
  let phone;try{phone=normalizeWhatsApp(register.elements.phone.value);if(!phone)throw Error('Enter your mobile number.')}catch(e){note('customerAuthMessage',e.message,true);return}
  lock(true);waitForMail();note('customerAuthMessage','Creating your account…');
- try{const email=register.elements.email.value.trim();const result=check(await db.auth.signUp({email,password:register.elements.password.value,options:{emailRedirectTo:redirect(),data:{e2_customer_signup:true,full_name:register.elements.full_name.value.trim(),phone,privacy_version:'2026-09-13'}}}));register.reset();login.elements.email.value=email;mode(false);
+ try{const email=register.elements.email.value.trim();const result=check(await db.auth.signUp({email,password:register.elements.password.value,options:{emailRedirectTo:redirect(),data:{...await campaignSignupData(),e2_customer_signup:true,full_name:register.elements.full_name.value.trim(),phone,privacy_version:'2026-09-13'}}}));register.reset();login.elements.email.value=email;mode(false);
  if(result.session)await hydrate(result.session);else note('customerAuthMessage',pendingSave()?'Check your inbox and Spam / Junk for the E2 confirmation email. Open the newest link to verify your account and save your chosen car automatically.':'Check your inbox and Spam / Junk for an E2 confirmation email. Open the newest link, then sign in. If you already have an account, sign in or use Forgot password.');
  }catch(e){note('customerAuthMessage',e.status===429?'Please wait before trying again. Email sending limits may apply.':'Could not complete registration. Please try again, or sign in if you already have an account.',true)}finally{lock(false)}
 };

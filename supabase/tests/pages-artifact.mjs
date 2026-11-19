@@ -13,7 +13,7 @@ test('Pages upload gate checks generated content and existing customer/PDF asset
  const headers=new Headers({'x-e2-public-image':'v2','content-type':'image/webp','cache-control':'no-store','x-content-type-options':'nosniff','content-disposition':'inline','referrer-policy':'no-referrer'});
  await buildVehicleSite(snapshot,out,{release:true,imageRequest:async(_url,options)=>{assert.equal(options.method,'HEAD');return {ok:true,headers};}});
  await t.test('a complete three-language artifact passes without a CNAME requirement',async()=>{
-  const result=await verifyPagesArtifact(snapshot,out);assert.equal(result.pages,3);assert.equal(result.preservedFiles,15);
+  const result=await verifyPagesArtifact(snapshot,out);assert.equal(result.pages,3);assert.equal(result.preservedFiles,18);
  });
  await t.test('an initially fresh artifact that ages past 30 minutes cannot pass the upload gate',async()=>{
   await assert.rejects(verifyPagesArtifact(snapshot,out,{now:Date.parse(snapshot.fetchedAt)+1800001}),/fresh public snapshot/);

@@ -11,7 +11,7 @@ import {renderStockFeeds,resolveStockSoldDates} from './build-stock-feeds.mjs';
 import {inventoryReceipt} from './inventory-refresh-receipt.mjs';
 import {categoryPath,categoryMatches} from '../vehicle-discovery.mjs';
 const root=fileURLToPath(new URL('../',import.meta.url));
-const preserved=['customer.html','customer.js','my-e2.html','my-e2.js','customer-session.mjs','car-detail-demo.css','e2-data.js','e2-config.js','documents.html','documents.js','document-preview.js','privacy/index.html','verified-model-years.json','vendor/pdfjs/pdf.mjs','vendor/pdfjs/pdf.worker.mjs'];
+const preserved=['campaign-core.mjs','campaign-tracking.mjs','campaign-privacy.html','customer.html','customer.js','my-e2.html','my-e2.js','customer-session.mjs','car-detail-demo.css','e2-data.js','e2-config.js','documents.html','documents.js','document-preview.js','privacy/index.html','verified-model-years.json','vendor/pdfjs/pdf.mjs','vendor/pdfjs/pdf.worker.mjs'];
 export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.now()}={}){
  const out=resolve(output),rows=publicRows(snapshot,{now}),manifest=JSON.parse(await readFile(join(out,'vehicle-pages-manifest.json'),'utf8'));
  assert.equal(manifest.releaseArtifact,true);assert.equal(manifest.imageGatewayVersion,'v2');assert.equal(manifest.imageGatewayCheck,'HEAD');assert.equal(manifest.imageGatewayVerified,true);
