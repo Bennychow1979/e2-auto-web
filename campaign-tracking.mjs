@@ -25,7 +25,10 @@ function acceptState(){state=nextState(state,incoming,()=>crypto.randomUUID());i
 export async function campaignSignupData(){
  // A long-lived form or another tab may have changed consent/last-touch source.
  allowed=readChoice(read(CHOICE));if(allowed!==true)return {};
- state=readState(read(STATE));const token=await measure();return token?{e2_campaign_token:token}:{};
+ const latest=readState(read(STATE));if(!latest)return {};
+ if(state?.request!==latest.request){sequence++;state=latest;if(pending)await pending}
+ else if(latest.token)state.token=latest.token;
+ const token=await measure();return token&&readChoice(read(CHOICE))===true?{e2_campaign_token:token}:{};
 }
 function setup(){
  if(!eligible||(!incoming&&!state&&allowed===null))return;
