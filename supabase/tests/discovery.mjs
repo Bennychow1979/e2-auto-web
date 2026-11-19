@@ -31,9 +31,10 @@ test('all six listing HTML documents expose full available links, Sold pages rem
    assert(!listing.includes(vehiclePath(sold.id,lang,manifest.slugs)));
    assert(html.includes('9:30')&&html.includes('6:30'));
    assert.equal((html.match(/<h1 /g)||[]).length,1);
+   assert(html.includes('src="/campaign-tracking.mjs?v=1"'));
   }
   const soldPage=await readFile(join(out,vehiclePath(sold.id,lang,manifest.slugs).slice(1),'index.html'),'utf8');
-  assert(soldPage.includes('https://schema.org/SoldOut'));assert(soldPage.includes('id="discoveryRelated"'));assert(soldPage.includes('href="'+vehiclePath(vehicleA.id,lang,manifest.slugs)+'"'));
+  assert(soldPage.includes('src="/campaign-tracking.mjs?v=1"'));assert(soldPage.includes('https://schema.org/SoldOut'));assert(soldPage.includes('id="discoveryRelated"'));assert(soldPage.includes('href="'+vehiclePath(vehicleA.id,lang,manifest.slugs)+'"'));
   const schema=JSON.parse(/id="vehicleStructuredData" type="application\/ld\+json">([^<]+)</.exec(soldPage)[1]);assert.deepEqual(schema['@type'],['Car','Product']);assert.equal(schema.offers.priceCurrency,'MYR');
   assert(soldPage.includes('"@type":"BreadcrumbList"'));
  }
@@ -43,6 +44,7 @@ test('all six listing HTML documents expose full available links, Sold pages rem
  const next=await buildVehicleSite(changed,out);assert(next.categories.some(v=>v.slug===oldCategory.slug));
  for(const lang of ['en','ms','zh']){
   const html=await readFile(join(out,categoryPath(oldCategory.slug,lang).slice(1),'index.html'),'utf8');
+  assert(html.includes('src="/e2-config.js"')&&html.includes('src="/campaign-tracking.mjs?v=1"'));
   assert(html.includes({en:'Temporarily out of stock',ms:'Stok sementara habis',zh:'暂时没货'}[lang]));assert(html.includes('https://wa.me/60122785126'));
   assert.equal((html.match(/rel="alternate"/g)||[]).length,4);assert(html.includes('rel="canonical" href="https://e2auto.my'+categoryPath(oldCategory.slug,lang)+'"'));
  }
@@ -56,10 +58,10 @@ test('untrusted inventory labels are escaped in category text and metadata',()=>
 test('legacy entry immediately redirects each language, retaining attribution, without redirecting staff previews or unknown IDs',()=>{
  const code=legacyRedirectScript().replace(/^<script[^>]*>|<\/script>$/g,'');
  for(const lang of ['en','ms','zh'])for(const preview of [false,true]){
-  let redirected;const nodes=[],route='fixed-slug',location={origin:'https://e2auto.my',pathname:'/'+(lang==='en'?'':lang+'/')+'car.html',search:'?id='+vehicleA.id+'&ref=E2TEST&sales=keep&token=drop'+(preview?'&preview=1':''),hash:'#specs',replace:url=>redirected=url};
+  let redirected;const nodes=[],route='fixed-slug',location={origin:'https://e2auto.my',pathname:'/'+(lang==='en'?'':lang+'/')+'car.html',search:'?id='+vehicleA.id+'&ref=E2TEST&sales=keep&utm_content=22_wb7988d&token=drop'+(preview?'&preview=1':''),hash:'#specs',replace:url=>redirected=url};
   const document={getElementById:()=>({textContent:JSON.stringify({[vehicleA.id]:route})}),createElement:()=>({}),head:{append:n=>nodes.push(n)}};
   runInNewContext(code,{location,document,URL,URLSearchParams});
   if(preview){assert.equal(redirected,undefined);continue;}
-  const url=new URL(redirected);assert.equal(url.pathname,'/'+(lang==='en'?'':lang+'/')+'cars/'+route+'/');assert.equal(url.searchParams.get('ref'),'E2TEST');assert.equal(url.searchParams.get('sales'),'keep');assert(!url.searchParams.has('token'));assert.equal(url.hash,'#specs');
+  const url=new URL(redirected);assert.equal(url.pathname,'/'+(lang==='en'?'':lang+'/')+'cars/'+route+'/');assert.equal(url.searchParams.get('ref'),'E2TEST');assert.equal(url.searchParams.get('sales'),'keep');assert.equal(url.searchParams.get('utm_content'),'22_wb7988d');assert(!url.searchParams.has('token'));assert.equal(url.hash,'#specs');
  }
 });
