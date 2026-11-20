@@ -1,0 +1,5 @@
+.siteHeader .staffWorkspaceNav{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.staffWorkspaceNav a{display:inline-flex;align-items:center;min-height:44px;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.4;text-decoration:none}
+.staffWorkspaceNav a:hover{text-decoration:underline;text-underline-offset:3px}
+.staffWorkspaceNav a[aria-current=page]{font-weight:650}
+@media(max-width:700px){.siteHeader .staffWorkspaceNav{justify-content:flex-start}.staffWorkspaceNav a{flex:1 1 100px}}

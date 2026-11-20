@@ -1,8 +1,7 @@
 import {updateSharing} from './profile-share.js?v=share-1';
 import {db,configured,check,friendlyError} from './e2-data.js?v=profile-1';
-import {normalizeWhatsApp,portraitBlob,unwrapProfile} from './profile-utils.js';
+import {normalizeWhatsApp,portraitBlob,unwrapProfile,staffProfileRoles as roles} from './profile-utils.js?v=office-profile-20261120';
 const $=id=>document.getElementById(id),form=$('profileForm'),fallback='assets/e2-logo.png';
-const roles={super_admin:'Super Admin',admin:'Admin',sales:'Salesman',account:'Account'};
 let me,target,superAdmin=false,saved=null,pendingBlob=null,portraitURL=null,photoRemoved=false,busy=false,dirty=false,epoch=0;
 function note(text,bad=false){$('profileMessage').textContent=text;$('profileMessage').classList.toggle('error',bad)}
 function lock(value){busy=value;$('profileFields').disabled=value;['staffPicker','reloadProfile','publishProfile','profileSignOut'].forEach(id=>$(id).disabled=value)}
@@ -22,6 +21,7 @@ $('staffPicker').onchange=()=>{if(dirty&&!confirm('Discard unsaved profile chang
 $('profileSignOut').onclick=async()=>{if(busy||(dirty&&!confirm('Discard unsaved profile changes and sign out?')))return;try{check(await db.auth.signOut());gate('Signed out.')}catch(e){note(friendlyError(e),true)}};
 if(configured)db.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT')gate('Sign in to edit your staff profile.')});
 try{if(!configured)throw Error('Workspace connection is not configured.');const session=check(await db.auth.getSession()).session;if(!session)throw Error('Sign in to edit your staff profile.');me=session.user;const member=check(await db.from('staff_memberships').select('role,active').eq('user_id',me.id).maybeSingle());if(!member?.active||!roles[member.role])throw Error('An active staff account is required.');superAdmin=member.role==='super_admin';target=new URLSearchParams(location.search).get('user')||me.id;if(!/^[0-9a-f-]{36}$/.test(target)||!check(await db.rpc('e2_profile_editor',{target})))throw Error('You cannot edit this staff profile.');
+if(member.role==='office_admin'){$('profileHome').href='intake-workspace.html';$('profileHome').textContent='Office workspace';$('profileLoans').hidden=false}
 $('accountEmail').textContent=me.email;$('accountRole').textContent=roles[member.role];$('teamLink').hidden=!superAdmin;if(superAdmin){const rows=check(await db.rpc('e2_list_staff'));for(const row of rows.filter(r=>roles[r.role])){const option=document.createElement('option');option.value=row.user_id;option.textContent=row.email+(row.active?'':' · inactive');$('staffPicker').append(option)}$('staffPicker').value=target;$('staffPickerField').hidden=false}
 $('profileGate').hidden=true;$('profileWorkspace').hidden=false;await loadProfile()}catch(e){gate(friendlyError(e))}
 window.addEventListener('beforeunload',event=>{if(busy||dirty){event.preventDefault();event.returnValue=''}});

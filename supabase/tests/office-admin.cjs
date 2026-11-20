@@ -7,7 +7,7 @@ create table storage.buckets(id text primary key,name text,public boolean,file_s
 create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text,metadata jsonb,unique(bucket_id,name));
 alter table storage.objects enable row level security;grant usage on schema public,auth,storage to anon,authenticated,service_role;
 grant select,insert,update,delete on storage.objects to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;`);
-for(const f of ['202609120001_inventory.sql','202609130002_photo_order.sql','202609130003_photo_limit_30.sql','202609130004_super_admin.sql','202609130005_staff_profiles.sql','202609130006_customers.sql','202609140006_saved_vehicles.sql','202609140007_customer_workspace.sql','202609140008_loan_validation.sql','202609140009_loan_workflow.sql','202609140010_loan_documents.sql','202609140011_guest_intake.sql','202609140012_office_admin.sql']){if(f==='202609140007_customer_workspace.sql')await db.exec('alter default privileges in schema public grant execute on functions to anon,authenticated');await db.exec(fs.readFileSync('supabase/migrations/'+f,'utf8'));}
+for(const f of ['202609120001_inventory.sql','202609130002_photo_order.sql','202609130003_photo_limit_30.sql','202609130004_super_admin.sql','202609130005_staff_profiles.sql','202609130006_customers.sql','202609140006_saved_vehicles.sql','202609140007_customer_workspace.sql','202609140008_loan_validation.sql','202609140009_loan_workflow.sql','202609140010_loan_documents.sql','202609140011_guest_intake.sql','202609140012_office_admin.sql','20261120044221_office_admin_profiles.sql']){if(f==='202609140007_customer_workspace.sql')await db.exec('alter default privileges in schema public grant execute on functions to anon,authenticated');await db.exec(fs.readFileSync('supabase/migrations/'+f,'utf8'));}
 await yes("select has_function_privilege('anon','public.e2_save_loan(uuid,jsonb,integer,bigint)','execute') value",false,'Supabase default grants do not expose loan save to anonymous users');
 await yes("select has_function_privilege('authenticated','public.e2_validate_loan_details(jsonb,boolean,numeric)','execute') value",false,'Validator remains internal despite Supabase defaults');
 const ids=Array.from({length:8},(_,i)=>'00000000-0000-4000-8000-00000000000'+(i+1));
@@ -51,5 +51,39 @@ await as(admin);check(await scalar('select count(*)::int from public.loan_applic
 await as(owner);await db.query("select public.e2_update_staff($1,'office_admin',false,2)",[admin]);await as(admin);check(await scalar('select count(*)::int from public.intake_submissions'),0,'Deactivation revokes guest enquiry access');check(await scalar('select count(*)::int from public.loan_applications'),0,'Deactivation revokes registered application access');check(await scalar("select count(*)::int from storage.objects where bucket_id='intake-documents'"),0,'Deactivation revokes file access');
 await as(owner);const added=await scalar("select public.e2_add_staff_by_email('customer5@example.test','office_admin')");check(added,other,'Super Admin can attach an existing Auth account as Office');
 await db.exec('reset role');check(await scalar("select has_function_privilege('anon','public.e2_update_staff(uuid,text,boolean,bigint)','execute')"),false,'Role update is not anonymous');
+// Profiles are independent of inventory, case assignment and user management.
+const officePhoto=other+'/10000000-0000-4000-8000-000000000001.webp';
+const profile={display_name:'Synthetic Office',position:'Office Admin',whatsapp:'60123456789',languages:'English',bio:'Applications support.'};
+const saveProfile=(target,revision,details=profile)=>db.query('select public.e2_save_profile($1,$2,$3)',[target,details,revision]);
+await as(other);
+check(await scalar('select public.e2_profile_editor($1)',[other]),true,'Office can open their own empty profile');
+check(await scalar('select public.e2_profile_editor($1)',[sales]),false,'Office cannot open another profile editor');
+await saveProfile(other,0,{...profile,is_public:true});
+check(await scalar('select is_public from public.staff_profiles where user_id=$1',[other]),false,'First Office save stays private');
+await rejects('select public.e2_publish_profile($1,true,1)',[other],'Office cannot self-publish');
+await denied(()=>saveProfile(sales,1),'Office cannot edit another staff profile');
+await denied(()=>saveProfile(other,0),'Stale Office save rejected');
+await no("update public.staff_profiles set is_public=true",'Office cannot bypass profile RPC');
+await db.query("insert into storage.objects(bucket_id,name) values('staff-photos',$1)",[officePhoto]);
+await saveProfile(other,1,{...profile,photo_path:officePhoto});
+check(await scalar("select count(*)::int from storage.objects where name=$1",[officePhoto]),1,'Office can read own private portrait');
+await rejects("insert into storage.objects(bucket_id,name) values('staff-photos',$1)",[sales+'/10000000-0000-4000-8000-000000000002.webp'],'Office cannot upload another staff portrait');
+check(await scalar('select public.e2_is_admin()'),false,'Profile access does not grant inventory management');
+await no('select * from public.e2_list_staff()','Profile access does not grant user administration');
+await as(sales);check(await scalar('select count(*)::int from public.staff_profiles where user_id=$1',[other]),0,'Other staff cannot read private Office profile');
+await as(null);check(await scalar('select count(*)::int from public.staff_profiles where user_id=$1',[other]),0,'Anonymous cannot read private Office profile');
+check(await scalar("select count(*)::int from storage.objects where name=$1",[officePhoto]),0,'Anonymous cannot read private Office portrait');
+await as(owner);check(await scalar('select public.e2_profile_editor($1)',[other]),true,'Super Admin can edit Office profile');
+await saveProfile(other,2,{...profile,photo_path:officePhoto,bio:'Edited by Super Admin'});
+await db.query('select public.e2_publish_profile($1,true,3)',[other]);
+await as(null);check(await scalar('select count(*)::int from public.staff_profiles where user_id=$1',[other]),1,'Only explicit Super Admin publication exposes Office profile');
+await as(other);await saveProfile(other,4,{...profile,photo_path:officePhoto});
+await as(null);check(await scalar('select count(*)::int from public.staff_profiles where user_id=$1',[other]),0,'Office edit returns profile to private');
+await as(admin);check(await scalar('select public.e2_profile_editor($1)',[admin]),false,'Inactive Office cannot edit own profile');
+await denied(()=>saveProfile(admin,1),'Inactive Office save rejected');
+await as(customer);check(await scalar('select public.e2_profile_editor($1)',[customer]),false,'Customer remains outside staff profile editor');
+await as(owner);check(await scalar("select count(*)::int from public.staff_access_audit where target_user=$1 and action='SAVE_PROFILE'",[other]),4,'Office profile saves retain audit records');
+const {staffProfileRoles}=await import('../../profile-utils.js');
+check(Object.keys(staffProfileRoles).sort(),['account','admin','office_admin','sales','super_admin'],'Profile and Users screens share the supported roles');
 await db.close();console.log(passed+' Office Admin permission checks passed.');
 })().catch(e=>{console.error(e);process.exit(1)});
