@@ -1,5 +1,5 @@
 import {db as sb,configured,check} from './e2-data.js?v=rental-1';
-import {createRentalStore} from './rental-data.mjs?v=1';
+import {createRentalStore} from './rental-data.mjs?v=move-plate-2';
 import {loadRentalStock,plateKey,rentalStockMatches,rentalStockDetails} from './rental-stock.mjs?v=1';
 let authEpoch=0,currentUser=null;
 async function authorized(){
@@ -18,7 +18,7 @@ function gate(message='请用已获授权的员工账号登录。'){
  $('#app').hidden=true;$('#hdr').hidden=true;$('#login').hidden=false;$('#btnAccess').hidden=true;$('#auditLink').hidden=true;$('#returnDashboard').hidden=true;
  $('#stats').replaceChildren();$('#rows').replaceChildren();$('#panel').replaceChildren();$('#drawer').classList.remove('open');
  $('#who').textContent='';$('#fQ').value='';$('#fPartner').innerHTML='<option value="">全部租客来源 / All sources</option>';$('#rentalStatus').textContent='';$('#toast').textContent='';$('#toast').classList.remove('show');$('#selCount').textContent='';$('#selbar').hidden=true;
- window.__openId=null;window.__editingId=null;window.__dirty=false;resetPanel();
+ window.__openId=null;window.__editingId=null;window.__dirty=false;window.__pendingOpen=null;resetPanel();
  $('#loginErr').textContent=message;
 }
 
@@ -69,6 +69,7 @@ async function saveDetail(r,data,action,prefix){
   if(token!==authEpoch)return;
   for(const [id,value] of remaining){
     if(id.startsWith('vr_')&&!document.getElementById(id))askVoid(r.id,Number(id.slice(3)));
+    if(id.startsWith('eh_')&&!document.getElementById(id))askEditHand(r.id,Number(id.split('_')[1]));
     const el=document.getElementById(id);if(!el)continue;
     if(el.type==='checkbox')el.checked=value;else el.value=value;
     panelDrafts.set(id,value);
@@ -120,6 +121,7 @@ function derive(c){
     const monthsDue = t < fp ? 0 : (t.getFullYear()-fp.getFullYear())*12 + (t.getMonth()-fp.getMonth()) + (t.getDate() >= fp.getDate() ? 1 : 0);
     r.od_amount_est = Math.max(0, monthsDue - r.paid_count) * (Number(c.monthly)||0);
   } else { r.next_due = null; r.days_left = null; r.od_amount_est = 0; }
+  r.moved = c.car_status === 'MOVED';
   r.status = ['RETURNED','OWNER TAKE BACK','REDEEM','AUCTIONED','LOST'].includes(c.car_status) ? 'CLOSED' : r.days_left == null ? 'OK' : r.days_left < 0 ? 'OVERDUE' : r.days_left <= 3 ? 'URGENT' : r.days_left <= 7 ? 'SOON' : r.days_left <= 14 ? 'UPCOMING' : 'OK';
   return r;
 }
@@ -146,7 +148,8 @@ async function boot(session){
    const sd=await db.doc('settings/lists').get();if(token!==authEpoch)return;
    if(!sd.exists)throw Error('Rental settings unavailable');
    const d=sd.data();settings={agents:d.agents||[],financiers:d.financiers||[],partners:d.partners||[]};settingsRevision=d._rental_revision;fins=allFins();
-   rows=snap.docs.filter(d=>d.exists).map(d=>({id:d.id,...derive(d.data())}));sortRows();
+   rows=snap.docs.filter(d=>d.exists).map(d=>({id:d.id,...derive(d.data())})).filter(r=>!r.moved);sortRows();
+   if(window.__pendingOpen&&rows.some(r=>r.id===window.__pendingOpen)){const id=window.__pendingOpen;window.__pendingOpen=null;setTimeout(()=>{if(me&&!$('#drawer').classList.contains('open'))openDetail(id);},0);}
    const cur=$('#fPartner').value;
    $('#fPartner').innerHTML='<option value="">全部租客来源 / All sources</option><option value="DIRECT">直接租客 Direct</option>'+allPartners().map(a=>'<option value="'+esc(a)+'">'+esc(a)+'</option>').join('');
    $('#fPartner').value=cur;render();
@@ -257,15 +260,26 @@ async function saveContract(v, existing){
     if (v.check_note_auto) v.check_note = v.check_note_auto; delete v.check_note_auto;
     v.created_at = new Date().toISOString();
     await ref.set(v);
+    return v.plate.replace(/[^A-Z0-9]/g,'-').replace(/^-+|-+$/g,'');
   } else {
-    if (v.plate !== existing.plate) throw { code: 'plate', message: '车牌不能改，请删除后重新新增' };
     const body = { ...existing }; delete body.id;
     ['paid_count','next_due','days_left','status','od_amount_est','pay_bank','pay_to','handovers_live','holder','holder_date','holder_phone','rented','partner','actual_rent','check','adv_due','adv_lost','adv_status_derived'].forEach(k => delete body[k]);
     body.handovers = existing.handovers; body.actual_rent = existing.actual_rent ?? null;
-    if (v.check_note_auto && !body.check_note) body.check_note = v.check_note_auto; delete v.check_note_auto;
-    if (v.financier === 'CARSOME' && v.jompay_ref2 && /^CARSOME REF-2/i.test(body.check_note||'')) body.check_note = '';
+    // Carry computed fields in v so both ordinary saves and atomic moves receive them.
+    if (v.check_note_auto && !body.check_note) v.check_note = v.check_note_auto;
+    delete v.check_note_auto;
+    if (v.financier === 'CARSOME' && v.jompay_ref2 && /^CARSOME REF-2/i.test(body.check_note||'')) v.check_note = '';
+    if (v.plate !== existing.plate) {
+      // Plate correction: one RPC moves the record atomically (new id created, old id marked MOVED, or nothing at all).
+      const newId = v.plate.replace(/[^A-Z0-9]/g,'-').replace(/^-+|-+$/g,'');
+      if (!newId) throw { code: 'plate', message: '车牌不合法 Invalid plate' };
+      const patch = { ...v }; delete patch.plate;
+      const moved = await db.movePlate(existing.id, newId, v.plate, existing._rental_revision, patch);
+      return moved.record.id || newId;
+    }
     Object.assign(body, v); body.history = stamp(existing, '修改贷款/车主资料'); body.updated_at = new Date().toISOString();
     await ref.set(body,existing._rental_revision);
+    return existing.id;
   }
 }
 async function addPayment(r, p){
@@ -279,6 +293,19 @@ async function removePayment(r, seq){
 async function addHandover(r, h){
   const list = [...r.handovers, h];
   await db.collection('contracts').doc(r.id).update({ handovers: list, history: stamp(r, `交接：${h.to}`) }, r._rental_revision);
+}
+async function editHandover(r, idx, patch){
+  const h = r.handovers[idx]; if (!h || h.void) throw { code: 'void', message: '已作废的记录不能改' };
+  const before = {}; Object.keys(patch).forEach(k => { if ((h[k] ?? '') !== (patch[k] ?? '')) before[k] = h[k] ?? ''; });
+  if (!Object.keys(before).length) return false;
+  const edited = { ...h, ...patch, edited_by: me.name || me.id || '?', edited_at: new Date().toISOString(), edit_log: [...(Array.isArray(h.edit_log) ? h.edit_log : []), { at: new Date().toISOString(), by: me.name || me.id || '?', before }].slice(-10) };
+  const list = r.handovers.map((x,i) => i === idx ? edited : x);
+  const data = { handovers: list };
+  // Only the current (last non-void) rent-out defines the car's current upfront; editing history leaves the summary alone.
+  const live = list.filter(x => !x.void);
+  if (live[live.length - 1] === edited && edited.type === 'OUT' && 'rent' in patch) data.actual_rent = patch.rent ?? null;
+  await patch_(r, data, `修改交接 #${idx+1}: ${Object.keys(before).join(', ')}`, `eh_${idx}_`);
+  return true;
 }
 async function removeHandover(r, idx){
   const list = r.handovers.filter((_,i) => i !== idx);
@@ -478,7 +505,8 @@ function validate(){
     if (req && (x === null || x === '') && !(k === 'account_no' && v.financier === 'CARSOME')) err = '必填 Required';
     else if (t === 'number' && x !== null && (isNaN(x) || x < 0 || (x === 0 && k !== 'paid_count_excel'))) err = '只能是正数 Positive number only';
     else if (k === 'tenure' && x && (x < 12 || x > 120)) err = '期数应在 12 到 120 之间';
-    else if (k === 'plate' && !window.__editingId && rows.some(rr => rr.plate === x || rr.id === x.replace(/[^A-Z0-9]/g,'-'))) err = '这个车牌已经在系统里 Plate already exists';
+    else if (k === 'plate' && rows.some(rr => rr.id !== window.__editingId && plateKey(rr.plate) === plateKey(x))) err = '这个车牌已经在系统里 Plate already exists';
+    if (k === 'plate' && window.__editingId) { const pm = $('#plateMove'); if (pm) pm.hidden = !(x && x !== (rows.find(rr => rr.id === window.__editingId)||{}).plate); }
     else if (k === 'account_no') err = checkAccount(v.financier, x, v.plate);
     else if (k === 'jompay_ref2' && v.financier === 'CARSOME' && x && !/^\d{6,}$/.test(x)) err = 'Ref-2 只能是数字 Digits only';
     $('#e_'+k).textContent = err; $('#w_'+k).classList.toggle('err', !!err);
@@ -554,7 +582,7 @@ function openForm(r){
   $('#panel').innerHTML = `<h2>${r?'修改车辆资料 Edit '+esc(r.plate):'新增车辆 Add car'}<button class="x" onclick="closeDrawer()">×</button></h2>${r?'':stockPickerHTML()}
     <p class="hint">Admin 栏位：贷款与车主资料。户口号码只能从 LOU 抄，格式不对存不进去。 Admin section: loan & owner data. Copy the account number from the LOU only.</p>` + formHtml(r||{});
   window.__editingId = r ? r.id : null;
-  if (r) { $('#f_plate').readOnly = true; }
+  if (r) { $('#f_plate').insertAdjacentHTML('afterend', '<div id="plateMove" class="hint" hidden style="color:var(--warn)">⚠ 改车牌会把整笔记录（付款、交接、历史）一次过搬到新车牌，旧车牌保留为「已搬移」并从列表隐藏，操作记录可查。 Changing the plate moves this whole record to the new plate in one step; the old one is kept as MOVED and hidden from lists.</div>'); }
   $('#drawer').classList.add('open');
   $('#panel').querySelectorAll('input,select').forEach(el => el.addEventListener('input', validate));
   $('#sanityOk').addEventListener('change', validate);
@@ -584,11 +612,14 @@ function openForm(r){
     if (!ok) { toast($('#sanity').hidden ? '还有栏位不对，请看红色提示 Fix the red fields' : '月供和贷款额对不上，请先对 LOU 再勾确认 Check LOU first'); return; }
     if(selectedStock&&plateKey(v.plate)===plateKey(selectedStock.plate))v.stock_vehicle_id=selectedStock.id;
     $('#btnSave').disabled = true;
-    try { await saveContract(v, r); }
+    let savedId;
+    try { savedId = await saveContract(v, r); }
     catch (e) { if($('#btnSave'))$('#btnSave').disabled = false; toast('保存失败 Save failed: ' + (e.message || e.code)); return; }
     if(!me)return;if($('#btnSave'))$('#btnSave').disabled = false;
     panelDrafts.clear();window.__dirty=false;
-    toast(r ? '已保存 Saved' : '已新增 Added ' + v.plate); r ? openDetail(r.id) : closeDrawer();
+    const movedTo = r && savedId && savedId !== r.id ? savedId : null;
+    toast(movedTo ? `已改车牌并搬到 ${v.plate}` : r ? '已保存 Saved' : '已新增 Added ' + v.plate);
+    if (movedTo) { closeDrawer(); window.__pendingOpen = movedTo; } else { r ? openDetail(r.id) : closeDrawer(); }
   };
 }
 $('#btnAdd').onclick = () => openForm(null);
@@ -604,6 +635,7 @@ $('#drawer').addEventListener('click', e => { if (e.target === e.currentTarget) 
 async function patch(r, data, action,prefix='c_'){
   await saveDetail(r,data,action,prefix);
 }
+const patch_ = patch;
 async function rentOut(r){
   const to = $('#h_to').value.trim().toUpperCase(), phone = $('#h_phone').value.trim(), d = $('#h_date').value, rent = Number($('#h_rent').value) || null, note = UP($('#h_note').value.trim());
   const src = $('#h_partner').value; if (!src) { toast('请选来源 Source'); return; }
@@ -622,6 +654,57 @@ async function returnCar(r){
   const h = { type:'IN', how, to:'', date:d, note, by: me.name || me.id || '?', at: new Date().toISOString() };
   await patch(r, { handovers: [...r.handovers, h] }, `拉回 ${how} ${note||''}`.trim(),'r_');
   toast(`${r.plate} 已记录拉回`);
+}
+function editingHandoverIndex(){ const m = [...panelDrafts.keys()].map(k => /^eh_(\d+)_/.exec(k)).find(Boolean); return m ? Number(m[1]) : (document.querySelector('[id^="eh_"][id$="_to"],[id^="eh_"][id$="_how"]') ? Number(document.querySelector('[id^="eh_"]').id.split('_')[1]) : null); }
+function askEditHand(cid, idx){
+  const r = panelRecord?.id===cid?panelRecord:null; if (!r) return;
+  const h = r.handovers[idx]; const row = document.getElementById('hr_'+idx); if (!h || !row || h.void) return;
+  const open = editingHandoverIndex();
+  if (open !== null && open !== idx) { toast(`先保存或取消第 ${open+1} 条的编辑 Finish editing entry #${open+1} first`); document.getElementById('hr_'+open)?.scrollIntoView({block:'center'}); return; }
+  const P = `eh_${idx}_`;
+  const sel = (k, opts, cur) => `<select id="${P}${k}">${opts.map(o => `<option value="${esc(o[0])}" ${o[0]===cur?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
+  const inp = (k, val, ph, type='text', style='') => `<input id="${P}${k}" type="${type}" value="${esc(val ?? '')}" placeholder="${ph}" style="font-size:12px;padding:4px 6px;${style}">`;
+  const fields = h.type === 'OUT'
+    ? `${sel('partner',[['DIRECT','直接租客 Direct'],...allPartners().map(p=>[p,p])], h.partner||'DIRECT')} ${inp('to',h.to,'租给谁 To','text','width:150px')} ${inp('phone',h.phone,'电话 Phone','tel','width:120px')} ${inp('date',h.date,'','date')} ${inp('rent',h.rent??'','Upfront RM','number','width:100px')} ${inp('note',h.note,'备注 Note','text','width:160px')}`
+    : `${sel('how',[['REPO','REPO'],['REDEEM','REDEEM'],['RETURN','RETURN']], h.how||'RETURN')} ${inp('date',h.date,'','date')} ${inp('note',h.note,'备注 Note','text','width:200px')}`;
+  row.innerHTML = `<td>${idx+1}</td><td colspan="5"><div class="row" style="gap:6px">${fields}</div></td><td style="white-space:nowrap"><button class="btn primary" style="font-size:12px;padding:3px 8px" onclick="saveEditHand('${esc(cid)}',${idx})">保存 Save</button> <button class="btn" style="font-size:12px;padding:3px 8px" onclick="cancelEditHand('${esc(cid)}',${idx})">取消</button></td>`;
+  // Register the opened editor as a draft so auto-refresh / Realtime cannot wipe it before the user types.
+  row.querySelectorAll('input,select').forEach(el => panelDrafts.set(el.id, fieldValue(el)));
+  window.__dirty = true; discardArmed = false;
+  row.querySelector(`#${P}${h.type==='OUT'?'to':'date'}`)?.focus();
+}
+function cancelEditHand(cid, idx){
+  if (panelRecord?.id !== cid) return;
+  const row = document.getElementById('hr_'+idx), h = panelRecord.handovers[idx];
+  if (!row || !h) return;
+  for (const k of [...panelDrafts.keys()]) if (k.startsWith(`eh_${idx}_`)) panelDrafts.delete(k);
+  // Replace only this editor; rebuilding the detail would discard unrelated drafts.
+  row.outerHTML = handoverRow(h, idx, cid);
+  window.__dirty = panelDrafts.size > 0;
+  discardArmed = false;
+}
+async function saveEditHand(cid, idx){
+  const r = panelRecord?.id===cid?panelRecord:null; if (!r) return;
+  const h = r.handovers[idx]; const row = document.getElementById('hr_'+idx); if (!h || !row) return;
+  const g = k => (row.querySelector(`#eh_${idx}_${k}`)?.value ?? '').trim();   // read from this row only
+  let patch;
+  if (h.type === 'OUT') {
+    const src = g('partner'), to = UP(g('to')), phone = g('phone'), date = g('date'), rentRaw = g('rent');
+    if (!to) { toast('请填租给谁 To whom'); return; }
+    if (!phone) { toast('请填电话 Phone'); return; }
+    if (!date) { toast('请选日期 Date'); return; }
+    if (rentRaw && !(Number(rentRaw) >= 0)) { toast('Upfront 只能是数字'); return; }
+    patch = { to, phone, partner: src === 'DIRECT' ? '' : src, date, rent: rentRaw ? Number(rentRaw) : null, note: UP(g('note')) };
+  } else {
+    const how = g('how'), date = g('date');
+    if (!date) { toast('请选日期 Date'); return; }
+    patch = { how, date, note: UP(g('note')) };
+  }
+  try {
+    const changed = await editHandover(r, idx, patch);
+    if (!changed) { toast('没有改动 No change'); cancelEditHand(cid, idx); return; }
+    toast(`已修改交接 #${idx+1}`);
+  } catch (e) { toast('失败 Failed: ' + (e.message||e.code)); }
 }
 function askVoid(cid, idx){
   const cell = document.getElementById('vh_'+idx); if (!cell) return;
@@ -670,9 +753,9 @@ async function saveExtras(r){
 function handoverRow(h, i, id){
   const v = h.void;
   const typ = h.type === 'IN' ? `<span class="chip s-UPCOMING">${h.how||'拉回 IN'}</span>` : '<span class="chip s-OK">租出 OUT</span>';
-  return `<tr style="${v?'opacity:.5;text-decoration:line-through':''}"><td>${i+1}</td><td>${typ}</td><td><b>${esc(h.to||'—')}</b>${h.phone?'<br><span class="hint">'+esc(h.phone)+'</span>':''}${h.partner?'<br><span class="chip s-UNK" style="font-size:11px">'+esc(h.partner)+'</span>':''}</td><td>${esc(h.date||'')}</td><td>${h.rent?money(h.rent):''}</td>
-    <td>${esc(h.note||'')}${h.by?' <span class="hint">· '+esc(h.by)+'</span>':''}${v?`<br><span class="hint">作废 VOID by ${esc(h.void_by||'')} ${fd((h.void_at||'').slice(0,10))}: ${esc(h.void_reason||'')}</span>`:''}</td>
-    ${canEdit()?`<td id="vh_${i}">${v?'':`<button class="btn" style="font-size:12px;padding:3px 8px" onclick="askVoid('${esc(id)}',${i})">作废 Void</button>`}</td>`:''}</tr>`;
+  return `<tr id="hr_${i}" style="${v?'opacity:.5;text-decoration:line-through':''}"><td>${i+1}</td><td>${typ}</td><td><b>${esc(h.to||'—')}</b>${h.phone?'<br><span class="hint">'+esc(h.phone)+'</span>':''}${h.partner?'<br><span class="chip s-UNK" style="font-size:11px">'+esc(h.partner)+'</span>':''}</td><td>${esc(h.date||'')}</td><td>${h.rent?money(h.rent):''}</td>
+    <td>${esc(h.note||'')}${h.by?' <span class="hint">· '+esc(h.by)+'</span>':''}${h.edited_at?`<br><span class="hint">已修改 edited by ${esc(h.edited_by||'')} ${fd((h.edited_at||'').slice(0,10))}${Array.isArray(h.edit_log)&&h.edit_log.length?' · 原本 was: '+esc(Object.entries(h.edit_log[h.edit_log.length-1].before||{}).map(([k,val])=>k+'='+(val===''||val===null?'—':val)).join(', ')):''}</span>`:''}${v?`<br><span class="hint">作废 VOID by ${esc(h.void_by||'')} ${fd((h.void_at||'').slice(0,10))}: ${esc(h.void_reason||'')}</span>`:''}</td>
+    ${canEdit()?`<td id="vh_${i}" style="white-space:nowrap">${v?'':`<button class="btn" style="font-size:12px;padding:3px 8px" onclick="askEditHand('${esc(id)}',${i})">编辑 Edit</button> <button class="btn" style="font-size:12px;padding:3px 8px" onclick="askVoid('${esc(id)}',${i})">作废 Void</button>`}</td>`:''}</tr>`;
 }
 async function openDetail(id, refresh){
   const r = rows.find(x => x.id === id); if (!r) return;
@@ -832,7 +915,7 @@ async function openAccess(){
  });
 }
 $('#btnAccess').onclick=()=>openAccess().catch(()=>toast('仅 Super Admin 可管理租车权限。'));
-Object.assign(window,{$,closeDrawer,toast,savePartnerPhone,voidHand,askVoid,copyWA});
+Object.assign(window,{$,closeDrawer,toast,savePartnerPhone,voidHand,askVoid,askEditHand,saveEditHand,cancelEditHand,copyWA});
 if(!configured){$('#loginErr').textContent='系统连接未配置。';$('#btnIn').disabled=true;}
 else{
  sb.auth.onAuthStateChange((event,session)=>{

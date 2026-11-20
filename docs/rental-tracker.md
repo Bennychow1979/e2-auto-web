@@ -156,3 +156,44 @@ Inventory results are scoped to the current form and auth epoch, never persisted
 in browser storage. Late results after closing, changing panels or signing out
 are ignored. Tests cover pagination, denied access, partial plate filtering,
 autofill/save, duplicates, manual fallback, failed reads/retry and late responses.
+
+## Plate correction (`rental_move_plate`) and handover edits (2026-11-20)
+
+**Plate correction is a single RPC.** The plate is the record id, so a correction
+is a move. `public.rental_move_plate(old_id, new_id, new_plate, expected_revision,
+patch)` does the whole move inside one function call, i.e. one transaction:
+takes the shared contract plate-identity lock, then locks both ids in a fixed order, checks `rental_ok()`, the old record's
+revision (errcode 40001 on mismatch), that the old record is not already MOVED
+and that the new id and normalized live plate are free (23505), then inserts the new row (payments,
+handovers, history copied, `plate_changed_from/at`, `pay_reference` renamed when
+it was the old plate, history entry with the actor from `rental_identity()`) and
+updates the old row to `car_status: MOVED` with `moved_to`. Any failure rolls back
+both writes, so there is never a second live record or a lost payment. `patch`
+lets the admin form submit its other field edits in the same transaction; it may
+not touch plate, payments, handovers, history, car_status or moved_to.
+`rental_save` still refuses plate changes and now freezes MOVED rows, rejects forged
+move markers, and shares the normalization check and first lock. The audit trigger
+records INSERT(new) + UPDATE(old) with `auth.uid()`. Later saves have separate audits. MOVED records are hidden from every list,
+count and export in the page but remain in the table and in `rental_audit`.
+
+**Handover edits.** A non-void handover can be edited inline. Inputs are
+scoped per row (`eh_<index>_<field>`), only one editor may be open at a time,
+and opening an editor registers its fields as panel drafts so the 15 s refresh,
+Realtime reloads and other-section saves cannot wipe it (the draft restore
+re-opens the editor and refills the values). Saving goes through `rental_save`
+with the record revision; the entry keeps its type and gains `edited_by`,
+`edited_at` and an `edit_log` of previous values (last 10). The car's current
+upfront (`actual_rent`) follows only the last non-void rent-out: editing that
+entry's upfront updates the summary, editing an older entry does not. Cancel and
+no-op save replace only that handover row, preserving other unsaved sections.
+
+The migration also replaces `rental_save` with the same signature and grants; it
+does not alter table structures or rewrite rows. All contract-writing RPCs take
+the shared lock before row/id locks, so alias creates and moves cannot race.
+This briefly serializes rental writes (settings are unaffected). Direct owner /
+service-role writes are outside this RPC guarantee. Existing conflicting live
+plates must be resolved before relying on the uniqueness rule.
+
+CARSOME automatic check notes and payment references are computed once and included
+in either the normal save or the move patch. Manual check notes are preserved.
+Deploy the migration before publishing the versioned JS modules.

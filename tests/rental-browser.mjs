@@ -57,9 +57,77 @@ try{
    await page.locator('#p_amt').fill('500');await page.locator('#btnPay').click();await expect.poll(()=>page.evaluate(()=>rentalFixture.snapshot().contracts[0].data.payments.length)).toBe(1);
    assert.equal(await page.evaluate(()=>rentalFixture.snapshot().contracts[0].data.payments[0].by),role==='super_admin'?'Demo Manager':'demo@example.test');
    await expect(page.locator('#panel')).toContainText('instalment #2');
-   await page.locator('#x_notes').fill('KEEP ON FAILURE');await page.evaluate(()=>rentalFixture.conflict());await page.locator('#btnExtras').click();await expect(page.locator('#toast')).toContainText('Record changed');await page.evaluate(()=>rentalFixture.refresh());await expect(page.locator('#x_notes')).toHaveValue('KEEP ON FAILURE');await page.locator('#btnPay').click();await expect(page.locator('#toast')).toContainText('Record changed');assert.equal(await page.evaluate(()=>rentalFixture.snapshot().contracts[0].data.payments.length),1);
+   if(role==='super_admin'){
+    // two rent-outs with a return in between: entry #1 is history, entry #3 is the current rent-out
+    const rentOut=async(to,rent)=>{await page.locator('#h_partner').selectOption('DIRECT');await page.locator('#h_to').fill(to);await page.locator('#h_phone').fill('010-0000000');await page.locator('#h_rent').fill(rent);await page.locator('#btnRentOut').click();};
+    assert.equal(await page.evaluate(()=>rentalFixture.snapshot().contracts[0].data.handovers.length),1);  // DRAFT RENTER from the earlier steps
+    await page.locator('#r_type').selectOption('RETURN');await page.locator('#btnReturn').click();await expect.poll(()=>page.evaluate(()=>rentalFixture.snapshot().contracts[0].data.handovers.length)).toBe(2);
+    await rentOut('second renter','100');await expect.poll(()=>page.evaluate(()=>rentalFixture.snapshot().contracts[0].data.handovers.length)).toBe(3);
+    await expect(page.locator('#panel')).toContainText('收到 upfront RM100');
+    // P1: only one editor at a time, and each row reads its own inputs
+    await page.locator('#hr_0 button',{hasText:'编辑'}).click();await expect(page.locator('#eh_0_to')).toHaveValue('DRAFT RENTER');
+    await page.locator('#hr_2 button',{hasText:'编辑'}).click();await expect(page.locator('#toast')).toContainText('先保存或取消');await expect(page.locator('#eh_2_to')).toHaveCount(0);
+    // P1: auto-refresh / Realtime must not wipe an open editor, even before typing
+    await page.evaluate(()=>rentalFixture.refresh());await page.waitForTimeout(300);await expect(page.locator('#eh_0_to')).toHaveValue('DRAFT RENTER');
+    await page.locator('#eh_0_phone').fill('011-1111111');await page.evaluate(()=>rentalFixture.refresh());await page.clock.runFor(16000);await expect(page.locator('#eh_0_phone')).toHaveValue('011-1111111');
+    // editing history entry #1 must not change the current upfront summary
+    await page.locator('#eh_0_rent').fill('999');await page.locator('#hr_0 button',{hasText:'保存'}).click();
+    await expect.poll(()=>page.evaluate(()=>rentalFixture.snapshot().contracts[0].data.handovers[0].phone)).toBe('011-1111111');
+    let c=await page.evaluate(()=>rentalFixture.snapshot().contracts[0].data);assert.equal(c.handovers[0].rent,999);assert.equal(c.handovers[0].edit_log[0].before.phone,'0123456789');assert.equal(c.handovers[0].edited_by,'Demo Manager');assert.equal(c.actual_rent,100);
+    await expect(page.locator('#panel')).toContainText('收到 upfront RM100');await expect(page.locator('#hr_0')).toContainText('已修改');
+    // P2: editing the current rent-out's upfront updates the summary
+    await page.locator('#hr_2 button',{hasText:'编辑'}).click();await page.locator('#eh_2_rent').fill('200');await page.locator('#hr_2 button',{hasText:'保存'}).click();
+    await expect.poll(()=>page.evaluate(()=>rentalFixture.snapshot().contracts[0].data.actual_rent)).toBe(200);await expect(page.locator('#panel')).toContainText('收到 upfront RM200');await expect(page.locator('tr[data-id="DEMO1"]')).toContainText('RM200');
+    // cancel leaves nothing dirty; a no-op save is reported
+    await page.locator('#hr_1 button',{hasText:'编辑'}).click();await page.locator('#hr_1 button',{hasText:'取消'}).click();await expect(page.locator('#eh_1_date')).toHaveCount(0);assert.equal(await page.evaluate(()=>window.__dirty),false);
+    await page.locator('#hr_1 button',{hasText:'编辑'}).click();await page.locator('#hr_1 button',{hasText:'保存'}).click();await expect(page.locator('#toast')).toContainText('没有改动');await expect(page.locator('#eh_1_date')).toHaveCount(0);
+
+    // Cancel and no-op handover saves preserve unrelated drafts, including across refresh.
+    await page.locator('#p_note').fill('KEEP PAYMENT DRAFT');
+    await page.locator('#x_notes').fill('KEEP NOTES DRAFT');
+    for(const action of ['取消','保存']){
+     await page.locator('#hr_1 button',{hasText:'编辑'}).click();
+     await page.locator('#hr_1 button',{hasText:action}).click();
+     await expect(page.locator('#eh_1_date')).toHaveCount(0);
+     await page.evaluate(()=>rentalFixture.refresh());await page.clock.runFor(16000);
+     await expect(page.locator('#p_note')).toHaveValue('KEEP PAYMENT DRAFT');
+     await expect(page.locator('#x_notes')).toHaveValue('KEEP NOTES DRAFT');
+     assert.equal(await page.evaluate(()=>window.__dirty),true);
+    }
+    // Saving another section restores an open handover editor and its unsaved values.
+    await page.locator('#hr_0 button',{hasText:'编辑'}).click();await page.locator('#eh_0_phone').fill('012-2222222');
+    await page.locator('#btnExtras').click();await expect(page.locator('#eh_0_phone')).toHaveValue('012-2222222');
+    await expect(page.locator('#p_note')).toHaveValue('KEEP PAYMENT DRAFT');
+    await page.locator('#hr_0 button',{hasText:'取消'}).click();
+    await page.evaluate(()=>{closeDrawer();closeDrawer();});await page.locator('tr[data-id="DEMO1"] b').first().click();
+
+    // P1: plate correction is one RPC — a failed move changes nothing and leaves no duplicate
+    await page.locator('#btnEdit').click();await expect(page.locator('#f_plate')).toHaveValue('DEMO1');await page.locator('#f_plate').fill('DEMO2');await expect(page.locator('#plateMove')).toBeVisible();
+    await page.evaluate(()=>rentalFixture.conflict());await page.locator('#btnSave').click();await expect(page.locator('#toast')).toContainText('Record changed');
+    c=await page.evaluate(()=>rentalFixture.snapshot().contracts);assert.equal(c.length,1);assert.equal(c[0].data.car_status,'SOLD');assert.equal(c[0].data.plate,'DEMO1');
+    await expect(page.locator('#f_plate')).toHaveValue('DEMO2');  // form kept for retry after refresh
+    await page.evaluate(()=>{closeDrawer();closeDrawer();});await page.evaluate(()=>rentalFixture.refresh());await page.clock.runFor(100);await page.locator('tr[data-id="DEMO1"] b').first().click();await page.locator('#btnEdit').click();await page.locator('#f_plate').fill('DEMO2');await page.locator('#f_financier').selectOption('CARSOME');await page.locator('#btnSave').click();
+    await expect(page.locator('#toast')).toContainText('DEMO2');
+    await expect.poll(()=>page.evaluate(()=>rentalFixture.snapshot().contracts.length)).toBe(2);
+    c=await page.evaluate(()=>rentalFixture.snapshot().contracts);const moved=c.find(x=>x.id==='DEMO1'),fresh=c.find(x=>x.id==='DEMO2');
+    assert.equal(moved.data.car_status,'MOVED');assert.equal(moved.data.moved_to,'DEMO2');assert.equal(fresh.data.plate,'DEMO2');assert.equal(fresh.data.plate_changed_from,'DEMO1');assert.equal(fresh.data.payments.length,1);assert.equal(fresh.data.handovers.length,3);assert.equal(fresh.revision,1);assert.match(fresh.data.check_note,/^CARSOME REF-2/);assert.equal(fresh.data.pay_reference,'DEMO2');
+    await expect(page.locator('#rentalStatus')).toContainText('已读取 1 台');await expect(page.locator('#rows')).toContainText('DEMO2');await expect(page.locator('tr[data-id="DEMO1"]')).toHaveCount(0);
+    await expect(page.locator('#p_date')).toBeVisible();await expect(page.locator('#panel')).toContainText('DEMO2');  // moved record reopened automatically
+
+    // Completing Ref-2 while moving again clears only the automatic warning.
+    await page.locator('#btnEdit').click();await page.locator('#f_plate').fill('DEMO3');await page.locator('#f_jompay_ref2').fill('12345678');await page.locator('#btnSave').click();
+    await expect.poll(()=>page.evaluate(()=>rentalFixture.snapshot().contracts.find(x=>x.id==='DEMO3')?.data.check_note)).toBe('');
+    await expect(page.locator('#p_date')).toBeVisible();await expect(page.locator('#panel h2').first()).toContainText('DEMO3');
+    assert.equal(await page.evaluate(()=>rentalFixture.snapshot().contracts.find(x=>x.id==='DEMO3').data.pay_reference),'DEMO3');
+    // Adding a punctuation alias is rejected by the form before a save.
+    await page.evaluate(()=>{closeDrawer();document.querySelector('#btnAdd').click();});await page.locator('#f_plate').fill('DEMO-3');
+    await expect(page.locator('#e_plate')).toContainText('Plate already exists');
+    await page.evaluate(()=>{closeDrawer();closeDrawer();});await page.locator('tr[data-id="DEMO3"] b').first().click();
+
+   }
+   await page.locator('#x_notes').fill('KEEP ON FAILURE');await page.evaluate(()=>rentalFixture.conflict());await page.locator('#btnExtras').click();await expect(page.locator('#toast')).toContainText('Record changed');await page.evaluate(()=>rentalFixture.refresh());await expect(page.locator('#x_notes')).toHaveValue('KEEP ON FAILURE');await page.locator('#btnPay').click();await expect(page.locator('#toast')).toContainText('Record changed');assert.equal(await page.evaluate(()=>rentalFixture.snapshot().contracts.find(x=>x.data.car_status!=='MOVED').data.payments.length),1);
    await page.evaluate(()=>{closeDrawer();closeDrawer();window.scrollTo(0,0);document.querySelector('#toast').classList.remove('show');});await page.screenshot({path:'test-results/rental-'+name+'.png',fullPage:true});
-   await page.locator('tr[data-id="DEMO1"] b').first().click();await page.locator('#p_note').fill('PRIVATE DRAFT');
+   await page.locator('tr.r b').first().click();await page.locator('#p_note').fill('PRIVATE DRAFT');
    await page.evaluate(()=>rentalFixture.revoke());await expect(page.locator('#app')).toBeHidden();await expect(page.locator('#returnDashboard')).toBeHidden();await expect(page.locator('#rows')).toBeEmpty();await expect(page.locator('#panel')).toBeEmpty();
   }
   await context.close();
