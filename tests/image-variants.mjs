@@ -26,3 +26,10 @@ test('unsupported bytes, excessive dimensions, and converter errors retain verif
  assert.equal(jpegDimensions(new Uint8Array([255,216,255,192,255,255])),null);
  await assert.rejects(variant({key:'bad',width:801}),/Invalid image width/);
 });
+
+test('colour profile survives metadata stripping without cropping or upscaling',()=>{
+ const profile=new Uint8Array([1,2,3,4]),events=[];
+ const img={width:1280,height:960,autoOrient(){events.push('orient')},resize(w,h){assert.equal(w,800);assert.equal(h,600)},getProfile(name){assert.equal(name,'icc');return {data:profile}},strip(){profile.fill(0);events.push('strip')},setProfile(name,data){assert.equal(name,'icc');assert.deepEqual([...data],[1,2,3,4]);events.push('profile')},write(format,callback){return callback(new Uint8Array([9]))}};
+ convertImage({read:(_,callback)=>callback(img)},{WebP:'webp'},jpeg,800);
+ assert.deepEqual(events,['orient','strip','profile']);
+});
