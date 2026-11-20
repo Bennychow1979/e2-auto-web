@@ -24,7 +24,7 @@ stale revisions, deactivation, explicit publication and unchanged business acces
 Browser tests cover first save, reload, portrait upload, retry, navigation and
 Super Admin editing on desktop and mobile.
 
-Deploy `20261120044221_office_admin_profiles.sql` before publishing the frontend.
+Deploy `20261120044858_office_admin_profiles.sql` before publishing the frontend.
 Verify the two affected accounts can edit their own profile but not another
 employee's, and still have no inventory-management or user-administration powers.
 The configurable per-user permission design is a separate future change.
