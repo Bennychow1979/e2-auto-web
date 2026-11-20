@@ -1,7 +1,7 @@
 import {escapeHTML as e,LANGUAGES,languageTags,t} from '../i18n.mjs';
 import {vehiclePath} from '../vehicle-routes.mjs';
 import {budgets,categoryMatches,categoryPath,relatedAvailable,modelSlug} from '../vehicle-discovery.mjs';
-import {publicVehicleImageURL} from '../vehicle-public-image.mjs';
+import {publicVehicleImageURL,publicImageSrcset} from '../vehicle-public-image.mjs';
 const origin='https://e2auto.my',json=v=>JSON.stringify(v).replace(/</g,'\\u003c');
 const money=v=>'RM'+Number(v).toLocaleString('en-MY',{maximumFractionDigits:0});
 const name=v=>[v.year,v.brand,v.model,v.variant].filter(Boolean).join(' ');
@@ -14,7 +14,7 @@ const copy={
 export function discoveryCards(rows,lang,slugs,{imageOrigin,imageIDs=new Set(),compact=false}={}){
  return rows.map(car=>{
   const label=name(car)+' · '+money(car.price),url=vehiclePath(car.id,lang,slugs);
-  const img=imageOrigin&&imageIDs.has(car.id)?'<img src="'+e(publicVehicleImageURL(imageOrigin,car.id))+'" alt="'+e(name(car))+'" loading="lazy">':'';
+  const img=imageOrigin&&imageIDs.has(car.id)?'<img src="'+e(publicVehicleImageURL(imageOrigin,car.id))+'" srcset="'+e(publicImageSrcset(imageOrigin,car.id))+'" sizes="(max-width: 600px) 100vw, 400px" width="1280" height="960" alt="'+e(name(car))+'" loading="lazy">':'';
   if(compact)return '<a class="relatedCard" href="'+e(url)+'">'+img+'<small>'+e(t('Available',{},lang))+'</small><h3>'+e(name(car))+'</h3><p>'+e(money(car.price))+' ↗</p></a>';
   return '<article class="sampleRow">'+(img||'<span class="noPhoto">'+e(t('Photo unavailable',{},lang))+'</span>')+'<div class="sampleInfo"><span class="sampleLabel">'+e(car.plate||'')+' · '+e(t('Available',{},lang))+'</span><h3>'+e(car.brand+' '+car.model)+'</h3><span class="sampleMeta">'+e([car.year,car.variant,t(car.transmission,{},lang)].filter(Boolean).join(' · '))+'</span></div><span class="rowMoney">'+e(money(car.price))+'<small>'+e(t('Selling price',{},lang))+'</small></span><span class="rowGo" aria-hidden="true">↗</span><a class="rowVehicleLink" href="'+e(url)+'"><span class="srOnly">'+e(label)+'</span></a></article>';
  }).join('\n');

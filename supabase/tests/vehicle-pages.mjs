@@ -11,6 +11,16 @@ import {vehicleA,vehicleB,vehiclePath,testSlugs} from '../../tests/fixtures/vehi
 const template=await readFile(new URL('../../car.html',import.meta.url),'utf8');
 const snapshot=(vehicles=[vehicleA,vehicleB])=>({kind:'synthetic-test',fetchedAt:new Date().toISOString(),vehicles:structuredClone(vehicles)});
 
+test('static hero preserves cover identity and reserves disabled actions before scripts load',()=>{
+ for(const lang of ['en','ms','zh']){
+  const html=renderVehiclePage(template,vehicleA,lang,'test',undefined,{imageOrigin:'https://synthetic-vehicle.supabase.co',imageAvailable:true,imagePhotoId:vehicleB.id});
+  assert(html.includes('data-public-photo-id="'+vehicleB.id+'"'));
+  const heading=/<h1>(.*?)<\/h1>/.exec(html)[1].replace(/<[^>]*>/g,'');
+  assert(heading.includes(vehicleA.brand+' '+vehicleA.model));
+  for(const id of ['saveCar','openCarShare']){const button=new RegExp('<button\\b[^>]*id="'+id+'"[^>]*>').exec(html)[0];assert(!button.includes(' hidden'));assert(button.includes('disabled data-requires-live'));}
+ }
+});
+
 test('initial mileage notice follows the purchase reminder and never claims unconfirmed records were checked',()=>{
  for(const [lang,checked,pending,rights] of [['en','E2 Auto checks vehicle mileage','Mileage is pending verification','your statutory rights'],['ms','E2 Auto menyemak perbatuan','Perbatuan masih menunggu pengesahan','hak anda di sisi undang-undang'],['zh','根据现有记录核查车辆里程','车辆里程尚待','依法享有的权利']]){
   for(const fields of [{mileage:50000,mileage_confirmed:true},{mileage:50000,mileage_confirmed:false},{mileage:null,mileage_confirmed:true},{mileage:50000,mileage_confirmed:'true'}]){

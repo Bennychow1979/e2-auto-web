@@ -8,6 +8,17 @@ const test=base.extend({fixture:async({context,baseURL},use)=>{
  expect(external,'No requests to real services').toEqual([]);expect(errors,'No unhandled script errors').toEqual([]);
 }});
 const ready=page=>expect(page.locator('html')).toHaveAttribute('data-inventory-verified','true');
+
+test('matched static cover keeps its URL and manual retry restores the signed route',async({page,fixture})=>{
+ await fixture({inventoryMode:'hold'});await page.goto(vehiclePath(vehicleA.id));
+ const initial=await page.locator('#heroImage').getAttribute('src');
+ await page.evaluate(id=>{document.documentElement.dataset.publicPhotoId=id+'-1';window.__vehicleFixture.state.inventoryMode='ready';window.__vehicleFixture.release('inventory');},vehicleA.id);
+ await ready(page);await expect(page.locator('#photoThumbs button')).toHaveCount(3);
+ await expect(page.locator('#heroImage')).toHaveAttribute('src',initial);
+ await expect(page.locator('#largePhoto')).not.toHaveAttribute('src',/./);
+ await page.locator('#openPhoto').click();await expect(page.locator('#largePhoto')).toHaveAttribute('src',initial);await page.locator('#closePhoto').click();
+ await page.locator('#reloadPhotos').click();await expect(page.locator('#heroImage')).toHaveAttribute('src','/test-photo-1.svg');
+});
 for(const lang of ['en','ms','zh'])test('literal '+lang+' source is useful without JavaScript',async({browser,baseURL},info)=>{
  const context=await browser.newContext({javaScriptEnabled:false,viewport:info.project.use.viewport}),page=await context.newPage();
  await context.route('https://synthetic-vehicle.supabase.co/**',r=>r.fulfill({contentType:'image/svg+xml',body:photoSVG(1)}));
@@ -135,3 +146,12 @@ for(const [lang,path] of Object.entries({en:'/car-insurance-calculator/',ms:'/ms
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);await context.close();
  });
 }
+
+for(const lang of ['en','ms','zh'])test('responsive '+lang+' showroom covers and view toggle',async({page,fixture})=>{
+ await fixture();await page.goto((lang==='en'?'':'/'+lang)+'/showroom.html');
+ await expect(page.locator('#filterResults [data-public-cover]').first()).toBeVisible();
+ await expect(page.locator('#filterResults img').first()).toHaveAttribute('srcset',/width=400/);
+ const image=page.locator('#filterResults img').first();await expect(image).toHaveJSProperty('complete',true);
+ expect(await image.evaluate(n=>n.naturalWidth>0)).toBe(true);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});

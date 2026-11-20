@@ -14,11 +14,11 @@ export function validUploadPath(path,vehicle){
   return parts.length===2&&parts[0]===vehicle&&/^[0-9a-f-]{36}\.webp$/.test(parts[1])&&UUID.test(parts[1].slice(0,-5));
 }
 
-export async function publicVehicleImage(req,{publicClient,admin,drive,driveReady,root,headers}){
+export async function publicVehicleImage(req,{publicClient,admin,drive,driveReady,root,headers,variant}){
   const reply=(status,error=unavailable)=>new Response(JSON.stringify({error}),{status,headers});
   try{
     const params=new URL(req.url).searchParams,ids=params.getAll('public_vehicle');
-    if(!['GET','HEAD'].includes(req.method)||ids.length!==1||!UUID.test(ids[0])||[...params.keys()].some(key=>key!=='public_vehicle'))
+    if(!['GET','HEAD'].includes(req.method)||ids.length!==1||!UUID.test(ids[0])||[...params.keys()].some(key=>!['public_vehicle','width'].includes(key))||params.getAll('width').length>1||(params.has('width')&&!['400','800','1280'].includes(params.get('width'))))
       return reply(400,'Invalid public vehicle image request.');
     const id=ids[0].toLowerCase();
     const readCar=async()=>checked(await publicClient.from('vehicles').select('id,plate,publication').eq('id',id).eq('publication','published').maybeSingle());
@@ -51,8 +51,10 @@ export async function publicVehicleImage(req,{publicClient,admin,drive,driveRead
       if(meta.id!==link.file_id||!validPhoto(meta,link.folder_id)||meta.md5Checksum!==link.checksum||meta.mimeType!==link.mime_type||Number(meta.size)!==link.size_bytes)return reply(404);
       mime=link.mime_type;
       if(req.method==='GET'){
-        bytes=await drive.image(link.file_id,link.checksum,mime);
-        if(bytes.length!==link.size_bytes||imageType(bytes)!==mime)return reply(404);
+        const load=async()=>{const data=await drive.image(link.file_id,link.checksum,mime);if(data.length!==link.size_bytes||imageType(data)!==mime)throw Error(unavailable);return data;};
+        if(variant&&req.headers.get('Accept')?.includes('image/webp')){
+          const result=await variant({key:id+':'+photo.id+':'+link.file_id+':'+link.checksum,width:Number(params.get('width')||1280),mime,load});bytes=result.bytes;mime=result.mime;
+        }else bytes=await load();
       }
     }else return reply(404);
     // Do not serve a former first photo or a replaced link after any awaited read.
@@ -61,7 +63,7 @@ export async function publicVehicleImage(req,{publicClient,admin,drive,driveRead
     if(link&&!same(link,await readLink(),linkFields.split(',')))return reply(404);
     const latest=await readCar();
     if(!same(car,latest,['id','plate','publication']))return reply(404);
-    return new Response(bytes,{headers:{...headers,'Content-Type':mime,'X-E2-Public-Image':'v2','X-Content-Type-Options':'nosniff','Content-Disposition':'inline','Referrer-Policy':'no-referrer'}});
+    return new Response(bytes,{headers:{...headers,'Vary':'Origin, Accept','Content-Type':mime,'X-E2-Public-Image':'v2','X-Content-Type-Options':'nosniff','Content-Disposition':'inline','Referrer-Policy':'no-referrer'}});
   }catch{
     // Public responses never reflect SDK errors, Drive IDs, credentials or URLs.
     return reply(404);

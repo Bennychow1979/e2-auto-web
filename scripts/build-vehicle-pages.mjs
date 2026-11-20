@@ -18,7 +18,7 @@ import {renderStockFeeds,resolveStockSoldDates} from './build-stock-feeds.mjs';
 import {categoryRegistry,categoryPath,modelSlug} from '../vehicle-discovery.mjs';
 import {renderListing,renderCategory,renderRelated} from './build-discovery.mjs';
 import {inventoryReceipt} from './inventory-refresh-receipt.mjs';
-import {publicVehicleImageURL,probePublicImageGateway} from '../vehicle-public-image.mjs';
+import {publicVehicleImageURL,publicImageSrcset,probePublicImageGateway} from '../vehicle-public-image.mjs';
 import {stockCopy,stockRequestHTML,stockRequestText} from '../vehicle-stock-display.mjs';
 export const PUBLIC_FIELDS=['id','publication','brand','model','variant','year','plate','price','mileage','mileage_confirmed','engine_litres','transmission','fuel_type','body_type','stock_status','description','updated_at'];
 const root=fileURLToPath(new URL('../',import.meta.url)),json=value=>JSON.stringify(value).replace(/</g,'\\u003c'),money=value=>'RM'+Number(value).toLocaleString('en-MY',{maximumFractionDigits:0});
@@ -75,30 +75,32 @@ export async function fetchPublicInventory(config,request=fetch){
 }
 function content(html,id,value){const re=new RegExp('(<(\\w+)\\b[^>]*\\bid="'+id+'"[^>]*>)[\\s\\S]*?(</\\2>)');if(!re.test(html))throw Error('Missing template field: '+id);return html.replace(re,(_,open,tag,close)=>open+value+close);}
 function rootLinks(html,lang){const base='https://e2auto.my/'+(lang==='en'?'':lang+'/')+'car.html';return html.replace(/\b(href|src)="([^"#][^"]*)"/g,(whole,attr,value)=>{if(/^(?:[a-z]+:|\/)/i.test(value))return whole;const u=new URL(value,base);return attr+'="'+u.pathname+u.search+u.hash+'"';});}
-export function renderVehiclePage(template,car,lang,fetchedAt,slugs=createSlugMap([car]),{imageOrigin,imageAvailable=false}={}){
+export function renderVehiclePage(template,car,lang,fetchedAt,slugs=createSlugMap([car]),{imageOrigin,imageAvailable=false,imagePhotoId}={}){
  const meta=vehicleMetadata(car,{lang,staticPages:true,slugs});if(!meta)throw Error('Only published vehicles can produce a static page.');
  const imageURL=imageAvailable?publicVehicleImageURL(imageOrigin,car.id):null;
  let html=lang==='en'?template:localizedPage(template,'car.html',lang);html=rootLinks(html,lang).replace(/<script id="vehicleSearchPolicy">[\s\S]*?<\/script>/,'');
  html=html.replace('<html ',()=>'<html data-stock-status="'+car.stock_status+'" ');
  html=html.replace('<html ',`<html data-vehicle-pages="static-v1" data-vehicle-snapshot="${escapeHTML(fetchedAt)}" data-vehicle-id="${car.id}" `);
- if(imageURL)html=html.replace('<html ',()=>'<html data-public-image-origin="'+escapeHTML(imageOrigin)+'" ');
+ if(imageURL)html=html.replace('<html ',()=>'<html data-public-image-origin="'+escapeHTML(imageOrigin)+'" '+(validVehicleId(imagePhotoId)?'data-public-photo-id="'+imagePhotoId+'" ':''));
  html=html.replace(/<title>[^<]*<\/title>/,()=>'<title>'+escapeHTML(meta.title)+'</title>').replace(/(<meta name="description" content=")[^"]*"/,(_,prefix)=>prefix+escapeHTML(meta.description)+'"');
  const links=LANGUAGES.concat('x-default').map(l=>'<link id="seo-language-'+l+'" rel="alternate" hreflang="'+(languageTags[l]||l)+'" href="'+canonicalVehicleURL(car.id,l==='x-default'?'en':l,{staticPages:true,slugs})+'">').join('');
  const tags=routeScript(slugs)+'<link rel="canonical" href="'+meta.canonical+'">'+links+Object.entries({'og:title':meta.title,'og:description':meta.description,'og:url':meta.canonical,'og:type':'website',...(imageURL?{'og:image':imageURL}:{})}).map(([key,value])=>'<meta property="'+key+'" content="'+escapeHTML(value)+'">').join('')+'<script id="vehicleStructuredData" type="application/ld+json">'+json(vehicleStructuredData(car,{lang,slugs,imageURL}))+'</script>';
- html=html.replace('</head>',()=>tags+'<style>#inventoryNotice{max-width:1120px;margin:16px auto;padding:12px 20px;color:#625125;background:#f2ead7;font-size:14px;line-height:1.5}html[data-vehicle-snapshot]:not([data-inventory-verified]) #finance,html[data-vehicle-snapshot]:not([data-inventory-verified]) [href="#finance"]{display:none}[hidden]{display:none!important}</style></head>');
+ html=html.replace('</head>',()=>tags+'<style>#inventoryNotice{box-sizing:border-box;min-height:66px;display:flex;align-items:center;max-width:1120px;margin:16px auto;padding:12px 20px;color:#625125;background:#f2ead7;font-size:14px;line-height:1.5}html[data-vehicle-snapshot]:not([data-inventory-verified]) #finance,html[data-vehicle-snapshot]:not([data-inventory-verified]) [href="#finance"]{display:none}[hidden]{display:none!important}</style></head>');
  const modelURL='https://e2auto.my'+categoryPath(modelSlug(car),lang),homeURL='https://e2auto.my/'+(lang==='en'?'':lang+'/');
  const breadcrumb={'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'E2 Auto',item:homeURL},{'@type':'ListItem',position:2,name:car.brand+' '+car.model,item:modelURL},{'@type':'ListItem',position:3,name:[car.year,car.brand,car.model,car.variant].filter(Boolean).join(' '),item:meta.canonical}]};
  html=html.replace('</head>',()=>'<script id="vehicleBreadcrumbs" type="application/ld+json">'+json(breadcrumb)+'</script></head>');
  const values={make:car.brand,model:car.model,heroLine:car.variant||'',heroEyebrow:[car.year,t(car.body_type,{},lang),t(car.stock_status,{},lang)].filter(Boolean).join(' · '),heroPrice:money(car.price),heroPlate:t('PLATE · {plate}',{plate:car.plate||''},lang),story:descriptionFor(car.description||'',lang)||t('See the actual vehicle. Ask the questions that matter to you.',{},lang),publicationNote:t(car.stock_status,{},lang),dockModel:car.brand+' '+car.model,dockPrice:money(car.price),photoCount:vehicleCopy('photosLoading',lang)};
  for(const [id,value] of Object.entries(values))html=content(html,id,escapeHTML(value));
  html=html.replace('<h1>',()=>'<h1><span class="srOnly" id="vehicleHeadingYear">'+car.year+' </span>').replace('</h1>',()=>'<span class="srOnly" id="vehicleHeadingVariant"> '+escapeHTML(car.variant||'')+'</span></h1>');
- html=html.replace('id="heroImage" alt=""',()=> 'id="heroImage" alt="'+escapeHTML([car.year,car.brand,car.model,car.variant].filter(Boolean).join(' ')+' — '+t('photo {count}',{count:1},lang))+'"');
- if(imageURL)html=html.replace('id="heroImage"',()=> 'id="heroImage" data-public-image="1" src="'+escapeHTML(imageURL)+'"');
+ html=html.replace(/(id="heroImage"[^>]*\balt=")[^"]*"/,(_,prefix)=>prefix+escapeHTML([car.year,car.brand,car.model,car.variant].filter(Boolean).join(' ')+' — '+t('photo {count}',{count:1},lang))+'"');
+ if(imageURL)html=html.replace('id="heroImage"',()=> 'id="heroImage" data-public-image="1" src="'+escapeHTML(imageURL)+'" srcset="'+escapeHTML(publicImageSrcset(imageOrigin,car.id))+'" sizes="(max-width: 700px) 100vw, 70vw"');
  const facts=[['Car plate',car.plate],['Year',car.year],['Brand',car.brand],['Model',car.model],['Variant / SPEC',car.variant],['Engine size',car.engine_litres==null?null:Number(car.engine_litres).toFixed(1)+' L'],['Transmission',t(car.transmission,{},lang)],['Fuel type',t(car.fuel_type,{},lang)],['Mileage',car.mileage==null?t('Pending confirmation',{},lang):Number(car.mileage).toLocaleString('en-MY')+' km'+(car.mileage_confirmed?'':t(' · pending confirmation',{},lang))]];
  html=content(html,'mileageNotice',vehicleNoticeHTML('mileage',{car,lang}));
  html=content(html,'specGrid',facts.filter(([,v])=>v!=null&&String(v).trim()).map(([label,value])=>'<div><dt>'+escapeHTML(t(label,{},lang))+'</dt><dd>'+escapeHTML(value)+'</dd></div>').join(''));
  html=html.replace('<main id="carMain" hidden>','<main id="carMain">').replace('<aside id="carDock" hidden','<aside id="carDock"').replace('id="carState"','id="carState" hidden').replace('id="openPhoto"','id="openPhoto" hidden');
  if(imageURL)html=html.replace('id="openPhoto" hidden','id="openPhoto"');
+ // Reserve the actions' final layout while they remain disabled until live checks.
+ for(const id of ['saveCar','openCarShare'])html=html.replace(new RegExp('(<button\\b[^>]*id="'+id+'"[^>]*?) hidden'),'$1');
  html=html.replace(/<button\b([^>]*)>/g,(_,attrs)=>'<button'+attrs+' disabled data-requires-live>');
  html=html.replace('<main id="carMain">','<p id="inventoryNotice" role="status">'+escapeHTML(vehicleCopy('snapshot',lang,{date:fetchedAt}))+'</p><noscript><p class="wrap">'+escapeHTML(vehicleCopy('noJS',lang))+'</p></noscript><main id="carMain">');
  html=html.replace('<main id="carMain">',()=>'<main id="carMain">'+stockRequestHTML(car,lang,meta.canonical));
@@ -144,7 +146,7 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  const discoveryOptions={imageOrigin:snapshot.publicImageOrigin,imageIDs:new Set(imageCars.map(c=>c.id))};
  const template=await readFile(join(root,'car.html'),'utf8'),pages=[];
  for(const car of rows)for(const lang of LANGUAGES){
-  let html=renderVehiclePage(template,car,lang,snapshot.fetchedAt,publicSlugs,{imageOrigin:snapshot.publicImageOrigin,imageAvailable:!!images.get(car.id)?.photoId});
+  let html=renderVehiclePage(template,car,lang,snapshot.fetchedAt,publicSlugs,{imageOrigin:snapshot.publicImageOrigin,imageAvailable:!!images.get(car.id)?.photoId,imagePhotoId:images.get(car.id)?.photoId});
   html=html.replace(/<section class="moreCars wrap">[\s\S]*?<\/section>/,()=>renderRelated(car,rows,lang,publicSlugs,discoveryOptions));
   pages.push({file:vehiclePath(car.id,lang,slugs).slice(1)+'index.html',html});
  }

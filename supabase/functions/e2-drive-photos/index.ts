@@ -1,4 +1,5 @@
 import {publicVehicleImage} from './public-image.mjs';
+import {createImageVariants} from './image-variants.mjs';
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 import {folderId,checkFolder,validPhoto,uniquePhotos,signTicket,readTicket,UUID,FILE_ID} from './core.mjs';
 import {googleDrive} from './google.mjs';
@@ -12,6 +13,7 @@ const root=Deno.env.get('E2_DRIVE_ROOT_FOLDER_ID')||'1shtrbAggeUA8mc2lt8eBF4D8v-
 const signing=Deno.env.get('E2_DRIVE_SIGNING_SECRET')||'';
 let credentials=null;try{credentials=JSON.parse(Deno.env.get('E2_DRIVE_SERVICE_ACCOUNT_JSON')||'null')}catch{}
 const drive=googleDrive(credentials);
+const variant=createImageVariants({convert:async(bytes,width)=>(await import('./webp.ts')).convertWebP(bytes,width)});
 const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
 const ready=()=>!!credentials?.client_email&&!!credentials?.private_key&&signing.length>=32&&FILE_ID.test(root);
 const checked=result=>{if(result.error)throw new Error(result.error.message);return result.data};
@@ -42,7 +44,7 @@ Deno.serve(async req=>{
     if((req.method==='GET'||req.method==='HEAD')&&new URL(req.url).searchParams.has('public_vehicle')){
       // A caller's staff Authorization header never enters this anonymous client.
       const publicClient=createClient(url,anon,{auth:{persistSession:false,autoRefreshToken:false}});
-      return await publicVehicleImage(req,{publicClient,admin,drive,driveReady:ready,root,headers});
+      return await publicVehicleImage(req,{publicClient,admin,drive,driveReady:ready,root,headers,variant});
     }
     if(req.method==='HEAD')return reply(405,{error:'HEAD is available for public vehicle images only.'});
     if(req.method==='GET') {

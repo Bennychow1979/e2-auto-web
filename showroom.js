@@ -1,3 +1,4 @@
+import {publicVehicleImageURL,publicImageSrcset} from './vehicle-public-image.mjs';
 import {benefitsHTML,malaysiaDay} from './vehicle-benefits.mjs?v=vehicle-notices-3';
 import {t,localizedMileage as mileageText} from './i18n.mjs';
 import {showroomVehicleLinks,showroomContactAction} from './showroom-referral.mjs?v=contact-1';
@@ -6,6 +7,9 @@ import {esc,rm,getVehicles,photoURLs,friendlyError} from './e2-data.js?v=drive-2
 import {budgets,matchesBudget} from './vehicle-discovery.mjs';
 import {emptyFilters,readPreferences,savePreferences,sortedCars} from './showroom-preferences.mjs';
 import {setupShowroomSave} from './showroom-save.js?v=mail-save-20261119?v=1';
+const publicOrigin=window.E2_CONFIG?.supabaseUrl;
+const optimized=()=>/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(publicOrigin||'');
+const coverAttributes=c=>optimized()&&c.cover===publicVehicleImageURL(publicOrigin,c.id)?' data-public-cover="'+esc(c.id)+'" srcset="'+esc(publicImageSrcset(publicOrigin,c.id))+'" sizes="(max-width: 600px) 100vw, 400px"':'';
 const $=id=>document.getElementById(id), blank=emptyFilters;
 let preferenceStorage;try{preferenceStorage=window.sessionStorage}catch{}
 const saved=readPreferences(preferenceStorage);
@@ -48,7 +52,7 @@ function chipText(k,v){return ({q:t('Search: {value}',{value:v}),budget:t(budget
 function render(){
   const found=sortedCars(cars.filter(c=>matches(c,state)),sort);
   savePreferences(preferenceStorage,state,sort);
-  $('filterResults').innerHTML=found.map(c=>'<article class="sampleRow">'+(c.cover?'<img src="'+esc(c.cover)+'" alt="'+esc(c.brand+' '+c.model)+'" loading="lazy">':'<span class="noPhoto">'+esc(t('Photo unavailable'))+'</span>')+'<div class="sampleInfo"><button class="rowFavourite" type="button" data-save-vehicle="'+esc(c.id)+'" data-car-name="'+esc(c.brand+' '+c.model+' · '+c.plate)+'" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg></button><span class="sampleLabel">'+esc(c.plate+' · '+t(c.stock_status))+'</span><h3>'+esc(c.brand+' '+c.model)+'</h3><span class="sampleMeta">'+esc([c.year,c.variant,t(c.transmission)].filter(Boolean).join(' · '))+'</span>'+benefitsHTML(c)+'<span class="sampleMeta">'+esc(mileageText(c))+'</span>'+'</div><span class="rowMoney">'+rm(c.price)+'<small>'+esc(t('Selling price'))+'</small></span><span class="rowGo" aria-hidden="true">↗</span><a class="rowVehicleLink" href="'+esc(vehicleHref(c.id))+'" aria-label="'+esc(t('View this car ↗')+' · '+c.brand+' '+c.model+' · '+c.plate)+'"></a></article>').join('');
+  $('filterResults').innerHTML=found.map(c=>'<article class="sampleRow">'+(c.cover?'<img width="1280" height="960"'+coverAttributes(c)+' src="'+esc(c.cover)+'" alt="'+esc(c.brand+' '+c.model)+'" loading="lazy">':'<span class="noPhoto">'+esc(t('Photo unavailable'))+'</span>')+'<div class="sampleInfo"><button class="rowFavourite" type="button" data-save-vehicle="'+esc(c.id)+'" data-car-name="'+esc(c.brand+' '+c.model+' · '+c.plate)+'" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg></button><span class="sampleLabel">'+esc(c.plate+' · '+t(c.stock_status))+'</span><h3>'+esc(c.brand+' '+c.model)+'</h3><span class="sampleMeta">'+esc([c.year,c.variant,t(c.transmission)].filter(Boolean).join(' · '))+'</span>'+benefitsHTML(c)+'<span class="sampleMeta">'+esc(mileageText(c))+'</span>'+'</div><span class="rowMoney">'+rm(c.price)+'<small>'+esc(t('Selling price'))+'</small></span><span class="rowGo" aria-hidden="true">↗</span><a class="rowVehicleLink" href="'+esc(vehicleHref(c.id))+'" aria-label="'+esc(t('View this car ↗')+' · '+c.brand+' '+c.model+' · '+c.plate)+'"></a></article>').join('');
   paintFavourites();
   $('resultCount').textContent=t('{count} cars to explore',{count:found.length});$('emptyResults').hidden=found.length>0||!cars.length;
   $('activeFilters').replaceChildren();
@@ -81,15 +85,23 @@ async function load(){
     const rows=await getVehicles(),signature=malaysiaDay()+JSON.stringify(rows);
     if(signature===shownSignature)return;
     cars=rows;
-    const covers=cars.map(c=>c.photos[0]).filter(Boolean), signed=covers.length?await photoURLs(covers):[], byPath=new Map(signed.map(p=>[p.path,p.url]));
-    cars.forEach(c=>c.cover=byPath.get(c.photos[0]?.path));
+    if(optimized())cars.forEach(c=>c.cover=c.photos[0]?publicVehicleImageURL(publicOrigin,c.id):null);
+    else{const covers=cars.map(c=>c.photos[0]).filter(Boolean),signed=covers.length?await photoURLs(covers):[],byPath=new Map(signed.map(p=>[p.path,p.url]));cars.forEach(c=>c.cover=byPath.get(c.photos[0]?.path));}
     document.querySelector('.galleryControls').hidden=false;
     $('publicState').hidden=!!cars.length;$('publicState').textContent=cars.length?'':t('New vehicles are being prepared. Contact E2 for current availability.');
-    $('galleryTrack').innerHTML=cars.slice(0,8).map((c,i)=>'<a class="galleryCard" href="'+esc(vehicleHref(c.id))+'"><span class="cardTop"><span>'+String(i+1).padStart(2,'0')+' / '+esc(c.brand)+'</span><span class="sampleTag">'+esc(t(c.stock_status))+'</span></span><span class="photo">'+(c.cover?'<img src="'+esc(c.cover)+'" alt="'+esc(c.brand+' '+c.model)+'" '+(i?'loading="lazy"':'fetchpriority="high"')+'>':'<span class="noPhoto">'+esc(t('Photo unavailable'))+'</span>')+'</span><span class="cardCaption"><span><span class="cardYear">'+esc([c.year,c.variant].filter(Boolean).join(' · '))+'</span><strong>'+esc(c.brand+' '+c.model)+'</strong>'+benefitsHTML(c)+'</span><span class="samplePrice">'+rm(c.price)+'<small>'+esc(t('View this car ↗'))+'</small></span></span></a>').join('');
+    $('galleryTrack').innerHTML=cars.slice(0,8).map((c,i)=>'<a class="galleryCard" href="'+esc(vehicleHref(c.id))+'"><span class="cardTop"><span>'+String(i+1).padStart(2,'0')+' / '+esc(c.brand)+'</span><span class="sampleTag">'+esc(t(c.stock_status))+'</span></span><span class="photo">'+(c.cover?'<img width="1280" height="960"'+coverAttributes(c)+' src="'+esc(c.cover)+'" alt="'+esc(c.brand+' '+c.model)+'" '+(i?'loading="lazy"':'fetchpriority="high"')+'>':'<span class="noPhoto">'+esc(t('Photo unavailable'))+'</span>')+'</span><span class="cardCaption"><span><span class="cardYear">'+esc([c.year,c.variant].filter(Boolean).join(' · '))+'</span><strong>'+esc(c.brand+' '+c.model)+'</strong>'+benefitsHTML(c)+'</span><span class="samplePrice">'+rm(c.price)+'<small>'+esc(t('View this car ↗'))+'</small></span></span></a>').join('');
     galleryFlow.refresh();
     options('brandFilter',cars.map(c=>c.brand),'All brands');options('bodyFilter',['Sedan','Hatchback','SUV','MPV','Pickup'],'All types');options('yearFrom',cars.map(c=>c.year),'Any year');options('yearTo',cars.map(c=>c.year),'Any year');options('transmissionFilter',cars.map(c=>c.transmission),'Any transmission');options('engineFilter',cars.map(c=>c.engine_litres===null||c.engine_litres===undefined?'':Number(c.engine_litres).toFixed(1)),'Any engine size');draft={...state};loadDraft();sync();render();shownSignature=cars.every(c=>!c.photos.length||c.cover)?signature:'';
   }catch(error){shownSignature='';document.querySelectorAll('.vehicleBenefits').forEach(node=>node.remove());$('publicState').hidden=false;$('publicState').textContent=t(friendlyError(error));$('resultCount').textContent=t('Inventory temporarily unavailable');$('emptyResults').hidden=true;document.querySelector('.galleryControls').hidden=true;}
 }
+const failedCovers=new Set();
+document.addEventListener('error',async event=>{
+ const node=event.target,id=node?.dataset?.publicCover;if(!id||failedCovers.has(id))return;
+ failedCovers.add(id);const record=cars.find(c=>c.id===id),photo=record?.photos[0];if(!photo)return;
+ try{const [fresh]=await photoURLs([photo]);if(!fresh?.url||cars.find(c=>c.id===id)?.photos[0]?.id!==photo.id)return;record.cover=fresh.url;
+ for(const image of document.querySelectorAll('img[data-public-cover="'+id+'"]')){image.removeAttribute('srcset');image.removeAttribute('sizes');image.removeAttribute('data-public-cover');image.src=fresh.url;}
+ }catch{}
+},true);
 await load();
 // Refresh stock visibility; photo links are reused, so unchanged photos are not downloaded again.
 let loadedAt=Date.now();window.addEventListener('focus',()=>{if(Date.now()-loadedAt>60000){loadedAt=Date.now();load()}});
