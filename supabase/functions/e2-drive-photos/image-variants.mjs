@@ -23,7 +23,9 @@ export function createImageVariants({convert,now=Date.now,maxBytes=24*1024*1024,
     if(cache.has(cacheKey)){const value=cache.get(cacheKey);cache.delete(cacheKey);cache.set(cacheKey,value);return value;}
     const original=await load();let result={bytes:original,mime};
     const dimensions=mime==='image/jpeg'&&original.length<=3*1024*1024?jpegDimensions(original):null;
-    if(dimensions?.width>0&&dimensions.height>0&&dimensions.width*dimensions.height<=4000000){
+    // Full-size displays retain the original pixels and avoid WASM cold-start cost.
+    // Only create a derivative when the requested size actually reduces the image.
+    if(dimensions?.width>width&&dimensions.height>0&&dimensions.width*dimensions.height<=4000000){
       try{const bytes=await convert(original,width);if(bytes?.length>0&&bytes.length<original.length)result={bytes,mime:'image/webp'};}catch{/* Keep the verified original available if conversion fails. */}
     }
     if(result.bytes.length<=maxBytes){
