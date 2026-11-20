@@ -11,7 +11,7 @@ const server=createServer(async(req,res)=>{
 });await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port;
 let browser;const errors=[];
 try{
- browser=await chromium.launch();await mkdir('test-results',{recursive:true});
+ browser=await chromium.launch(process.platform==='win32'?{channel:'msedge'}:{});await mkdir('test-results',{recursive:true});
  for(const [name,width,role] of [['desktop',1440,'super_admin'],['mobile',390,'office_admin']]){
   const context=await browser.newContext({viewport:{width,height:900}});
   await context.route('**/*',route=>new URL(route.request().url()).origin===origin?route.continue():route.abort());

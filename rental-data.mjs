@@ -14,7 +14,15 @@ export function createRentalStore(client, checkAccess) {
   const data={...value};delete data._rental_revision;
   return snapshot(checked(await client.rpc('rental_save',{p_table:kind,p_id:id,p_data:data,p_revision:revision,p_merge:merge})));
  }
+ async function movePlate(oldId,newId,newPlate,revision,patch={}){
+  await checkAccess();
+  if(!Number.isSafeInteger(revision)||revision<0)throw Error('Refresh this record before saving.');
+  const data={...patch};delete data._rental_revision;
+  const result=checked(await client.rpc('rental_move_plate',{p_old_id:oldId,p_new_id:newId,p_new_plate:newPlate,p_revision:revision,p_patch:data}));
+  return {record:snapshot(result?.record),movedFrom:snapshot(result?.moved_from)};
+ }
  return {
+  movePlate,
   doc(path){const [kind,id]=path.split('/');return doc(kind,id);},
   collection(kind){return {doc:id=>doc(kind,id),onSnapshot(cb,onError){
    let active=true,running=false,again=false;
