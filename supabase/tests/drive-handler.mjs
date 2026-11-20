@@ -1,3 +1,4 @@
+import {createImageVariants} from '../functions/e2-drive-photos/image-variants.mjs';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
@@ -38,7 +39,7 @@ const source=readFileSync('supabase/functions/e2-drive-photos/index.ts','utf8').
 vm.runInNewContext(source,{
   ...core,createClient,Request,Response,URL,JSON,Error,Set,Promise,
   Deno:{env:{get:key=>env[key]},serve:fn=>handler=fn},
-  googleDrive:()=>({
+  createImageVariants,googleDrive:()=>({
     metadata:async id=>{googleCalls++;return id===root?{name:'E2 Vehicle Uploads',mimeType:'application/vnd.google-apps.folder'}:id===folder?{name:'VBH4735 CIVIC',mimeType:'application/vnd.google-apps.folder',parents:[root]}:{id:file,mimeType:'image/jpeg',parents:[folder],size:100,md5Checksum:checksum,capabilities:{canDownload:true}}},
     list:async()=>{googleCalls++;return []},
     image:async()=>new Uint8Array([255,216,255])

@@ -1,3 +1,4 @@
+import {createImageVariants} from '../functions/e2-drive-photos/image-variants.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -34,7 +35,7 @@ function fixture({publication='published',stock='Available',kind='drive',afterRe
  };
  const env={SUPABASE_URL:'https://synthetic.supabase.co',SUPABASE_ANON_KEY:'synthetic-anon',SUPABASE_SERVICE_ROLE_KEY:'synthetic-service',E2_DRIVE_ROOT_FOLDER_ID:root,E2_DRIVE_SIGNING_SECRET:'synthetic-only-signing-key-not-for-use',E2_DRIVE_SERVICE_ACCOUNT_JSON:ready?JSON.stringify({client_email:'test@example.test',private_key:'fixture'}):'null'};
  const drive={async metadata(id){calls.google.push(id);if(errorAt==='metadata')throw Error(sensitive);return structuredClone(id===folder?folderMeta:fileMeta)},async image(...args){calls.images.push(args);if(errorAt==='image')throw Error(sensitive);afterRead(rows);return jpeg}};
- vm.runInNewContext(source,{...core,publicVehicleImage,createClient,Request,Response,URL,JSON,Error,Set,Promise,Uint8Array,Deno:{env:{get:key=>env[key]},serve:fn=>handler=fn},googleDrive:()=>drive});
+ vm.runInNewContext(source,{...core,publicVehicleImage,createClient,Request,Response,URL,JSON,Error,Set,Promise,Uint8Array,Deno:{env:{get:key=>env[key]},serve:fn=>handler=fn},createImageVariants,googleDrive:()=>drive});
  return {rows,calls,folderMeta,fileMeta,drive,request:(method='GET',query='public_vehicle='+vehicle,headers={})=>handler(new Request('https://synthetic.supabase.co/functions/v1/e2-drive-photos?'+query,{method,headers}))};
 }
 async function denied(f,{method='GET',query,status=404}={}){
@@ -105,4 +106,16 @@ test('public failures never reflect secret-shaped errors, URLs or identifiers',a
 });
 test('public route stays separate from legacy signed-ticket and caller authentication',()=>{
  assert(source.includes("await readTicket(new URL(req.url).searchParams.get('ticket'),signing)"));assert(!source.includes('ticket.publicOnly'));assert(source.includes("const caller=actor?createClient(url,anon,{global:{headers:{Authorization:authorization}}"));
+});
+
+test('warm optimized cache still checks publication and Drive checksum on every request',async()=>{
+ const f=fixture(),headers={Accept:'image/webp'};
+ assert.equal((await f.request('GET',undefined,headers)).status,200);
+ assert.equal((await f.request('GET',undefined,headers)).status,200);assert.equal(f.calls.images.length,1);
+ f.rows.vehicles[0].publication='draft';assert.equal((await f.request('GET',undefined,headers)).status,404);
+ f.rows.vehicles[0].publication='published';f.fileMeta.md5Checksum='b'.repeat(32);assert.equal((await f.request('GET',undefined,headers)).status,404);
+});
+test('only bounded image widths are accepted; HEAD never converts or downloads',async()=>{
+ for(const width of ['0','801','99999','800&width=400'])assert.equal((await fixture().request('GET','public_vehicle='+vehicle+'&width='+width)).status,400);
+ const f=fixture();for(const width of [400,800,1280])assert.equal((await f.request('HEAD','public_vehicle='+vehicle+'&width='+width,{Accept:'image/webp'})).status,200);assert.equal(f.calls.images.length,0);
 });

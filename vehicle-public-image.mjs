@@ -1,8 +1,10 @@
 const idPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export function publicVehicleImageURL(origin,id){
+export function publicVehicleImageURL(origin,id,width){
  if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(origin||'')||!idPattern.test(id||''))throw Error('Invalid public vehicle image identity.');
- return origin+'/functions/v1/e2-drive-photos?public_vehicle='+id.toLowerCase();
+ if(width!==undefined&&![400,800,1280].includes(width))throw Error('Invalid public image width.');
+ return origin+'/functions/v1/e2-drive-photos?public_vehicle='+id.toLowerCase()+(width?'&width='+width:'');
 }
+export function publicImageSrcset(origin,id){return [400,800,1280].map(width=>publicVehicleImageURL(origin,id,width)+' '+width+'w').join(', ');}
 export async function probePublicImageGateway(origin,id,request=fetch){
  const url=publicVehicleImageURL(origin,id);
  // The public endpoint deliberately masks upstream metadata failures as 404.

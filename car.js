@@ -12,9 +12,10 @@ import {db,check,esc,rm,getVehicles,photoURLs,coverURL,currentPhotoURL,renewPhot
 import {validVehicleId,applyVehicleMetadata,excludeVehicleFromSearch} from './vehicle-seo.mjs?v=seo-20261113';
 import {vehicleIdentity,usesStaticVehiclePages} from './vehicle-routes.mjs';
 import {withDeadline} from './vehicle-loading.mjs';
+import {resolveVehicleAlbum} from './vehicle-album.mjs';
 import {vehicleCopy} from './vehicle-page-copy.mjs';
 import {applyStockRequestDisplay} from './vehicle-stock-display.mjs';
-import {publicVehicleImageURL} from './vehicle-public-image.mjs';
+import {publicVehicleImageURL,publicImageSrcset} from './vehicle-public-image.mjs';
 const $=id=>document.getElementById(id),staticSnapshot=Boolean(document.documentElement.dataset.vehicleSnapshot);
 let unavailable=false,verified=false;
 (async()=>{
@@ -97,34 +98,35 @@ $('enquire').href=wa(intro+t('Please confirm availability, price and vehicle det
 $('tradeLink').href=wa(intro+t('I would like to discuss a trade-in and the information you need for an inspection.'));
 $('loanLink').href=wa(intro+t('Please explain loan application documents and available terms. I understand approval is subject to assessment.'));
 applyStockRequestDisplay(car,{lang:language,contact,link:pageLink()});
-const savedPhoto=publicImage?{url:publicImage}:null;
+const savedPhoto=publicImage?{id:document.documentElement.dataset.publicPhotoId,url:publicImage}:null;
 if(staticSnapshot&&!savedPhoto)$('heroImage').removeAttribute('src');
 let photos=savedPhoto?[savedPhoto]:[],photoIndex=0,photoRun=0,albumShown=false;
 function choosePhoto(index){
   if(!photos.length)return;
   photoIndex=(index+photos.length)%photos.length;const p=photos[photoIndex];
-  for(const key of ['heroImage','largePhoto']){$(key).src=currentPhotoURL(p.url);$(key).alt=[car.year,car.name,car.variant].filter(Boolean).join(' ')+' · '+t('photo {count}',{count:photoIndex+1})}
+  for(const key of ['heroImage',...($('photoDialog').open?['largePhoto']:[])]){const image=$(key),url=currentPhotoURL(p.url);if(p.id===savedPhoto?.id&&url===savedPhoto.url&&key==='heroImage'){image.srcset=publicImageSrcset(imageOrigin,car.id);image.sizes='(max-width: 700px) 100vw, 70vw';}else{image.removeAttribute('srcset');image.removeAttribute('sizes');}if(image.getAttribute('src')!==url)image.src=url;image.alt=[car.year,car.name,car.variant].filter(Boolean).join(' ')+' · '+t('photo {count}',{count:photoIndex+1})}
   $('photoPosition').textContent=(photoIndex+1)+' / '+photos.length;
   document.querySelector('.photoCaption>span').textContent=t('PHOTO {count} / {total}',{count:photoIndex+1,total:photos.length});
   document.querySelectorAll('#photoThumbs button').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===photoIndex)));
 }
-async function refreshPhotos(){
+async function refreshPhotos({reuseCover=true}={}){
   const run=++photoRun;$('photoCount').textContent=vehicleCopy('photosLoading',language);
-  let loaded;try{loaded=await withDeadline(photoURLs(car.photos));}catch{if(run===photoRun){$('photoCount').textContent=vehicleCopy('photosUnavailable',language);$('openPhoto').hidden=!photos.length;}return;}
-  if(run!==photoRun)return;photos=loaded.filter(p=>p.url);const albumUnavailable=!photos.length;if(albumUnavailable&&savedPhoto)photos=[savedPhoto];
+  const cover=reuseCover&&savedPhoto?.id===car.photos[0]?.id?savedPhoto:null;
+  let loaded;try{loaded=await withDeadline(resolveVehicleAlbum(car.photos,{cover,resolve:photoURLs}));}catch{if(run===photoRun){$('photoCount').textContent=vehicleCopy('photosUnavailable',language);$('openPhoto').hidden=!photos.length;}return;}
+  if(run!==photoRun)return;photos=loaded.filter(p=>p.url);const albumUnavailable=!photos.length;if(albumUnavailable&&cover)photos=[cover];
   $('openPhoto').hidden=!photos.length;
   albumShown=!albumUnavailable;
   $('photoCount').textContent=!albumUnavailable?t('{count} vehicle photos · Select a photo to take a closer look.',{count:photos.length}):vehicleCopy('photosUnavailable',language);
-  $('photoThumbs').innerHTML=photos.map((p,i)=>'<button aria-label="'+esc(t('View photo {count}',{count:i+1}))+'" aria-pressed="false"><img src="'+esc(p.url)+'" alt="" loading="lazy"></button>').join('');
+  $('photoThumbs').innerHTML=photos.map((p,i)=>'<button aria-label="'+esc(t('View photo {count}',{count:i+1}))+'" aria-pressed="false"><img src="'+esc(p.id===savedPhoto?.id&&p.url===savedPhoto.url?publicVehicleImageURL(imageOrigin,car.id,400):p.url)+'" alt="'+esc(car.name+' · '+t('photo {count}',{count:i+1}))+'" width="96" height="72" loading="lazy" decoding="async"></button>').join('');
   document.querySelectorAll('#photoThumbs button').forEach((b,i)=>b.onclick=()=>choosePhoto(i));choosePhoto(Math.min(photoIndex,photos.length-1));
 }
 $('prevPhoto').onclick=()=>choosePhoto(photoIndex-1);$('nextPhoto').onclick=()=>choosePhoto(photoIndex+1);
-$('reloadPhotos').onclick=()=>{retryPhotos();refreshPhotos().catch(error=>$('photoCount').textContent=t(friendlyError(error)));}
+$('reloadPhotos').onclick=()=>{retryPhotos();refreshPhotos({reuseCover:false}).catch(error=>$('photoCount').textContent=t(friendlyError(error)));}
 // Photo URL resolution runs separately from text and interactive controls.
 $('openPhoto').hidden=!photos.length;choosePhoto(0);
 // A photo that recovers after a renewed link replaces the unavailable notice.
 $('heroImage').addEventListener('load',()=>{if(albumShown)$('photoCount').textContent=t('{count} vehicle photos · Select a photo to take a closer look.',{count:photos.length})});
-$('heroImage').addEventListener('error',async event=>{if(!await renewPhoto(event.target))$('photoCount').textContent=vehicleCopy('photosUnavailable',language)});
+$('heroImage').addEventListener('error',async event=>{if(savedPhoto&&event.target.getAttribute('src')===savedPhoto.url){await refreshPhotos({reuseCover:false});return;}if(!await renewPhoto(event.target))$('photoCount').textContent=vehicleCopy('photosUnavailable',language)});
 // Photo links are kept for the visit; one that expires before loading is renewed on error.
 // Every 4 minutes re-read this vehicle so an open page drops the photos of a car moved to
 // draft (the browser can keep showing an image it already loaded on this page, whatever
@@ -170,7 +172,7 @@ $('depositAmount').max=String(car.priceValue);$('depositAmount').value=(car.pric
 $('calculator').onsubmit=e=>e.preventDefault();
 $('deposit').addEventListener('input',()=>{$('depositAmount').value=(car.priceValue*Number($('deposit').value)/100).toFixed(2);calculate()});
 ['depositAmount','tenure','rate'].forEach(id=>$(id).addEventListener('input',calculate));calculate();
-$('openPhoto').onclick=()=>$('photoDialog').showModal();$('closePhoto').onclick=()=>$('photoDialog').close();
+$('openPhoto').onclick=()=>{$('photoDialog').showModal();choosePhoto(photoIndex)};$('closePhoto').onclick=()=>$('photoDialog').close();
 function malaysiaDate(){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const part=k=>parts.find(p=>p.type===k).value;return part('year')+'-'+part('month')+'-'+part('day')}
 document.querySelectorAll('[data-book]').forEach(b=>b.onclick=()=>{const url=new URL(localizedURL('booking.html'));url.searchParams.set('id',car.id);for(const key of ['ref','sales'])if(params.get(key))url.searchParams.set(key,params.get(key));location.href=url.href});
 $('closeBooking').onclick=()=>$('bookingDialog').close();
@@ -185,7 +187,7 @@ refreshPhotos();
 const related=relatedAvailable(car,await getVehicles().catch(()=>[]));
 $('relatedCars').innerHTML=related.map(c=>'<a class="relatedCard" href="'+esc(vehiclePageURL(location.href,c.id,contact?.user_id))+'"><div class="noPhoto" data-related="'+c.id+'">'+esc(t('Loading photo…'))+'</div><small>'+c.year+' · '+esc(t(c.stock_status))+'</small><h3>'+esc(c.brand+' '+c.model)+'</h3>'+benefitsHTML(c)+'<p>'+rm(c.price)+' <span aria-hidden="true">↗</span></p></a>').join('');
 document.querySelector('.moreCars').hidden=!related.length&&!document.getElementById('discoveryRelated');
-for(const c of related)coverURL(c).then(url=>{const node=document.querySelector('[data-related="'+c.id+'"]');if(url&&node)node.innerHTML='<img src="'+esc(url)+'" alt="'+esc(c.brand+' '+c.model)+'" loading="lazy">'}).catch(()=>{});
+for(const c of related)coverURL(c).then(url=>{const node=document.querySelector('[data-related="'+c.id+'"]');if(url&&node)node.innerHTML='<img src="'+esc(url)+'" alt="'+esc(c.brand+' '+c.model)+'" width="1280" height="960" loading="lazy">'}).catch(()=>{});
 })().catch(()=>{});
 } catch(error) { $('carState').hidden=false;$('carState').textContent=t(friendlyError(error));if(unavailable||(!staticSnapshot&&!verified)){$('carMain').hidden=true;$('carDock').hidden=true;}else if(staticSnapshot&&!verified){$('carState').hidden=true;if($('inventoryNotice'))$('inventoryNotice').textContent=vehicleCopy('offline',language);}
  }
