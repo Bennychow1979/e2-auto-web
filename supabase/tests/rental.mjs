@@ -21,7 +21,7 @@ const ids={};let i=1;for(const role of ['super_admin','admin','office_admin','sa
 await db.exec(await readFile(new URL('../migrations/20261115180050_rental_staff_tracker.sql',import.meta.url),'utf8'));
 await db.exec(await readFile(new URL('../migrations/20261115183217_rental_audit_viewer.sql',import.meta.url),'utf8'));
 await db.exec(await readFile(new URL('../migrations/20261116033047_rental_profile_actor_names.sql',import.meta.url),'utf8'));
-await db.exec(await readFile(new URL('../migrations/20261120090000_rental_move_plate.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../migrations/20261120151522_rental_move_plate.sql',import.meta.url),'utf8'));
 await db.query('insert into staff_profiles values($1,$2),($3,$4)',[ids.admin,'  Demo Admin  ',ids.office_admin,'   ']);
 const as=async role=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[ids[role]||'']);await db.exec('set role '+(role==='anon'?'anon':'authenticated'));};
 const q=async(sql,args=[])=> (await db.query(sql,args)).rows;

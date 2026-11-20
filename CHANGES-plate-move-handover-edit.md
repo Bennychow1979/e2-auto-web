@@ -14,6 +14,8 @@
 JS 页面及数据模块都更新版本参数为 move-plate-2，防止缓存旧数据模块。
 库存浏览器测试在 Windows 使用 Edge；其他平台保持默认 Chromium。
 
+数据库已于 2026-11-20 23:15 MYT 部署；migration 文件名对齐数据库实际版本 `20261120151522_rental_move_plate.sql`。不要再运行 Claude 原版 `20261120090000` SQL。
+
 部署次序：先 migration，再页面。线上版本、部署记录和最终测试结果见交付包 DEPLOYMENT.json。
 
 以下保留 Claude v2 原说明作为来源记录；与上面的 v3 修正冲突时以上面为准。
