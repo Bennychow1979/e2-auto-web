@@ -84,6 +84,7 @@ async function load(){
   try{
     const rows=await getVehicles(),signature=malaysiaDay()+JSON.stringify(rows);
     if(signature===shownSignature)return;
+    failedCovers.clear();
     cars=rows;
     if(optimized())cars.forEach(c=>c.cover=c.photos[0]?publicVehicleImageURL(publicOrigin,c.id):null);
     else{const covers=cars.map(c=>c.photos[0]).filter(Boolean),signed=covers.length?await photoURLs(covers):[],byPath=new Map(signed.map(p=>[p.path,p.url]));cars.forEach(c=>c.cover=byPath.get(c.photos[0]?.path));}
@@ -98,9 +99,9 @@ const failedCovers=new Set();
 document.addEventListener('error',async event=>{
  const node=event.target,id=node?.dataset?.publicCover;if(!id||failedCovers.has(id))return;
  failedCovers.add(id);const record=cars.find(c=>c.id===id),photo=record?.photos[0];if(!photo)return;
- try{const [fresh]=await photoURLs([photo]);if(!fresh?.url||cars.find(c=>c.id===id)?.photos[0]?.id!==photo.id)return;record.cover=fresh.url;
+ try{const [fresh]=await photoURLs([photo]);const current=cars.find(c=>c.id===id);if(!fresh?.url)throw Error('Cover unavailable');if(current?.photos[0]?.id!==photo.id)return;current.cover=fresh.url;
  for(const image of document.querySelectorAll('img[data-public-cover="'+id+'"]')){image.removeAttribute('srcset');image.removeAttribute('sizes');image.removeAttribute('data-public-cover');image.src=fresh.url;}
- }catch{}
+ }catch{failedCovers.delete(id);shownSignature='';}
 },true);
 await load();
 // Refresh stock visibility; photo links are reused, so unchanged photos are not downloaded again.

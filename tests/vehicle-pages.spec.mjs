@@ -175,3 +175,12 @@ for(const lang of ['en','ms','zh'])test('category '+lang+' guide remains readabl
   await page.screenshot({path:info.outputPath('category-'+lang+'.png'),fullPage:true});
  }finally{await context.close();}
 });
+
+test('showroom public-cover failure falls back to signed images without stale responsive sources',async({page,fixture,context})=>{
+ await fixture();await context.route('https://synthetic-vehicle.supabase.co/functions/v1/e2-drive-photos?*',route=>route.abort());
+ await page.goto('/showroom.html');
+ for(const selector of ['#galleryTrack .galleryCard img','#filterResults img']){
+  const image=page.locator(selector).first();await expect(image).toHaveAttribute('src',/test-photo/);
+  await expect(image).not.toHaveAttribute('srcset',/./);await expect.poll(()=>image.evaluate(n=>n.naturalWidth)).toBeGreaterThan(0);
+ }
+});
