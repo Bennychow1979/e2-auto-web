@@ -29,7 +29,7 @@ for(const lang of ['en','ms','zh']){
   const prefix=lang==='en'?'':'/'+lang;
   assert(html.includes('href="'+prefix+'/showroom.html#cars"'));
   assert(html.includes('<header class="galleryNav">'));assert(html.includes('<footer class="wrap demoFooter">'));
-  assert(html.includes('src="/assets/e2-logo.png"'));assert(html.includes('href="'+prefix+'/sales-team.html"'));
+  assert(html.includes('src="/assets/e2-logo-small.webp"'));assert(html.includes('alt="E2 Auto"'));assert(html.includes('href="'+prefix+'/sales-team.html"'));
   assert.equal((html.match(/<main\b/g)||[]).length,1);assert.equal((html.match(/<h1\b/g)||[]).length,1);
   for(const target of ['en','ms','zh']){
    assert(html.includes('href="'+roadtaxPath(target)+'" data-language="'+target+'"'));
