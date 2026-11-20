@@ -66,12 +66,12 @@ test('live price and Sold override saved source, schema and application controls
 test('showroom recovers after a failed stock refresh even when the stock has not changed',async({page,fixture})=>{
  await page.clock.install();await fixture();await page.goto('/showroom.html');
  const cards=page.locator('#galleryTrack .galleryCard'),controls=page.locator('.galleryControls'),state=page.locator('#publicState');
- await expect(cards).toHaveCount(2);await expect(cards.first().locator('img')).toHaveAttribute('src',/test-photo/);await expect(controls).toBeVisible();await expect(state).toBeHidden();
+ await expect(cards).toHaveCount(2);await expect(cards.first().locator('img')).toHaveAttribute('src',/public_vehicle=/);await expect.poll(()=>cards.first().locator('img').evaluate(n=>n.naturalWidth)).toBeGreaterThan(0);await expect(controls).toBeVisible();await expect(state).toBeHidden();
  await page.evaluate(()=>{window.__vehicleFixture.state.inventoryMode='fail'});await page.clock.fastForward(241000);
  await expect(page.locator('#resultCount')).toHaveText('Inventory temporarily unavailable');await expect(state).toBeVisible();await expect(controls).toBeHidden();
  await page.evaluate(()=>{window.__vehicleFixture.state.inventoryMode='ready'});await page.clock.fastForward(241000);
  await expect(state).toBeHidden();await expect(controls).toBeVisible();await expect(page.locator('#resultCount')).not.toHaveText('Inventory temporarily unavailable');
- await expect(cards).toHaveCount(2);await expect(cards.first().locator('img')).toHaveAttribute('src',/test-photo/);
+ await expect(cards).toHaveCount(2);await expect(cards.first().locator('img')).toHaveAttribute('src',/public_vehicle=/);await expect.poll(()=>cards.first().locator('img').evaluate(n=>n.naturalWidth)).toBeGreaterThan(0);
 });
 test('an open page drops the photos of a vehicle moved to draft at its next 4-minute check',async({page,fixture})=>{
  await page.clock.install();await fixture();await page.goto(vehiclePath(vehicleA.id));await ready(page);await expect(page.locator('#photoThumbs button')).toHaveCount(3);
@@ -153,5 +153,25 @@ for(const lang of ['en','ms','zh'])test('responsive '+lang+' showroom covers and
  await expect(page.locator('#filterResults img').first()).toHaveAttribute('srcset',/width=400/);
  const image=page.locator('#filterResults img').first();await expect(image).toHaveJSProperty('complete',true);
  expect(await image.evaluate(n=>n.naturalWidth>0)).toBe(true);
+ await page.locator('[data-inventory-view="cards"]').click();
+ await expect(page.locator('[data-inventory-view="cards"]')).toHaveAttribute('aria-pressed','true');
+ await expect(image).toHaveAttribute('srcset',/width=1280/);
+ expect(await image.evaluate(n=>getComputedStyle(n).objectFit)).toBe('contain');
+ await page.locator('[data-inventory-view="list"]').click();
+ await expect(page.locator('[data-inventory-view="list"]')).toHaveAttribute('aria-pressed','true');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+for(const lang of ['en','ms','zh'])test('category '+lang+' guide remains readable without JavaScript',async({browser,baseURL},info)=>{
+ const context=await browser.newContext({javaScriptEnabled:false,viewport:info.project.use.viewport});
+ try{
+  await context.route('https://synthetic-vehicle.supabase.co/**',route=>route.fulfill({contentType:'image/svg+xml',body:photoSVG(1)}));
+  const page=await context.newPage();await page.goto(baseURL+(lang==='en'?'':'/'+lang)+'/used-cars/test-toyota/');
+  const guide=page.locator('.categoryGuide');await expect(guide).toBeVisible();
+  const gridBox=await page.locator('.discoveryGrid').boundingBox(),guideBox=await guide.boundingBox();expect(guideBox.y).toBeGreaterThanOrEqual(gridBox.y+gridBox.height);
+  await expect(guide.locator('details')).toHaveCount(3);await guide.locator('summary').first().click();await expect(guide.locator('details').first().locator('p')).toBeVisible();
+  await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href','https://e2auto.my'+(lang==='en'?'':'/'+lang)+'/used-cars/test-toyota/');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.screenshot({path:info.outputPath('category-'+lang+'.png'),fullPage:true});
+ }finally{await context.close();}
 });

@@ -2,6 +2,7 @@ import {escapeHTML as e,LANGUAGES,languageTags,t} from '../i18n.mjs';
 import {vehiclePath} from '../vehicle-routes.mjs';
 import {budgets,categoryMatches,categoryPath,relatedAvailable,modelSlug} from '../vehicle-discovery.mjs';
 import {publicVehicleImageURL,publicImageSrcset} from '../vehicle-public-image.mjs';
+import {categoryCopy,categoryMeta,categoryEditorialLinks} from '../category-copy.mjs';
 const origin='https://e2auto.my',json=v=>JSON.stringify(v).replace(/</g,'\\u003c');
 const money=v=>'RM'+Number(v).toLocaleString('en-MY',{maximumFractionDigits:0});
 const name=v=>[v.year,v.brand,v.model,v.variant].filter(Boolean).join(' ');
@@ -38,11 +39,12 @@ export function renderListing(template,rows,lang,slugs,categories,options={}){
   .replace('</footer>',()=>categoryNavigation(categories,lang,{footer:true})+'</footer>');
 }
 export function categoryMetadata(category,lang){
- const label=category.kind==='budget'?t(category.label,{},lang):category.label;
- const subject=category.kind==='budget'?({en:'Used cars '+label,ms:'Kereta terpakai '+label,zh:label+'二手车'}[lang]):({en:'Used '+label+' for Sale',ms:label+' Terpakai Dijual',zh:'二手 '+label+' 出售'}[lang]);
- const h1=subject+({en:' in KL & Selangor',ms:' di KL & Selangor',zh:'｜吉隆坡 雪兰莪'}[lang]);
- const description=h1+'. '+copy[lang].intro+' '+copy[lang].visit;
- return {title:h1+({zh:'｜E2 Auto Batu Caves'}[lang]||' | E2 Auto Batu Caves'),h1,description};
+ return categoryMeta(category,lang);
+}
+export function renderCategoryGuide(category,rows,lang,categories){
+ const c=categoryCopy(category,lang,rows),links=categoryEditorialLinks(category,categories,lang);
+ const link=v=>'<a href="'+e(v.href)+'">'+e(t(v.label,{},lang))+'</a>';
+ return '<section class="categoryGuide" aria-labelledby="categoryGuideTitle"><h2 id="categoryGuideTitle">'+e(c.heading)+' · '+e(t(category.label,{},lang))+'</h2>'+c.paragraphs.map(p=>'<p>'+e(p)+'</p>').join('')+'<p>'+e(c.visit)+'</p>'+(links.length?'<nav class="categoryGuideLinks" aria-label="'+e(c.models)+'">'+links.map(link).join('')+'</nav>':'')+'<h2>'+e(c.faq)+'</h2>'+c.faqs.map(([q,a])=>'<details><summary>'+e(q)+'</summary><p>'+e(a)+'</p></details>').join('')+'<nav class="categoryGuideLinks" aria-label="'+e(c.tools)+'">'+c.links.map(link).join('')+'</nav></section>';
 }
 export function renderCategory(category,rows,lang,slugs,categories,options={}){
  const c=copy[lang],meta=categoryMetadata(category,lang),path=categoryPath(category.slug,lang),matches=rows.filter(v=>categoryMatches(v,category));
@@ -50,7 +52,7 @@ export function renderCategory(category,rows,lang,slugs,categories,options={}){
  const related=matches.length?[]:relatedAvailable(comparable,rows,6);
  const message=({en:'Hi E2 Auto, I am looking for ',ms:'Hai E2 Auto, saya mencari ',zh:'你好 E2 Auto，我想询问 '}[lang])+meta.h1;
  const breadcrumbs={'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'E2 Auto',item:origin+home(lang)},{'@type':'ListItem',position:2,name:meta.h1,item:origin+path}]};
- return '<!doctype html><html lang="'+(lang==='zh'?'zh-Hans':lang)+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+e(meta.title)+'</title><meta name="description" content="'+e(meta.description)+'"><link rel="canonical" href="'+origin+path+'">'+LANGUAGES.concat('x-default').map(l=>'<link rel="alternate" hreflang="'+(languageTags[l]||l)+'" href="'+origin+categoryPath(category.slug,l==='x-default'?'en':l)+'">').join('')+'<link rel="stylesheet" href="/discovery.css?v=nav-20261113"><script type="application/ld+json">'+json(breadcrumbs)+'</script><script src="/e2-config.js"></script><script type="module" src="/campaign-tracking.mjs?v=1"></script></head><body class="categoryPage"><header><a href="'+home(lang)+'">E2 AUTO</a><nav aria-label="Language">'+LANGUAGES.map(l=>'<a lang="'+(l==='zh'?'zh-Hans':l)+'" href="'+categoryPath(category.slug,l)+'"'+(l===lang?' aria-current="page"':'')+'>'+({en:'EN',ms:'BM',zh:'华语'}[l])+'</a>').join('')+'</nav></header><main><p><a href="'+home(lang)+'#cars">← '+e(c.all)+'</a></p><h1>'+e(meta.h1)+'</h1><p>'+e(c.intro)+'</p><p>'+e(c.visit)+'</p>'+(matches.length?'<p>'+e(t('{count} cars to explore',{count:matches.length},lang))+'</p>':'<h2>'+e(c.empty)+'</h2><p>'+e(c.none)+'</p>')+'<p class="categoryActions"><a href="'+home(lang)+'booking.html">'+e(c.book)+'</a><a href="https://wa.me/60122785126?text='+encodeURIComponent(message)+'">WhatsApp · '+e(c.ask)+'</a></p>'+(!matches.length&&related.length?'<h2>'+e(c.related)+'</h2>':'')+'<div class="discoveryGrid">'+discoveryCards(matches.length?matches:related,lang,slugs,{...options,compact:true})+'</div><p>'+e(c.updated)+'</p></main><footer>'+categoryNavigation(categories,lang,{footer:true})+'</footer></body></html>';
+ return '<!doctype html><html lang="'+(lang==='zh'?'zh-Hans':lang)+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+e(meta.title)+'</title><meta name="description" content="'+e(meta.description)+'"><link rel="canonical" href="'+origin+path+'">'+LANGUAGES.concat('x-default').map(l=>'<link rel="alternate" hreflang="'+(languageTags[l]||l)+'" href="'+origin+categoryPath(category.slug,l==='x-default'?'en':l)+'">').join('')+'<link rel="stylesheet" href="/discovery.css?v=guide-20261121"><script type="application/ld+json">'+json(breadcrumbs)+'</script><script src="/e2-config.js"></script><script type="module" src="/campaign-tracking.mjs?v=1"></script></head><body class="categoryPage"><header><a href="'+home(lang)+'">E2 AUTO</a><nav aria-label="Language">'+LANGUAGES.map(l=>'<a lang="'+(l==='zh'?'zh-Hans':l)+'" href="'+categoryPath(category.slug,l)+'"'+(l===lang?' aria-current="page"':'')+'>'+({en:'EN',ms:'BM',zh:'华语'}[l])+'</a>').join('')+'</nav></header><main><p><a href="'+home(lang)+'#cars">← '+e(c.all)+'</a></p><h1>'+e(meta.h1)+'</h1><p>'+e(c.intro)+'</p><p>'+e(c.visit)+'</p>'+(matches.length?'<p>'+e(t('{count} cars to explore',{count:matches.length},lang))+'</p>':'<h2>'+e(c.empty)+'</h2><p>'+e(c.none)+'</p>')+'<p class="categoryActions"><a href="'+home(lang)+'booking.html">'+e(c.book)+'</a><a href="https://wa.me/60122785126?text='+encodeURIComponent(message)+'">WhatsApp · '+e(c.ask)+'</a></p>'+(!matches.length&&related.length?'<h2>'+e(c.related)+'</h2>':'')+'<div class="discoveryGrid">'+discoveryCards(matches.length?matches:related,lang,slugs,{...options,compact:true})+'</div>'+renderCategoryGuide(category,rows,lang,categories)+'<p>'+e(c.updated)+'</p></main><footer>'+categoryNavigation(categories,lang,{footer:true})+'</footer></body></html>';
 }
 export function renderRelated(car,rows,lang,slugs,options={}){
  const c=copy[lang];

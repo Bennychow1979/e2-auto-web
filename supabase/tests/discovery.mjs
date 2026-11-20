@@ -10,6 +10,7 @@ import {vehicleA,vehicleB} from '../../tests/fixtures/vehicle-pages.mjs';
 import {vehiclePath} from '../../vehicle-routes.mjs';
 import {renderStock} from '../../scripts/build-stock.mjs';
 import {renderCategory,categoryMetadata} from '../../scripts/build-discovery.mjs';
+import {categoryCopy} from '../../category-copy.mjs';
 
 test('budget boundaries have exactly one bucket and old filter values do not silently match',()=>{
  for(const [price,expected] of [[0,0],[29999,0],[30000,1],[49999,1],[50000,2],[79999,2],[80000,3],[300000,3]])assert.deepEqual(budgets.map((b,i)=>matchesBudget(price,b.slug)?i:-1).filter(i=>i>=0),[expected]);
@@ -54,6 +55,39 @@ test('untrusted inventory labels are escaped in category text and metadata',()=>
  const row={...vehicleA,brand:'Brand <img onerror=bad>',model:'Model </script><script>bad</script>'},category=categoryRegistry([row]).find(v=>v.kind==='model');
  const html=renderCategory(category,[],'zh',{},[category]);assert(!html.includes('<script>bad'));assert(!html.includes('<img onerror'));assert(html.includes('&lt;img'));
  assert.notEqual(categoryMetadata(category,'zh').title,categoryMetadata(category,'ms').title);
+});
+
+test('all supported brands and budgets have concise unique trilingual metadata and static buyer guides after the cars',()=>{
+ const brands=['Perodua','Proton','Honda','Toyota','Nissan','Mazda','Mitsubishi','Hyundai','Kia','Ford','Subaru','BMW','Mercedes-Benz','Volvo'];
+ const rows=brands.map((brand,i)=>({...vehicleA,id:'00000000-0000-4000-8000-'+String(i+1).padStart(12,'0'),brand}));
+ const categories=categoryRegistry(rows),slugs=Object.fromEntries(rows.map((r,i)=>[r.id,'sample-'+i]));
+ for(const lang of ['en','ms','zh']){
+  const titles=new Set(),descriptions=new Set(),paragraphs=new Set();
+  for(const category of categories.filter(v=>v.kind!=='model')){
+   const meta=categoryMetadata(category,lang),guide=categoryCopy(category,lang,rows);
+   assert(meta.title.length<=60,meta.title);assert(meta.description.length<=155,meta.description);
+   assert(!titles.has(meta.title));assert(!descriptions.has(meta.description));assert(!paragraphs.has(guide.paragraphs[0]));
+   titles.add(meta.title);descriptions.add(meta.description);paragraphs.add(guide.paragraphs[0]);
+   const html=renderCategory(category,rows,lang,slugs,categories);
+   assert(html.indexOf('class="categoryGuide"')>html.indexOf('class="discoveryGrid"'));
+   assert.equal((html.match(/<details>/g)||[]).length,3);assert(html.includes('9:30'));assert(!html.includes('FAQPage'));
+   assert(!html.includes('noindex'));assert.equal((html.match(/rel="alternate"/g)||[]).length,4);
+   for(const link of guide.links)assert(html.includes('href="'+link.href+'"'));
+  }
+ }
+});
+
+test('model facts use only available published stock, stay escaped, and do not invent history for empty categories',()=>{
+ const rows=[{...vehicleA,year:2018,variant:'<script>test</script>'},{...vehicleA,id:vehicleB.id,year:2024,variant:'private-only',publication:'draft'},{...vehicleA,id:'cccccccc-1111-4111-8111-111111111111',year:2001,variant:'sold-only',stock_status:'Sold'}];
+ const categories=categoryRegistry(rows),category=categories.find(v=>v.kind==='model');
+ for(const lang of ['en','ms','zh']){
+  const html=renderCategory(category,rows,lang,{[vehicleA.id]:'sample'},categories);
+  assert(!html.includes('<script>test</script>'));assert(html.includes('&lt;script&gt;test'));
+  const guide=categoryCopy(category,lang,rows).paragraphs.join(' ');
+  assert(guide.includes('2018'));assert(!guide.includes('2024'));assert(!guide.includes('private-only'));assert(!guide.includes('sold-only'));
+  const empty=categoryCopy(category,lang,rows.map(v=>({...v,stock_status:'Sold'}))).paragraphs.join(' ');
+  assert(!empty.includes('2018'));assert(!empty.includes('2024'));
+ }
 });
 test('legacy entry immediately redirects each language, retaining attribution, without redirecting staff previews or unknown IDs',()=>{
  const code=legacyRedirectScript().replace(/^<script[^>]*>|<\/script>$/g,'');
