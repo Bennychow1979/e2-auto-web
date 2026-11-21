@@ -2,7 +2,7 @@ import {calculateCarLoan} from './car-loan-core.mjs';
 import {carLoanCopy} from './car-loan-copy.mjs';
 const form=document.getElementById('cl-form');
 if(form){
- const c=carLoanCopy[form.dataset.language]||carLoanCopy.en;
+ const c=carLoanCopy[form.dataset.calculatorLanguage]||carLoanCopy.en;
  const result=document.getElementById('cl-result'),error=document.getElementById('cl-error');
  const money=new Intl.NumberFormat('en-MY',{style:'currency',currency:'MYR',minimumFractionDigits:2,maximumFractionDigits:2});
  const fields=['price','deposit','rate','years'];
