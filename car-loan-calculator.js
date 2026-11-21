@@ -12,7 +12,7 @@ if(form){
   try{
    if(!fields.every(name=>form.elements.namedItem(name).validity.valid))throw Error('invalid');
    const estimate=calculateCarLoan(values);
-   for(const key of ['monthly','principal','interest','repayment','total'])document.getElementById('cl-'+key).textContent=money.format(estimate[key]);
+   for(const key of ['monthly','principal'])document.getElementById('cl-'+key).textContent=money.format(estimate[key]);
    document.getElementById('cl-months').textContent=estimate.months+' '+c.months;
    result.hidden=false;error.hidden=true;
   }catch{
