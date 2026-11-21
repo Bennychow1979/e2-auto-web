@@ -55,7 +55,7 @@ export async function publicVehicleImage(req,{publicClient,admin,drive,driveRead
       if(req.method==='GET'){
         const load=async()=>{const data=await drive.image(link.file_id,link.checksum,mime);if(data.length!==link.size_bytes||imageType(data)!==mime)throw Error(unavailable);return data;};
         if(variant&&req.headers.get('Accept')?.includes('image/webp')){
-          const result=await timed('image',()=>variant({key:id+':'+photo.id+':'+link.file_id+':'+link.checksum,width:Number(params.get('width')||1280),mime,load}));bytes=result.bytes;mime=result.mime;
+          const result=await timed('image',()=>variant({key:id+':'+photo.id+':'+link.file_id+':'+link.checksum,width:params.has('width')?Number(params.get('width')):'original',mime,load}));bytes=result.bytes;mime=result.mime;
         }else bytes=await timed('image',load);
       }
     }else return reply(404);

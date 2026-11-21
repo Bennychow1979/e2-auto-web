@@ -40,6 +40,9 @@
 .inventoryViewSwitch button{min-height:44px;padding:8px 16px;border:0;border-radius:999px;background:transparent;color:#555b50;font:inherit;font-size:.8125rem;cursor:pointer}
 .inventoryViewSwitch button[aria-pressed=true]{background:#111214;color:#fff}
 .inventoryViewSwitch button:focus-visible{outline:2px solid #9c7b2e;outline-offset:3px}
+/* Showcase photos retain the complete frame, including the top banner. */
+#galleryTrack .photo{aspect-ratio:4/3;height:auto}
+#galleryTrack .photo img{object-fit:contain}
 #filterResults .sampleRow>img{object-fit:contain;background:#e9eae5}
 #filterResults .sampleRow>.sampleInfo{min-width:0}
 #filterResults[data-view=cards]{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:20px}
