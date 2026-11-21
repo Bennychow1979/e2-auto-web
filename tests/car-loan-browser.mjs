@@ -27,6 +27,9 @@ try{
   });
   await page.goto(origin+carLoanPath(lang));
   await expect(page.locator('#cl-monthly')).toHaveText(/666\.96/);
+  await expect(page.locator('[data-language]')).toHaveCount(3);
+  await expect(page.locator('#cl-form')).not.toHaveAttribute('aria-current');
+  for(const target of ['en','ms','zh'])await expect(page.locator('a[data-language='+target+']')).toHaveAttribute('href',new RegExp(carLoanPath(target)+'$'));
   await page.locator('[name=price]').fill('100000');await page.locator('[name=deposit]').fill('10000');
   await page.locator('button[type=submit]').click();await expect(page.locator('#cl-monthly')).toHaveText(/1,333\.93/);
   await page.locator('[name=deposit]').fill('100001');await expect(page.locator('#cl-result')).toBeHidden();await expect(page.locator('#cl-error')).toBeVisible();
