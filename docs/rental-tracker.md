@@ -206,7 +206,7 @@ Reserved; agent stock messages group READY, PRE-BOOKING and RESERVED and omit
 GPS, spare keys and booking-party details. Payment messages, including all-owner
 previews, exclude pending cars. Handovers use cards that fit phone screens.
 
-Apply `20261121052752_rental_pending_booking_guards.sql` **before** publishing
+Apply `20261121063232_rental_pending_booking_guards.sql` **before** publishing
 the frontend. This migration replaces the two existing RPC bodies, retaining
 their signatures, permission checks, locks, revision checks and audit behavior.
 It introduces an internal `SECURITY INVOKER` validator, with an empty search path
