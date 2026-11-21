@@ -119,3 +119,20 @@ test('only bounded image widths are accepted; HEAD never converts or downloads',
  for(const width of ['0','801','99999','800&width=400'])assert.equal((await fixture().request('GET','public_vehicle='+vehicle+'&width='+width)).status,400);
  const f=fixture();for(const width of [400,800,1280])assert.equal((await f.request('HEAD','public_vehicle='+vehicle+'&width='+width,{Accept:'image/webp'})).status,200);assert.equal(f.calls.images.length,0);
 });
+
+test('Drive metadata reads overlap, but no image bytes start before both validations',async()=>{
+ const f=fixture(),started=[];let releaseFolder,releaseFile;
+ f.drive.metadata=id=>{started.push(id);return new Promise(resolve=>{if(id===folder)releaseFolder=()=>resolve(f.folderMeta);else releaseFile=()=>resolve(f.fileMeta);});};
+ const response=f.request();
+ for(let i=0;i<30&&started.length<2;i++)await Promise.resolve();
+ assert.deepEqual(started,[folder,file]);assert.equal(f.calls.images.length,0);
+ releaseFile();await Promise.resolve();assert.equal(f.calls.images.length,0);
+ releaseFolder();const result=await response;assert.equal(result.status,200);
+ assert.match(result.headers.get('server-timing'),/drive_metadata;dur=\d+/);
+ assert(!result.headers.get('server-timing').includes(file));
+});
+
+test('withdrawal during overlapping metadata still discards the image',async()=>{
+ const f=fixture();f.drive.metadata=async id=>{if(id===file)f.rows.vehicles[0].publication='draft';return id===file?f.fileMeta:f.folderMeta;};
+ await denied(f);
+});

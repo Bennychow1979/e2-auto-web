@@ -147,6 +147,20 @@ for(const [lang,path] of Object.entries({en:'/car-insurance-calculator/',ms:'/ms
  });
 }
 
+for(const lang of ['en','ms','zh'])test('showcase '+lang+' retains full-size images without cropping',async({page,fixture})=>{
+ await fixture();await page.goto((lang==='en'?'':'/'+lang)+'/');
+ const images=page.locator('#galleryTrack img');await expect(images).toHaveCount(2);
+ for(const image of await images.all()){
+  await expect(image).toHaveAttribute('src',/public_vehicle=/);
+  await expect(image).not.toHaveAttribute('src',/width=/);
+  await expect(image).not.toHaveAttribute('srcset',/./);
+  expect(await image.evaluate(n=>getComputedStyle(n).objectFit)).toBe('contain');
+ }
+ await expect.poll(()=>images.first().evaluate(n=>n.naturalWidth)).toBeGreaterThan(0);
+ const frame=await page.locator('#galleryTrack .photo').first().boundingBox();expect(frame.width/frame.height).toBeCloseTo(4/3,1);
+ await page.locator('#next').click();await expect(page.locator('#galleryTrack .isActive')).toHaveCount(1);
+});
+
 for(const lang of ['en','ms','zh'])test('responsive '+lang+' showroom covers and view toggle',async({page,fixture})=>{
  await fixture();await page.goto((lang==='en'?'':'/'+lang)+'/showroom.html');
  await expect(page.locator('#filterResults [data-public-cover]').first()).toBeVisible();
