@@ -1,3 +1,4 @@
+import {carLoanPath} from '../car-loan-copy.mjs';
 import {insurancePaths} from '../insurance-routes.mjs';
 import {readFile, writeFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
@@ -17,6 +18,8 @@ export function renderSitemap(rows,{staticPages=false,slugs,includeSold=true,cat
   const bookings=Object.fromEntries(LANGUAGES.map(lang=>[lang,SITE_URL+(lang==='en'?'':lang+'/')+'booking.html']));
   entries.push(...LANGUAGES.map(lang=>'  <url><loc>'+bookings[lang]+'</loc>'+alternatives(bookings)+'</url>'));
   if(staticPages){
+    const carLoans=Object.fromEntries(LANGUAGES.map(lang=>[lang,new URL(carLoanPath(lang),SITE_URL).href]));
+    entries.push(...LANGUAGES.map(lang=>'  <url><loc>'+carLoans[lang]+'</loc>'+alternatives(carLoans)+'</url>'));
     entries.push('  <url><loc>'+SITE_URL+'privacy/</loc></url>');
     const roadtax=Object.fromEntries(LANGUAGES.map(lang=>[lang,SITE_URL+(lang==='en'?'':lang+'/')+'roadtax-calculator/']));
     const roadtaxAlternates=[...LANGUAGES.map(lang=>'<xhtml:link rel="alternate" hreflang="'+({en:'en',ms:'ms',zh:'zh-Hans'}[lang])+'" href="'+roadtax[lang]+'"/>'),'<xhtml:link rel="alternate" hreflang="x-default" href="'+roadtax.en+'"/>'].join('');

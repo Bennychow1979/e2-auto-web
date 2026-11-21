@@ -3,6 +3,7 @@
 import {bookingTranslations} from './booking-translations.mjs';
 import {salesTeamTranslations} from './sales-team-translations.mjs';
 export const translations = {
+  'Car loan calculator':['Kalkulator pinjaman kereta','汽车贷款计算器'],
   'Insurance + road tax calculator':['Kalkulator insurans + cukai jalan','保险 + 路税计算器'],
   'Useful links':['Pautan berguna','实用链接'],
   'Used car loans':['Pinjaman kereta terpakai','二手车贷款'],

@@ -1,3 +1,4 @@
+import {carLoanPath} from '../car-loan-copy.mjs';
 import {insurancePaths} from '../insurance-routes.mjs';
 import {loanGuidePaths} from '../loan-guide-routes.mjs';
 import assert from 'node:assert/strict';
@@ -43,6 +44,9 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
   assert(html.includes('href="'+insurancePaths[lang]+'"'),'Vehicle insurance link missing');
  }
  for(const lang of ['en','ms','zh']){
+  const carLoan=await readFile(join(out,carLoanPath(lang).slice(1),'index.html'),'utf8');
+  assert(carLoan.includes('rel="canonical" href="https://e2auto.my'+carLoanPath(lang)+'"'));
+  assert(carLoan.includes('id="cl-form"')&&carLoan.includes('car-loan-calculator.js'));
   const insurance=await readFile(join(out,insurancePaths[lang].slice(1),'index.html'),'utf8');
   assert(insurance.includes('rel="canonical" href="https://e2auto.my'+insurancePaths[lang]+'"'));
   assert(insurance.includes('id="in-form"')&&insurance.includes('var E2INS =')&&insurance.includes('var E2RT =')&&insurance.includes('id="in-split"'));
@@ -76,7 +80,7 @@ export async function verifyPagesArtifact(snapshot,output,{source=root,now=Date.
   JSON.parse(/<script id="plateStructuredData" type="application\/ld\+json">([^<]*)<\/script>/.exec(html)[1]);
  }
  for(const file of ['sales-team.js','sales-team.css','sales-team-data.mjs','sales-team-motion.mjs','sales-team-navigation.mjs','sales-team-translations.mjs'])assert.deepEqual(await readFile(join(out,file)),await readFile(join(source,file)),'Team module preserved: '+file);
- const sitemap=await readFile(join(out,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,rows.length*3+19+manifest.categories.length*3);
+ const sitemap=await readFile(join(out,'sitemap.xml'),'utf8');assert.equal((sitemap.match(/<loc>/g)||[]).length,rows.length*3+22+manifest.categories.length*3);
  for(const path of Object.values(insurancePaths))assert(sitemap.includes('<loc>https://e2auto.my'+path+'</loc>'),'Insurance sitemap entry missing');
  for(const [name,file] of [['stock','stock.txt'],['stockSold','stock-sold.txt'],['sitemap','sitemap.xml']])assert.equal(manifest.publicationHashes?.[name],createHash('sha256').update(await readFile(join(out,file))).digest('hex'),'Publication hash mismatch: '+name);
  return {vehicles:rows.length,pages:manifest.files.length,preservedFiles:preserved.length,publicImageVersion:'v2',photoBytesDownloaded:0,artifactVerified:true};
