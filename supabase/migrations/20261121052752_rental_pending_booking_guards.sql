@@ -23,7 +23,7 @@ begin
  hands=coalesce(nullif(proposed->'handovers','null'::jsonb),'[]'::jsonb);
  if jsonb_typeof(pays)<>'array' or jsonb_typeof(hands)<>'array' then raise exception 'Invalid payment or handover list'; end if;
  if pending then
-  if jsonb_array_length(pays)>0 or exists(select 1 from jsonb_array_elements(hands) h where h->>'type'='OUT' and coalesce(h->>'void','false')<>'true') then
+  if jsonb_array_length(pays)>0 or exists(select 1 from jsonb_array_elements(hands) h where coalesce(nullif(h->>'type',''),case when upper(coalesce(h->>'to','')||' '||coalesce(h->>'note',''))~'REPO|RETURN|BTC|STOCK|SHOWROOM|BACK' then 'IN' else 'OUT' end)='OUT' and coalesce(h->>'void','false')<>'true') then
    raise exception 'Loan not disbursed: cannot record payments or rent out';
   end if;
  elsif tracked then

@@ -159,7 +159,7 @@ const rejectUnchanged=async(fn,pattern)=>{
  assert.deepEqual(await q('select * from rental_audit order by id'),audits);
 };
 await save('contracts','PENDING1',pendingData,0);
-for(const patch of [{payments:[{amount:500}]},{handovers:[out]},{pending_disbursement:'true'},{pending_disbursement:false},{booking:{...booking,deposit:0}},{booking:{...booking,deposit:-1}},{booking:{...booking,deposit:'300'}}]){
+for(const patch of [{payments:[{amount:500}]},{handovers:[out]},{handovers:[{to:'SYNTHETIC RENTER',date:'2026-11-21'}]},{pending_disbursement:'true'},{pending_disbursement:false},{booking:{...booking,deposit:0}},{booking:{...booking,deposit:-1}},{booking:{...booking,deposit:'300'}}]){
  await rejectUnchanged(()=>save('contracts','PENDING1',patch,1,true),/disbursed|disbursement|deposit/);
 }
 await rejectUnchanged(()=>save('contracts','PENDING1',{...pendingData,pending_disbursement:undefined},1),/disbursement/);
