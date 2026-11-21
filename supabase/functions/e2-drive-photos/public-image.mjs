@@ -16,6 +16,8 @@ export function validUploadPath(path,vehicle){
 
 export async function publicVehicleImage(req,{publicClient,admin,drive,driveReady,root,headers,variant}){
   const reply=(status,error=unavailable)=>new Response(JSON.stringify({error}),{status,headers});
+  const timings=[];
+  const timed=async(name,work)=>{const start=Date.now();try{return await work();}finally{timings.push(name+';dur='+Math.max(0,Date.now()-start));}};
   try{
     const params=new URL(req.url).searchParams,ids=params.getAll('public_vehicle');
     if(!['GET','HEAD'].includes(req.method)||ids.length!==1||!UUID.test(ids[0])||[...params.keys()].some(key=>!['public_vehicle','width'].includes(key))||params.getAll('width').length>1||(params.has('width')&&!['400','800','1280'].includes(params.get('width'))))
@@ -23,9 +25,10 @@ export async function publicVehicleImage(req,{publicClient,admin,drive,driveRead
     const id=ids[0].toLowerCase();
     const readCar=async()=>checked(await publicClient.from('vehicles').select('id,plate,publication').eq('id',id).eq('publication','published').maybeSingle());
     const readPhoto=async()=>checked(await publicClient.from('vehicle_photos').select(photoFields).eq('vehicle_id',id).order('position').order('id').limit(1).maybeSingle());
-    const car=await readCar();
+    // Both reads use the anonymous client's RLS. No object access starts before
+    // both identities are checked; independent network round trips can overlap.
+    const [car,photo]=await timed('inventory',()=>Promise.all([readCar(),readPhoto()]));
     if(!car||car.id!==id||car.publication!=='published')return reply(404);
-    const photo=await readPhoto();
     if(!photo||!UUID.test(photo.id||'')||photo.vehicle_id!==id)return reply(404);
     let bytes=null,mime,link=null;
     const readLink=async()=>checked(await admin.from('vehicle_drive_photos').select(linkFields).eq('photo_id',photo.id).eq('vehicle_id',id).maybeSingle());
@@ -41,29 +44,29 @@ export async function publicVehicleImage(req,{publicClient,admin,drive,driveRead
     }else if(photo.source==='drive'){
       if(photo.path!==id+'/'+photo.id+'.drive')return reply(404);
       if(!driveReady())return reply(503);
-      link=await readLink();
+      link=await timed('link',readLink);
       if(!link||link.photo_id!==photo.id||link.vehicle_id!==id||!FILE_ID.test(link.folder_id||'')||!FILE_ID.test(link.file_id||'')||
         !/^[a-f0-9]{32}$/.test(link.checksum||'')||!MIME.has(link.mime_type)||!Number.isInteger(link.size_bytes)||link.size_bytes<1||link.size_bytes>MAX_BYTES)return reply(404);
-      const folder=await drive.metadata(link.folder_id);
+      const [folder,meta]=await timed('drive_metadata',()=>Promise.all([drive.metadata(link.folder_id),drive.metadata(link.file_id)]));
       if(folder.id!==link.folder_id)return reply(404);
       checkFolder(folder,root,car.plate);
-      const meta=await drive.metadata(link.file_id);
       if(meta.id!==link.file_id||!validPhoto(meta,link.folder_id)||meta.md5Checksum!==link.checksum||meta.mimeType!==link.mime_type||Number(meta.size)!==link.size_bytes)return reply(404);
       mime=link.mime_type;
       if(req.method==='GET'){
         const load=async()=>{const data=await drive.image(link.file_id,link.checksum,mime);if(data.length!==link.size_bytes||imageType(data)!==mime)throw Error(unavailable);return data;};
         if(variant&&req.headers.get('Accept')?.includes('image/webp')){
-          const result=await variant({key:id+':'+photo.id+':'+link.file_id+':'+link.checksum,width:Number(params.get('width')||1280),mime,load});bytes=result.bytes;mime=result.mime;
-        }else bytes=await load();
+          const result=await timed('image',()=>variant({key:id+':'+photo.id+':'+link.file_id+':'+link.checksum,width:Number(params.get('width')||1280),mime,load}));bytes=result.bytes;mime=result.mime;
+        }else bytes=await timed('image',load);
       }
     }else return reply(404);
     // Do not serve a former first photo or a replaced link after any awaited read.
-    const currentPhoto=await readPhoto();
+    const [currentPhoto,currentLink]=await timed('relations',()=>Promise.all([readPhoto(),link?readLink():null]));
     if(!same(photo,currentPhoto,photoFields.split(',')))return reply(404);
-    if(link&&!same(link,await readLink(),linkFields.split(',')))return reply(404);
-    const latest=await readCar();
+    if(link&&!same(link,currentLink,linkFields.split(',')))return reply(404);
+    // Publication is checked last, even when other checks overlap.
+    const latest=await timed('publication',readCar);
     if(!same(car,latest,['id','plate','publication']))return reply(404);
-    return new Response(bytes,{headers:{...headers,'Vary':'Origin, Accept','Content-Type':mime,'X-E2-Public-Image':'v2','X-Content-Type-Options':'nosniff','Content-Disposition':'inline','Referrer-Policy':'no-referrer'}});
+    return new Response(bytes,{headers:{...headers,'Server-Timing':timings.join(', '),'Vary':'Origin, Accept','Content-Type':mime,'X-E2-Public-Image':'v2','X-Content-Type-Options':'nosniff','Content-Disposition':'inline','Referrer-Policy':'no-referrer'}});
   }catch{
     // Public responses never reflect SDK errors, Drive IDs, credentials or URLs.
     return reply(404);

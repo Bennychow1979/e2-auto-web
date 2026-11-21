@@ -15,12 +15,18 @@ export function jpegDimensions(bytes) {
   return null;
 }
 export function createImageVariants({convert,now=Date.now,maxBytes=24*1024*1024,ttl=300000}) {
-  const cache=new Map();let used=0;
+  const cache=new Map(),pending=new Map();let used=0;
   return async function variant({key,width,mime,load}) {
     if(![400,800,1280].includes(width))throw Error('Invalid image width');
     for(const [k,v] of cache)if(v.until<=now()){cache.delete(k);used-=v.bytes.length;}
     const cacheKey=key+':'+width;
     if(cache.has(cacheKey)){const value=cache.get(cacheKey);cache.delete(cacheKey);cache.set(cacheKey,value);return value;}
+    // Coalesce duplicate cover requests while each caller performs its own
+    // publication, current-photo and metadata checks outside this byte cache.
+    if(pending.has(cacheKey))return pending.get(cacheKey);
+    const work=build();pending.set(cacheKey,work);
+    try{return await work;}finally{pending.delete(cacheKey);}
+    async function build(){
     const original=await load();let result={bytes:original,mime};
     const dimensions=mime==='image/jpeg'&&original.length<=3*1024*1024?jpegDimensions(original):null;
     // Full-size displays retain the original pixels and avoid WASM cold-start cost.
@@ -35,5 +41,6 @@ export function createImageVariants({convert,now=Date.now,maxBytes=24*1024*1024,
       cache.set(cacheKey,{...result,until:now()+ttl});used+=result.bytes.length;
     }
     return result;
+    }
   };
 }

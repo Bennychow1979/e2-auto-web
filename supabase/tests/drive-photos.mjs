@@ -99,6 +99,20 @@ assert.equal(tokens,1);
 content=new Uint8Array(MAX_BYTES+1);
 await assert.rejects(()=>google.image(file,checksum,'image/jpeg'),/20 MB/);
 
+// Concurrent gallery reads refresh credentials once; metadata is never cached.
+{
+ let refreshes=0,reads=0,fail=true;
+ const concurrent=googleDrive({client_email:'test@example.test',private_key:'-----BEGIN PRIVATE KEY-----\n'+pem+'\n-----END PRIVATE KEY-----'},async(url)=>{
+  if(String(url)==='https://oauth2.googleapis.com/token'){refreshes++;return fail?new Response('Unavailable',{status:503}):Response.json({access_token:'synthetic',expires_in:3600});}
+  reads++;return Response.json({id:file});
+ });
+ const rejected=await Promise.allSettled(Array.from({length:8},()=>concurrent.metadata(file)));
+ assert(rejected.every(r=>r.status==='rejected'));assert.equal(refreshes,1);assert.equal(reads,0);
+ fail=false;await Promise.all(Array.from({length:8},()=>concurrent.metadata(file)));
+ assert.equal(refreshes,2);assert.equal(reads,8);
+ await concurrent.metadata(file);assert.equal(reads,9);assert.equal(refreshes,2);
+}
+
 const db=new PGlite();
 await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;
 create schema auth;create schema storage;

@@ -33,6 +33,20 @@ test('full-size requests retain exact original bytes and never initialize conver
  assert.equal(conversions,0);assert.equal(result.mime,'image/jpeg');assert.deepEqual(result.bytes,jpeg);
 });
 
+test('simultaneous requests share only image work and failed loads remain retryable',async()=>{
+ let loads=0,release;
+ const variant=createImageVariants({convert:()=>{throw Error('No full-size conversion')}});
+ const request={key:'same-photo',width:1280,mime:'image/jpeg',load:()=>{loads++;return new Promise(resolve=>release=resolve);}};
+ const waiting=Array.from({length:8},()=>variant(request));
+ assert.equal(loads,1);release(jpeg);
+ for(const result of await Promise.all(waiting))assert.deepEqual(result.bytes,jpeg);
+ let failures=0;
+ const fail={...request,key:'retry',load:async()=>{failures++;throw Error('Transient')}};
+ const rejected=await Promise.allSettled(Array.from({length:8},()=>variant(fail)));
+ assert.equal(failures,1);assert(rejected.every(r=>r.status==='rejected'));
+ assert.deepEqual((await variant({...fail,load:async()=>jpeg})).bytes,jpeg);
+});
+
 test('colour profile survives metadata stripping without cropping or upscaling',()=>{
  const profile=new Uint8Array([1,2,3,4]),events=[];
  const img={width:1280,height:960,autoOrient(){events.push('orient')},resize(w,h){assert.equal(w,800);assert.equal(h,600)},getProfile(name){assert.equal(name,'icc');return {data:profile}},strip(){profile.fill(0);events.push('strip')},setProfile(name,data){assert.equal(name,'icc');assert.deepEqual([...data],[1,2,3,4]);events.push('profile')},write(format,callback){return callback(new Uint8Array([9]))}};

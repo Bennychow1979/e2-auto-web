@@ -2,9 +2,16 @@ import {createHash} from 'node:crypto';
 import {b64,FILE_ID,MAX_BYTES,imageType} from './core.mjs';
 const fields='id,name,mimeType,parents,trashed,size,md5Checksum,modifiedTime,version,capabilities(canDownload)';
 export function googleDrive(credentials,fetcher=fetch) {
-  let cached=null;
+  let cached=null,pendingToken=null;
   async function accessToken() {
     if(cached&&cached.until>Date.now()+60000)return cached.token;
+    // A gallery starts several requests together. Share only the credential
+    // refresh, never file metadata or access decisions, and allow failed retries.
+    if(!pendingToken)pendingToken=refreshAccessToken();
+    const work=pendingToken;
+    try{return await work;}finally{if(pendingToken===work)pendingToken=null;}
+  }
+  async function refreshAccessToken() {
     if(!credentials?.client_email||!credentials?.private_key)throw new Error('Google Drive is not connected. Uploaded photos still work.');
     const now=Math.floor(Date.now()/1000),enc=new TextEncoder();
     const header=b64(enc.encode(JSON.stringify({alg:'RS256',typ:'JWT'})));
