@@ -1,7 +1,7 @@
 export const carLoanPath = lang => '/' + (lang === 'en' ? '' : lang + '/') + 'car-loan-calculator/';
 export const carLoanCopy = {
  en: {
-  title:'Car Loan Calculator Malaysia | E2 Auto', description:'Estimate car loan monthly payments, total interest and repayment from your car price, down payment, flat interest rate and loan term.',
+  title:'Car Loan Calculator Malaysia | E2 Auto', description:'Estimate car loan monthly payments and the amount financed from your car price, down payment, flat interest rate and loan term.',
   heading:'Car loan calculator', kicker:'PLAN YOUR NEXT CAR', lead:'Start with the car price. Adjust your down payment, flat interest rate and loan term to estimate your monthly payment.',
   price:'Car price (RM)', deposit:'Down payment (RM)', rate:'Annual flat interest rate (%)', years:'Loan term (years)', rateHelp:'Use the flat rate quoted by your lender, not an effective interest rate (EIR).', example:'The starting values are an illustration, not an E2 or bank offer.',
   calculate:'Calculate monthly payment', reset:'Reset example', result:'Your estimate', monthly:'Estimated monthly payment', perMonth:'/ month', principal:'Loan amount', interest:'Total interest', repayment:'Total loan repayment', total:'Total including down payment', months:'monthly payments',
@@ -16,7 +16,7 @@ export const carLoanCopy = {
   ]
  },
  ms: {
-  title:'Kalkulator Pinjaman Kereta | E2 Auto', description:'Anggarkan ansuran bulanan, jumlah faedah dan bayaran balik berdasarkan harga kereta, deposit, kadar faedah rata dan tempoh pinjaman.',
+  title:'Kalkulator Pinjaman Kereta | E2 Auto', description:'Anggarkan ansuran bulanan dan jumlah pinjaman berdasarkan harga kereta, deposit, kadar faedah rata dan tempoh pinjaman.',
   heading:'Kalkulator pinjaman kereta', kicker:'RANCANG KERETA SETERUSNYA', lead:'Masukkan harga kereta. Laraskan deposit, kadar faedah rata dan tempoh pinjaman untuk menganggarkan ansuran bulanan.',
   price:'Harga kereta (RM)', deposit:'Deposit (RM)', rate:'Kadar faedah rata tahunan (%)', years:'Tempoh pinjaman (tahun)', rateHelp:'Gunakan kadar rata yang diberi pemberi pinjaman, bukan kadar faedah efektif (EIR).', example:'Nilai awal ialah contoh sahaja, bukan tawaran E2 atau bank.',
   calculate:'Kira ansuran bulanan', reset:'Tetapkan semula contoh', result:'Anggaran anda', monthly:'Anggaran ansuran bulanan', perMonth:'/ bulan', principal:'Jumlah pinjaman', interest:'Jumlah faedah', repayment:'Jumlah bayaran balik pinjaman', total:'Jumlah termasuk deposit', months:'bayaran bulanan',
@@ -31,7 +31,7 @@ export const carLoanCopy = {
   ]
  },
  zh: {
-  title:'汽车贷款计算器｜月供估算 | E2 Auto', description:'输入车价、首付、年平息利率和贷款年限，估算汽车贷款月供、总利息与总还款额。E2 Auto 马来西亚汽车贷款计算器。',
+  title:'汽车贷款计算器｜月供估算 | E2 Auto', description:'输入车价、首付、年平息利率和贷款年限，估算汽车贷款月供及贷款本金。E2 Auto 马来西亚汽车贷款计算器。',
   heading:'汽车贷款计算器', kicker:'规划下一辆心仪车', lead:'输入车价，调整首付、年平息利率和贷款年限，估算适合预算的每月供款。',
   price:'车价（RM）', deposit:'首付（RM）', rate:'年平息利率（%）', years:'贷款年限（年）', rateHelp:'请填写贷款机构提供的平息利率，不是实际年利率（EIR）。', example:'初始数值仅作示例，不代表 E2 或银行报价。',
   calculate:'计算每月供款', reset:'重设示例', result:'你的估算', monthly:'预计每月供款', perMonth:'/ 月', principal:'贷款本金', interest:'总利息', repayment:'贷款总还款额', total:'含首付的总支出', months:'期月供',
