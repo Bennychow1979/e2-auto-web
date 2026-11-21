@@ -22,6 +22,7 @@ await db.exec(await readFile(new URL('../migrations/20261115180050_rental_staff_
 await db.exec(await readFile(new URL('../migrations/20261115183217_rental_audit_viewer.sql',import.meta.url),'utf8'));
 await db.exec(await readFile(new URL('../migrations/20261116033047_rental_profile_actor_names.sql',import.meta.url),'utf8'));
 await db.exec(await readFile(new URL('../migrations/20261120151522_rental_move_plate.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../migrations/20261121052752_rental_pending_booking_guards.sql',import.meta.url),'utf8'));
 await db.query('insert into staff_profiles values($1,$2),($3,$4)',[ids.admin,'  Demo Admin  ',ids.office_admin,'   ']);
 const as=async role=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[ids[role]||'']);await db.exec('set role '+(role==='anon'?'anon':'authenticated'));};
 const q=async(sql,args=[])=> (await db.query(sql,args)).rows;
@@ -142,5 +143,66 @@ for(const signature of ['rental_save(text,text,jsonb,bigint,boolean)','rental_mo
  assert.equal(acl.anon,false);assert.equal(acl.staff,true);
 }
 console.log('PASS frozen MOVED records, normalized plate uniqueness, formatting-only move, mid-write rollback including audit, and RPC ACLs');
+
+
+// Pending disbursement and bookings are validated by both actual RPCs.
+await as('super_admin');
+const pendingData={plate:'PENDING1',pending_disbursement:true,account_no:null,first_payment_date:null,car_status:'SOLD',payments:[],handovers:[]};
+const booking={to:'SYNTHETIC BOOKER',phone:'0100000',date:'2026-11-21',deposit:300,partner:'',by:'Test staff'};
+const out={type:'OUT',to:booking.to,phone:booking.phone,date:'2026-11-21',deposit:300,rent:300};
+const row=async id=>(await q('select data,revision from rental_contracts where id=$1',[id]))[0];
+const rejectUnchanged=async(fn,pattern)=>{
+ const records=await q('select id,data,revision from rental_contracts order by id');
+ const audits=await q('select * from rental_audit order by id');
+ await assert.rejects(fn,pattern);
+ assert.deepEqual(await q('select id,data,revision from rental_contracts order by id'),records);
+ assert.deepEqual(await q('select * from rental_audit order by id'),audits);
+};
+await save('contracts','PENDING1',pendingData,0);
+for(const patch of [{payments:[{amount:500}]},{handovers:[out]},{pending_disbursement:'true'},{pending_disbursement:false},{booking:{...booking,deposit:0}},{booking:{...booking,deposit:-1}},{booking:{...booking,deposit:'300'}}]){
+ await rejectUnchanged(()=>save('contracts','PENDING1',patch,1,true),/disbursed|disbursement|deposit/);
+}
+await rejectUnchanged(()=>save('contracts','PENDING1',{...pendingData,pending_disbursement:undefined},1),/disbursement/);
+await rejectUnchanged(()=>save('contracts','PENDINGNEW',{...pendingData,plate:'PENDINGNEW',payments:[{amount:500}]},0),/disbursed/);
+await rejectUnchanged(()=>move('PENDING1','PENDING2','PENDING2',1,{pending_disbursement:false}),/Complete account/);
+await rejectUnchanged(()=>move('PENDING1','PENDING2','PENDING2',1,{booking:{...booking,deposit:0}}),/deposit/);
+await save('contracts','PENDING1',{booking},1,true);
+await rejectUnchanged(()=>save('contracts','PENDING1',{booking:null},2,true),/Archive/);
+await rejectUnchanged(()=>save('contracts','PENDING1',{booking:{...booking,to:'REPLACEMENT'}},2,true),/Archive/);
+await rejectUnchanged(()=>move('PENDING1','PENDING2','PENDING2',2,{booking:null}),/Archive/);
+// Cancel then rebook; old history cannot disappear on full replacement or move.
+const cancelled={...booking,status:'CANCELLED',cancelled_by:'Test staff'};
+await save('contracts','PENDING1',{booking:null,booking_history:[cancelled]},2,true);
+await rejectUnchanged(()=>save('contracts','PENDING1',{booking_history:[]},3,true),/Keep booking history/);
+await rejectUnchanged(()=>move('PENDING1','PENDING2','PENDING2',3,{booking_history:[]}),/Keep booking history/);
+await save('contracts','PENDING1',{booking},3,true);
+await rejectUnchanged(()=>save('contracts','PENDING1',{booking:{...booking,deposit:500}},3,true),/Record changed/);
+// Closed records retain their pending state and deposit, including ordinary edits.
+await save('contracts','PENDING1',{car_status:'OWNER TAKE BACK'},4,true);
+await save('contracts','PENDING1',{...(await row('PENDING1')).data,owner_phone:'011111'},5);
+assert.deepEqual((await row('PENDING1')).data.booking,booking);
+await save('contracts','PENDING1',{car_status:'SOLD'},6,true);
+const corrected=(await move('PENDING1','PENDING2','PENDING2',7))[0].result;
+assert.deepEqual(corrected.record.data.booking,booking);
+assert.equal(corrected.record.data.pending_disbursement,true);
+// Completing via the move RPC is subject to the same date/account requirements.
+await rejectUnchanged(()=>move('PENDING2','PENDING3','PENDING3',1,{pending_disbursement:false,account_no:'123'}),/Complete account/);
+await rejectUnchanged(()=>move('PENDING2','PENDING3','PENDING3',1,{pending_disbursement:false,account_no:'123',first_payment_date:'2026-02-30'}),/date/);
+await save('contracts','PENDING2',{pending_disbursement:false,account_no:'12345678',first_payment_date:'2026-12-01'},1,true);
+await rejectUnchanged(()=>save('contracts','PENDING2',{pending_disbursement:false,account_no:null},2,true),/Complete account/);
+const converted={...booking,status:'CONVERTED',converted_at:'2026-11-21T00:00:00Z'};
+const conversion={booking:null,booking_history:[cancelled,converted],handovers:[out],actual_rent:300};
+for(const patch of [{...conversion,actual_rent:null},{...conversion,handovers:[{...out,rent:100}],actual_rent:100},{...conversion,handovers:[{...out,rent:null}],actual_rent:null},{handovers:[out]}]){
+ await rejectUnchanged(()=>save('contracts','PENDING2',patch,2,true),/upfront|Convert/);
+}
+await save('contracts','PENDING2',conversion,2,true);
+await rejectUnchanged(()=>save('contracts','PENDING2',{handovers:[{...out,rent:200}],actual_rent:200},3,true),/upfront/);
+await save('contracts','PENDING2',{payments:[{seq:1,amount:500}]},3,true);
+await rejectUnchanged(()=>save('contracts','PENDING2',{pending_disbursement:true},4,true),/disbursed/);
+assert.equal((await row('PENDING2')).data.actual_rent,300);
+// Internal helper is not a callable API or a new privilege escalation path.
+const helper=(await q("select prosecdef,proconfig,has_function_privilege('anon',oid,'EXECUTE') anon,has_function_privilege('authenticated',oid,'EXECUTE') staff from pg_proc where oid='public.rental_validate_booking(jsonb,jsonb)'::regprocedure"))[0];
+assert.equal(helper.prosecdef,false);assert.equal(helper.anon,false);assert.equal(helper.staff,false);assert(helper.proconfig.includes('search_path=""'));
+console.log('PASS pending/booking guards in both RPCs, rollback including audit, revision conflicts, preserved deposits/history, conversion totals and internal helper ACL');
 
 await db.close();

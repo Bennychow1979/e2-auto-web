@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>E2 租车月供跟进</title>
-<link rel="stylesheet" href="rental.css?v=stock-picker-1">
+<link rel="stylesheet" href="rental.css?v=pending-booking-4">
 <link rel="stylesheet" href="workspace-theme.css?v=20261119"></head>
 <body>
 <header><div class="wrap">
@@ -28,7 +28,7 @@
     <p id="rentalStatus" class="hint" role="status"></p><div class="stats" id="stats"></div>
     <div class="card">
       <div class="row">
-        <select id="fStatus"><option value="open">在供的车 / Active</option><option value="rented">已租出 / Rented out</option><option value="instock">在库未租 / In stock</option><option value="OVERDUE">只看逾期 / Overdue only</option><option value="due7">7 天内到期 / Due in 7 days</option><option value="check">⚠ 待核实 / To confirm</option><option value="adv">💰 ADV 待收 / ADV to collect</option><option value="advlost">💸 ADV 收不回 / ADV written off</option><option value="closed">已结束 / Closed only</option><option value="all">全部 / All (incl. returned)</option></select>
+        <select id="fStatus"><option value="open">在供的车 / Active</option><option value="rented">已租出 / Rented out</option><option value="instock">在库未租 / In stock</option><option value="pending">⏳ 待放款 / Pending disbursement</option><option value="booked">📌 已预订 / Reserved</option><option value="OVERDUE">只看逾期 / Overdue only</option><option value="due7">7 天内到期 / Due in 7 days</option><option value="check">⚠ 待核实 / To confirm</option><option value="adv">💰 ADV 待收 / ADV to collect</option><option value="advlost">💸 ADV 收不回 / ADV written off</option><option value="closed">已结束 / Closed only</option><option value="all">全部 / All (incl. returned)</option></select>
         <select id="fPartner"><option value="">全部租客来源 / All sources</option></select>
         <select id="fSort"><option value="due">排序：逾期优先 Overdue first</option><option value="new">最新入库 Newest added</option><option value="plate">车牌 Plate A–Z</option><option value="model">车款 Model</option></select>
         <input id="fQ" placeholder="搜车牌 / 车款 / 车主 / 租客 · Plate, model, owner, renter" style="flex:1;min-width:160px">
@@ -51,6 +51,6 @@
 <div class="drawer" id="drawer"><div class="panel" id="panel"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="e2-config.js"></script><script type="module" src="rental.js?v=move-plate-2"></script>
+<script src="e2-config.js"></script><script type="module" src="rental.js?v=pending-booking-4"></script>
 </body>
 </html>

@@ -46,7 +46,7 @@ tr.r{cursor:pointer}tr.r:hover td{background:var(--soft)}
 .chip{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;white-space:nowrap}
 .s-OVERDUE{background:var(--fail-bg);color:var(--fail)}.s-URGENT{background:var(--fail-bg);color:var(--fail)}
 .s-SOON{background:var(--warn-bg);color:var(--warn)}.s-UPCOMING{background:var(--info-bg);color:var(--info)}
-.s-OK{background:var(--ok-bg);color:var(--ok)}.s-UNK{background:var(--unk-bg);color:var(--unk)}.s-CLOSED{background:var(--unk-bg);color:var(--unk)}
+.s-OK{background:var(--ok-bg);color:var(--ok)}.s-PENDING{background:var(--warn-bg);color:var(--warn)}.s-UNK{background:var(--unk-bg);color:var(--unk)}.s-CLOSED{background:var(--unk-bg);color:var(--unk)}
 .mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;letter-spacing:.02em}
 .payto{background:var(--gold-soft);border:1px dashed var(--gold);border-radius:10px;padding:12px 14px;margin:10px 0}
 .payto b{font-size:20px;display:block;word-break:break-all}
@@ -74,3 +74,15 @@ header .returnNav{margin-top:8px}header .right{flex-wrap:wrap;max-width:100%}
 .stockPicker>input{width:100%;box-sizing:border-box}.stockResults{display:grid;gap:6px;max-height:240px;overflow:auto;margin:8px 0}
 .stockChoice{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;white-space:normal;overflow-wrap:anywhere;min-width:0;width:100%}
 .stockChoice span{font-size:12px;color:var(--muted)}.stockChoice:disabled{opacity:.6;cursor:not-allowed}
+
+/* handover entries as cards: readable on phones, actions always visible without sideways scroll */
+.handList{display:flex;flex-direction:column;gap:8px}
+.handRow{display:flex;gap:10px;align-items:flex-start;margin:0;padding:10px 12px}
+.handMain{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;word-break:break-word}
+.handHead{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.handActions{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
+.handActions .btn{font-size:12px;padding:4px 10px;white-space:nowrap}
+.handRow .row .field{min-width:130px}
+
+.field.check{flex:1 1 100%}.field.check label{display:flex;gap:8px;align-items:flex-start;font-weight:500;line-height:1.4}.field.check input{margin-top:3px;flex:0 0 auto}
+.pendingNote{border-color:var(--warn);background:var(--warn-bg)}.pendingNote h2{color:var(--warn)}

@@ -197,3 +197,51 @@ plates must be resolved before relying on the uniqueness rule.
 CARSOME automatic check notes and payment references are computed once and included
 in either the normal save or the move patch. Manual check notes are preserved.
 Deploy the migration before publishing the versioned JS modules.
+## Pending disbursement and reservations
+
+Cars can enter stock with `pending_disbursement: true` while their account number
+and first payment date are unknown. They can receive one reservation with a
+positive booking deposit. The staff view labels these cars Pre-booking or
+Reserved; agent stock messages group READY, PRE-BOOKING and RESERVED and omit
+GPS, spare keys and booking-party details. Payment messages, including all-owner
+previews, exclude pending cars. Handovers use cards that fit phone screens.
+
+Apply `20261121052752_rental_pending_booking_guards.sql` **before** publishing
+the frontend. This migration replaces the two existing RPC bodies, retaining
+their signatures, permission checks, locks, revision checks and audit behavior.
+It introduces an internal `SECURITY INVOKER` validator, with an empty search path
+and no PUBLIC/anon/authenticated execution grant. Both RPCs invoke it on the
+complete proposed contract while holding their existing locks, before writing.
+There are no table changes, new public RPCs, role changes or existing-data rewrites.
+
+The validator prevents pending contracts from carrying payments or live OUT
+handovers. An explicitly tracked disbursement state cannot be dropped by a full
+replacement. Completing disbursement requires a numeric account number and a
+valid first payment date. Existing financier-specific frontend rules remain;
+Carsome continues using its existing 82008 account and Ref-2/check-note flow.
+Legacy records without the new flag retain their existing loan-data rules until
+saved with the new form, so the migration does not retroactively reject all old
+incomplete contracts.
+
+Bookings require a renter, phone, valid date and positive numeric deposit.
+Clearing/replacing one must append its original values with CANCELLED or CONVERTED
+status to `booking_history`; existing history is append-only. Closing a contract
+retains its reservation and displays it in the detail, where it can still be
+cancelled explicitly. Ordinary vehicle edits never replace stored booking data
+with a derived hidden-state null. Cancellation records the deposit; it does not
+assert that any refund was paid.
+
+After disbursement, rent-out prefills the reservation and a total upfront of at
+least the received deposit (or the higher target upfront). Blank or lower totals
+are rejected, including in later handover edits. Conversion archives the original
+reservation, carries its deposit into the OUT handover, and saves the matching
+total upfront. SQL guards prevent invalid conversion through either RPC; rejected
+saves and plate moves leave both contracts and audit rows unchanged.
+
+Validation: `node supabase/tests/rental.mjs` exercises real RPCs in PGlite,
+including rollback, revision conflicts, invalid state transitions, deposit/history
+preservation and helper ACLs. `tests/rental-pending-browser.mjs` covers the end-to-end
+pending/reserve/cancel/disburse/convert flow. `tests/rental-booking-regression.mjs`
+covers the four reviewed defects plus poll/conflict drafts, late logout responses,
+and 320/390px cards. Both browser suites run in `npm run test:browser` with the
+existing rental, stock and audit regressions.
