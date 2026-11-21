@@ -1,3 +1,4 @@
+import {buildCarLoanPages} from './build-car-loan.mjs';
 import {buildInsurancePages} from './build-insurance.mjs';
 import {buildRoadtaxPages} from './build-roadtax.mjs';
 import {vehicleNoticeHTML} from '../vehicle-notices.mjs';
@@ -181,6 +182,7 @@ export async function buildVehicleSite(snapshot,output,{now=Date.now(),includeSo
  for(const category of categories)for(const lang of LANGUAGES){const destination=join(stage,categoryPath(category.slug,lang).slice(1),'index.html');await mkdir(dirname(destination),{recursive:true});await writeFile(destination,renderCategory(category,rows,lang,publicSlugs,categories,discoveryOptions));}
  for(const file of previous.files||[])if(!files.includes(file))await unlink(join(stage,file)).catch(e=>{if(e.code!=='ENOENT')throw e;});
  await buildRoadtaxPages(stage,{source:root,categories});
+ await buildCarLoanPages(stage,{source:root,categories});
  await buildInsurancePages(stage,{source:root,categories});
  await buildLoanGuides(stage,{source:root,categories});
  await writeFile(join(stage,'sitemap.xml'),sitemap);
