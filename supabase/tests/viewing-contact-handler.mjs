@@ -11,7 +11,7 @@ function setup({secret=key, allowed=true, verifyResult=result, fail=false}={}) {
     takeRateSlot:async () => {calls.rate++; if (fail) throw Error('private details'); return allowed;},
     verify:async (...args) => {calls.verify.push(args); return verifyResult;}
   }});
-  const request = (body={ref, phone:'+60 12-387 1066'}, headers={}, method='POST') => new Request('https://example.test', {
+  const request = (body={ref, phone:'+60 12-345 1066'}, headers={}, method='POST') => new Request('https://example.test', {
     method, headers:{'content-type':'application/json', 'x-e2-verify-key':key, ...headers},
     ...(!['GET','HEAD'].includes(method) ? {body:typeof body === 'string' ? body : JSON.stringify(body)} : {})
   });
@@ -28,12 +28,12 @@ test('dedicated header is mandatory; empty configuration always fails closed', a
   const unset=setup({secret:''});assert.equal((await unset.handler(unset.request())).status,401);
 });
 test('normalizes the full phone and returns only the permitted fields', async () => {
-  assert.equal(normalizePhone('012-387 1066'),'60123871066');
-  assert.equal(normalizePhone('+60 12 387 1066'),'60123871066');
-  const s=setup({verifyResult:{...result, customer_name:'DO NOT EXPOSE', phone:'60123871066', secret:'private', form_last4:'1066'}});
+  assert.equal(normalizePhone('012-345 1066'),'60123451066');
+  assert.equal(normalizePhone('+60 12 345 1066'),'60123451066');
+  const s=setup({verifyResult:{...result, customer_name:'DO NOT EXPOSE', phone:'60123451066', secret:'private', form_last4:'1066'}});
   const response=await s.handler(s.request());
   assert.equal(response.status,200);assert.deepEqual(await response.json(),result);
-  assert.deepEqual(s.calls.verify,[[ref,'60123871066']]);
+  assert.deepEqual(s.calls.verify,[[ref,'60123451066']]);
   assert.equal(response.headers.get('cache-control'),'no-store');
   assert.equal(response.headers.get('access-control-allow-origin'),null);
 });
@@ -60,7 +60,7 @@ test('valid auth consumes global quota before parsing; denial and database failu
 });
 test('invalid UUID, phone, JSON and oversized bodies cannot reach verification', async () => {
   const s=setup();
-  for (const body of [{ref:'bad',phone:'0123871066'},{ref,phone:123},{ref,phone:''},{ref,phone:'0'},null,'{bad','x'.repeat(2049)]) {
+  for (const body of [{ref:'bad',phone:'0123451066'},{ref,phone:123},{ref,phone:''},{ref,phone:'0'},null,'{bad','x'.repeat(2049)]) {
     assert.equal((await s.handler(s.request(body))).status,400);
   }
   assert.equal((await s.handler(s.request(undefined,{'content-type':'text/plain'}))).status,400);
