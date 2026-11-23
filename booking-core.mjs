@@ -26,3 +26,10 @@ export const bookingErrors={
   BOOKING_REFERRAL:'This referral is no longer active. You can continue without the referral.',
   BOOKING_LIMIT:'Too many requests. Please call E2 for help with your appointment.'
 };
+
+// Customer-initiated contact only. Opening this link neither sends nor verifies a message.
+export function viewingWhatsAppLink(reference,lang='en'){
+ if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(reference||''))throw Error('Invalid viewing reference');
+ const messages={en:`Hi E2 AUTO, I submitted a viewing request. My reference is ${reference}. Please use this WhatsApp number to contact me.`,ms:`Hai E2 AUTO, saya telah menghantar permintaan lawatan. Nombor rujukan saya ialah ${reference}. Sila hubungi saya melalui nombor WhatsApp ini.`,zh:`你好 E2 AUTO，我已提交看车预约。预约编号：${reference}。请通过这个 WhatsApp 号码联系我。`};
+ return 'https://wa.me/60122785126?text='+encodeURIComponent(messages[lang]||messages.en);
+}
