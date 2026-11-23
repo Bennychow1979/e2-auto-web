@@ -1,0 +1,21 @@
+name: Verify viewing contact API
+on:
+  pull_request:
+    paths: ['supabase/**', '.github/workflows/viewing-contact.yml', 'package*.json']
+  push:
+    branches: [main]
+    paths: ['supabase/**', '.github/workflows/viewing-contact.yml', 'package*.json']
+permissions:
+  contents: read
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test supabase/tests/viewing-contact-handler.mjs
+      - run: node supabase/tests/viewing-contact-db.mjs
