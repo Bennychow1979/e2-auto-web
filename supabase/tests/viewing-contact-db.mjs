@@ -19,11 +19,11 @@ for(const file of readdirSync('supabase/migrations').filter(f=>f<'202609180001')
 for(const file of ['202609220001_partner_referrals.sql','202610010002_viewing_bookings.sql','202610200006_viewing_rotation_notifications.sql','202610200007_viewing_notification_dispatch.sql','202611230001_viewing_status_corrections.sql','20261123035758_viewing_contact_verification.sql'])await db.exec(readFileSync('supabase/migrations/'+file,'utf8'));
 
 const fresh=randomUUID(),mismatch=randomUUID(),expired=randomUUID();
-for(const [id,phone,age] of [[fresh,'60123871066',0],[mismatch,'60123456789',0],[expired,'60123871066',91]]) {
+for(const [id,phone,age] of [[fresh,'60123451066',0],[mismatch,'60123456789',0],[expired,'60123451066',91]]) {
   await db.query(`insert into public.e2_viewings(id,customer_name,phone,vehicle_label,preferred_date,preferred_time,locale,submission_fingerprint,privacy_version,consent_at,created_at)
     values($1::uuid,'Synthetic private name',$2,'Synthetic car',current_date,'10:00','en',$1::text,'test',now(),now()-make_interval(days=>$3))`,[id,phone,age]);
 }
-const verify=(id,phone='+60123871066')=>scalar('select public.e2_verify_viewing_contact($1,$2)',[id,phone]);
+const verify=(id,phone='+60123451066')=>scalar('select public.e2_verify_viewing_contact($1,$2)',[id,phone]);
 for(const role of ['anon','authenticated']) {
   await db.exec('set role '+role);
   await assert.rejects(verify(fresh));passed++;
@@ -32,7 +32,7 @@ for(const role of ['anon','authenticated']) {
   await db.exec('reset role');
 }
 await db.exec('set role service_role');
-const first=await verify(fresh,'012-387 1066');
+const first=await verify(fresh,'012-345 1066');
 ok(first.match,true,'Local format matches full international number');ok(first.already_verified,false,'First match reports unverified before this call');
 ok(Object.keys(first).sort(),['already_verified','found','match','preferred_date','vehicle_label'],'Match field allowlist');
 const row=await scalar('select to_jsonb(v) from public.e2_viewings v where id=$1',[fresh]);
@@ -47,7 +47,7 @@ const wrong=await verify(mismatch);
 ok(wrong.match,false,'Different full number mismatches');ok(wrong.form_last4,'6789','Only form last four returned');
 ok(await scalar('select to_jsonb(v) from public.e2_viewings v where id=$1',[mismatch]),before,'Mismatch leaves every viewing column unchanged');
 ok(await scalar("select details from public.e2_viewing_events where viewing_id=$1 and action='contact_mismatch'",[mismatch]),{wa_last4:'1066'},'Mismatch event stores only incoming last four');
-const sameSuffix=await verify(fresh,'+65123871066');ok(sameSuffix.match,false,'Matching suffix does not mean matching phone');ok(sameSuffix.already_verified,true,'Mismatch does not erase prior verification');
+const sameSuffix=await verify(fresh,'+65123451066');ok(sameSuffix.match,false,'Matching suffix does not mean matching phone');ok(sameSuffix.already_verified,true,'Mismatch does not erase prior verification');
 ok(await verify(expired),{found:false},'Older than 90 days is hidden');ok(await verify(randomUUID()),{found:false},'Unknown ID is hidden');
 ok(await scalar("select count(*)::int from public.e2_viewing_events where viewing_id=$1 and action like 'contact_%'",[expired]),0,'Expired requests create no contact events');
 for(const phone of [null,'','abc','0','1'.repeat(129)])ok(await verify(fresh,phone),{found:false},'Invalid phone cannot update through RPC');
