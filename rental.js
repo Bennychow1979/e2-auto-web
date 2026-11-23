@@ -884,6 +884,8 @@ function cancelEditPay(cid, idx){
   const r = panelRecord?.id===cid?panelRecord:null; if (!r) return;
   for (const k of [...panelDrafts.keys()]) if (k.startsWith(`ep_${idx}_`)) panelDrafts.delete(k);
   const row = document.getElementById('pr_'+idx); if (row) row.outerHTML = paymentRow(r.payments[idx], idx, r.id, r.status!=='CLOSED');
+  window.__dirty = panelDrafts.size > 0;
+  discardArmed = false;
 }
 async function saveEditPay(cid, idx){
   const epoch=authEpoch;
