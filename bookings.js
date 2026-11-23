@@ -1,6 +1,6 @@
 import {db,check} from './e2-data.js?v=booking-1';
 import {allRows} from './partner-read.js';
-import {malaysiaDate,dateLimit,viewingTimes} from './booking-core.mjs';
+import {malaysiaDate,dateLimit,viewingTimes,bookingStatuses} from './booking-core.mjs?v=20261123';
 const $=id=>document.getElementById(id);let records=[],staff=[],admin=false,current=null,busy=false,notifications=[];
 let linkedViewing=new URLSearchParams(location.search).get('viewing');
 const add=(parent,tag,text,cls)=>{const node=document.createElement(tag);node.textContent=text;if(cls)node.className=cls;parent.append(node);return node};
@@ -77,11 +77,10 @@ function confirmation(){const show=$('editStatus').value==='Confirmed';$('confir
 function open(row){
   current=row;$('editForm').reset();$('editMessage').textContent='';$('customerDetails').textContent=row.customer_name+' · +'+row.phone;$('callCustomer').href='tel:+'+row.phone;
   $('requestDetails').textContent=[row.id,row.vehicle_label||'General showroom visit','Requested: '+row.preferred_date+' '+row.preferred_time.slice(0,5)+' (Malaysia time)',row.ref_code?'Referral: '+row.ref_code+(row.referral_request_id?' · recorded in Partners & referrals':' · general visit; follow up with the Partner when a car is chosen'):''].filter(Boolean).join('\n');
-  const choices={Requested:['Requested','Confirmed','Cancelled'],Confirmed:['Confirmed','Completed','Cancelled'],Completed:['Completed'],Cancelled:['Cancelled']};
-  $('editStatus').replaceChildren(...choices[row.status].map(s=>new Option(s,s)));$('editStatus').value=row.status;
+  $('editStatus').replaceChildren(...bookingStatuses.map(s=>new Option(s,s)));$('editStatus').value=row.status;
   const people=[...staff];if(row.salesperson&&!people.some(s=>s.user_id===row.salesperson))people.push({user_id:row.salesperson,display_name:row.salesperson});
   $('editSales').replaceChildren(new Option('Unassigned',''),...people.map(s=>new Option(s.display_name,s.user_id)));$('editSales').value=row.salesperson||'';$('editSales').disabled=!admin;
-  $('confirmedDate').min=row.confirmed_date||malaysiaDate();$('confirmedDate').max=dateLimit();$('confirmedDate').value=row.confirmed_date||row.preferred_date;fillTimes((row.confirmed_time||row.preferred_time).slice(0,5));$('confirmedContact').checked=!!row.contact_verified_at;$('staffNote').value=row.staff_note;confirmation();$('bookingEditor').showModal();
+  $('confirmedDate').min=row.status==='Confirmed'&&row.confirmed_date?row.confirmed_date:malaysiaDate();$('confirmedDate').max=dateLimit();$('confirmedDate').value=row.confirmed_date||row.preferred_date;fillTimes((row.confirmed_time||row.preferred_time).slice(0,5));$('confirmedContact').checked=row.status==='Confirmed'&&!!row.contact_verified_at;$('staffNote').value=row.staff_note;confirmation();$('bookingEditor').showModal();
 }
 $('confirmedDate').onchange=()=>{fillTimes();$('confirmedContact').checked=false};$('confirmedTime').onchange=()=>{$('confirmedContact').checked=false};$('editStatus').onchange=confirmation;
 $('closeEditor').onclick=()=>{if(!busy)$('bookingEditor').close()};$('bookingEditor').addEventListener('cancel',e=>{if(busy)e.preventDefault()});
