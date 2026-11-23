@@ -32,6 +32,13 @@ async function seed(p,patch,extra=[]){await p.evaluate(async({patch,extra})=>rev
 try{
  for(const width of [1440,390]){
   const payments=[{seq:1,paid_date:'2026-11-21',amount:500,method:'LEGACY METHOD',note:''},{seq:2,paid_date:'2026-11-22',amount:500,method:'CASH',note:''}];
+  await scenario('Cancelling a payment edit clears only its own unsaved state',width,async p=>{
+   await seed(p,{payments});await p.locator('#pr_0 button',{hasText:'编辑'}).click();await p.locator('#ep_0_amount').fill('450');
+   await p.locator('#pr_0 button',{hasText:'取消'}).click();assert.equal(await p.evaluate(()=>window.__dirty),false);
+   await p.locator('#x_notes').fill('Keep this draft');await p.locator('#pr_0 button',{hasText:'编辑'}).click();await p.locator('#ep_0_amount').fill('450');
+   await p.locator('#pr_0 button',{hasText:'取消'}).click();assert.equal(await p.evaluate(()=>window.__dirty),true);await expect(p.locator('#x_notes')).toHaveValue('Keep this draft');
+   assert.equal(await p.evaluate(()=>rentalFixture.snapshot().contracts[0].data.payments[0].amount),500);
+  });
   await scenario('Payment draft and legacy method survive saving another section',width,async p=>{
    await seed(p,{payments});await p.locator('#pr_0 button',{hasText:'编辑'}).click();await expect(p.locator('#ep_0_method')).toHaveValue('LEGACY METHOD');
    await p.locator('#ep_0_amount').fill('450');await p.locator('#x_notes').fill('Keep unrelated note');await p.locator('#btnExtras').click();
