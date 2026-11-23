@@ -2,7 +2,7 @@ import {PGlite} from '@electric-sql/pglite';
 import {readFileSync,readdirSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import assert from 'node:assert/strict';
-import {malaysiaDate,dateLimit,viewingTimes} from '../../booking-core.mjs';
+import {malaysiaDate,dateLimit,viewingTimes,viewingWhatsAppLink} from '../../booking-core.mjs';
 import {localizedPage} from '../../scripts/build-languages.mjs';
 import {localizedURL,t} from '../../i18n.mjs';
 const db=new PGlite();let passed=0;
@@ -18,7 +18,7 @@ alter table storage.objects enable row level security;grant usage on schema publ
 grant select,insert,update,delete on storage.objects to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;
 alter default privileges in schema public grant execute on functions to anon,authenticated;`);
 for(const file of readdirSync('supabase/migrations').filter(f=>f<'202609180001'))await db.exec(readFileSync('supabase/migrations/'+file,'utf8'));
-for(const file of ['202609220001_partner_referrals.sql','202610010002_viewing_bookings.sql','202610200006_viewing_rotation_notifications.sql','202610200007_viewing_notification_dispatch.sql'])await db.exec(readFileSync('supabase/migrations/'+file,'utf8'));
+for(const file of ['202609220001_partner_referrals.sql','202610010002_viewing_bookings.sql','202610200006_viewing_rotation_notifications.sql','202610200007_viewing_notification_dispatch.sql','202611230001_viewing_status_corrections.sql'])await db.exec(readFileSync('supabase/migrations/'+file,'utf8'));
 const [admin,sales,other,customer,office,disabled,partner]=Array.from({length:7},randomUUID);
 for(const [i,id] of [admin,sales,other,customer,office,disabled,partner].entries())await db.query('insert into auth.users values($1,$2,now())',[id,`booking${i}@example.test`]);
 for(const [id,role,active] of [[admin,'super_admin',true],[sales,'sales',true],[other,'sales',true],[office,'office_admin',true],[disabled,'admin',false]])await db.query('insert into public.staff_memberships(user_id,role,active) values($1,$2,$3)',[id,role,active]);
@@ -43,11 +43,32 @@ ok(response.id,id,'Online request returns a receipt');ok(response.status,'Reques
 ok((await submit({id,car:cars[0],phone:'+60123456789',assigned:sales,lang:'zh'})).id,id,'Retry survives normalization and language switching');
 await no(submit({id,car:cars[0],assigned:sales,name:'Different name'}),'Same reference cannot overwrite a request');
 await as(admin);ok((await db.query('select * from public.e2_viewing_assignees()')).rows.length,3,'Admin can assign every active eligible staff member');ok(await scalar('select count(*)::int from public.e2_viewings'),1,'Repeat creates only one appointment');ok(await scalar('select count(*)::int from public.e2_viewing_events'),1,'Repeat creates only one event');ok(await scalar('select phone from public.e2_viewings'),'60123456789','Phone normalized');
-await no(db.query("update public.e2_viewings set status='Confirmed'"),'Direct table writes denied even to Admin');await no(update({id,contact:false}),'Confirmation requires customer agreement');await no(update({id,status:'Completed'}),'Cannot complete an unconfirmed request');
+await no(db.query("update public.e2_viewings set status='Confirmed'"),'Direct table writes denied even to Admin');await no(update({id,contact:false}),'Confirmation requires customer agreement');
 for(const who of [customer,other,office,disabled,partner]){await as(who);ok(await scalar('select count(*)::int from public.e2_viewings'),0,'Other customer or unauthorized staff cannot read contact data');await no(update({id}),'Unauthorized staff cannot update appointment')}
 await as(sales);ok(await scalar('select count(*)::int from public.e2_viewings'),1,'Assigned Sales can read their appointment');await no(update({id,assigned:other}),'Sales cannot reassign');await update({id});await no(update({id}),'Stale revision rejected');
 await as(null);const confirmed=await submit({id,car:cars[0],assigned:sales});ok(confirmed.status,'Confirmed','Exact retry returns updated status without duplicate');ok(confirmed.confirmed_date,day,'Confirmed time included in receipt');
-await as(admin);await update({id,rev:2,status:'Cancelled'});await no(update({id,rev:3}),'Cancelled appointment cannot silently reopen');ok(await scalar('select stock_status from public.vehicles where id=$1',[cars[0]]),'Available','Appointments do not reserve stock');
+await as(admin);await update({id,rev:2,status:'Cancelled'});await no(update({id,rev:3,contact:false}),'Reconfirming a cancelled request still requires customer agreement');await update({id,rev:3});ok(await scalar('select status from public.e2_viewings where id=$1',[id]),'Confirmed','Cancelled appointment can be confirmed again');ok(await scalar('select stock_status from public.vehicles where id=$1',[cars[0]]),'Available','Appointments do not reserve stock');
+// Every saved status can be corrected; history and revision checks still apply.
+const statuses=['Requested','Confirmed','Completed','Cancelled'];let correctionRevision=4;
+for(const previous of statuses){
+ await update({id,rev:correctionRevision++,status:previous});
+ for(const next of statuses){
+  await update({id,rev:correctionRevision++,status:next});
+  ok(await scalar('select status from public.e2_viewings where id=$1',[id]),next,previous+' can be changed to '+next);
+  await update({id,rev:correctionRevision++,status:previous});
+ }
+}
+await update({id,rev:correctionRevision++,status:'Confirmed'});
+await update({id,rev:correctionRevision++,status:'Requested'});
+ok(await scalar('select confirmed_date is null and confirmed_time is null and contact_verified_at is null from public.e2_viewings where id=$1',[id]),true,'Requested clears stale agreement fields');
+ok(await scalar("select count(*)::int from public.e2_viewing_events where viewing_id=$1 and details->>'previous_status'='Confirmed' and details->>'status'='Requested' and details->>'previous_confirmed_date'=$2",[id,day])>0,true,'Prior agreed time survives in audit history');
+await no(update({id,rev:correctionRevision-1,status:'Cancelled'}),'Correction rejects stale revisions');
+await no(update({id,rev:correctionRevision,status:'Unknown'}),'Correction rejects invalid status');
+await no(update({id,rev:correctionRevision,date:'2020-01-01'}),'Correction to Confirmed rejects a past appointment');
+await as(other);await no(update({id,rev:correctionRevision,status:'Requested'}),'Unassigned Sales cannot correct statuses');
+await as(sales);await update({id,rev:correctionRevision++,status:'Completed'});await update({id,rev:correctionRevision++,status:'Cancelled'});await update({id,rev:correctionRevision++,status:'Requested'});
+ok(await scalar('select status from public.e2_viewings where id=$1',[id]),'Requested','Assigned Sales can correct terminal statuses');
+await as(admin);
 await scalar('select public.e2_save_partner($1,$2,$3,$4,$5)',['booking6@example.test','Test Partner',50000,true,0]);const code=await scalar('select code from public.e2_partners');
 await as(null);const referred=randomUUID();await submit({id:referred,phone:'0191111111',code,car:cars[0]});await submit({id:referred,phone:'0191111111',code,car:cars[0]});
 await as(admin);ok(await scalar('select count(*)::int from public.e2_referral_requests'),1,'Partner booking creates one linked enquiry');ok(await scalar('select referral_request_id from public.e2_viewings where id=$1',[referred]),referred,'Referral attribution is linked');ok(await scalar('select count(*)::int from public.e2_referral_commissions'),0,'Booking never creates a commission');
@@ -144,8 +165,9 @@ await db.exec('reset role');await db.query('update public.staff_memberships set 
 const beforeMidnight=new Date('2026-10-01T15:45:00Z');ok(malaysiaDate(beforeMidnight),'2026-10-01','Date uses Malaysia timezone');ok(malaysiaDate(new Date('2026-10-01T16:01:00Z')),'2026-10-02','Malaysia midnight handled');ok(dateLimit(new Date('2026-10-01T00:00:00Z')),'2026-12-30','90-day limit');
 const earlier=new Date('2026-10-01T00:00:00Z');ok(viewingTimes('2026-10-04',earlier).at(0),'10:00','Sunday starts at 10');ok(viewingTimes('2026-10-04',earlier).at(-1),'16:30','Sunday last slot before closing');ok(viewingTimes('2026-10-02',earlier).at(0),'09:30','Weekday starts at 9:30');ok(viewingTimes('2026-10-02',earlier).at(-1),'18:00','Weekday last slot before closing');ok(viewingTimes('2026-10-01',new Date('2026-10-01T02:15:00Z')).at(0),'10:30','Past times filtered');ok(viewingTimes('2026-10-32',earlier),[],'Invalid calendar day rejected');
 const source=readFileSync('booking.html','utf8');for(const lang of ['ms','zh']){
- const html=localizedPage(source,'booking.html',lang);ok(html.includes('href="https://e2auto.my/'+lang+'/booking.html"'),true,'Booking canonical '+lang);ok(html.includes(t('Submit viewing request',{},lang)),true,'Booking form translated '+lang);ok(html.includes('src="../booking.js?v=2"'),true,'Localized script path '+lang);ok(html.includes('href="/'+lang+'/booking.html" data-language="'+lang+'" aria-current="page"'),true,'Static language link '+lang);
+ const html=localizedPage(source,'booking.html',lang);ok(html.includes('href="https://e2auto.my/'+lang+'/booking.html"'),true,'Booking canonical '+lang);ok(html.includes(t('Submit viewing request',{},lang)),true,'Booking form translated '+lang);ok(html.includes('src="../booking.js?v=20261123-whatsapp"'),true,'Localized script path '+lang);ok(html.includes('href="/'+lang+'/booking.html" data-language="'+lang+'" aria-current="page"'),true,'Static language link '+lang);
  const url=new URL(localizedURL('https://e2auto.my/booking.html?id='+cars[0]+'&ref=E2TEST&sales='+sales,lang));ok(url.pathname,'/'+lang+'/booking.html','Booking language routing '+lang);ok(url.searchParams.get('ref'),'E2TEST','Referral survives language switch '+lang);
 }
 ok(/advertising\.js/.test(source),false,'Booking page does not load advertising tracking');
+for(const lang of ['en','ms','zh']){const link=new URL(viewingWhatsAppLink(id,lang));ok(link.hostname,'wa.me','Customer opens WhatsApp '+lang);ok(link.pathname,'/60122785126','Message goes to E2, never the entered customer number');ok(link.searchParams.get('text').includes(id),true,'Message carries saved reference '+lang);}assert.throws(()=>viewingWhatsAppLink('invalid'));
 await db.close();console.log('Bookings: '+passed+' checks passed.');
