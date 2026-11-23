@@ -1,0 +1,28 @@
+name: Verify rental payment and booking flows
+on:
+  pull_request:
+    paths: ['rental*', 'supabase/migrations/*rental*', 'supabase/tests/rental.mjs', 'tests/rental*', 'tests/fixtures/rental*', '.github/workflows/rental-checks.yml']
+  push:
+    branches: [main]
+    paths: ['rental*', 'supabase/migrations/*rental*', 'supabase/tests/rental.mjs', 'tests/rental*', 'tests/fixtures/rental*', '.github/workflows/rental-checks.yml']
+permissions:
+  contents: read
+jobs:
+  rental:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node supabase/tests/rental.mjs
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/rental-payment-fix-browser.mjs
+      - run: node tests/rental-payment-regression.mjs
+      - run: node tests/rental-booking-regression.mjs
+      - run: node tests/rental-pending-browser.mjs
+      - run: node tests/rental-browser.mjs
+      - run: node tests/rental-stock-browser.mjs
+      - run: node tests/rental-audit-browser.mjs
