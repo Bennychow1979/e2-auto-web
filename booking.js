@@ -1,6 +1,6 @@
 import {t,language} from './i18n.mjs';
 import {normalizePhone,readReferral,publicRPC} from './partner-referral-core.mjs';
-import {malaysiaDate,dateLimit,viewingTimes,bookingErrors} from './booking-core.mjs';
+import {malaysiaDate,dateLimit,viewingTimes,bookingErrors,viewingWhatsAppLink} from './booking-core.mjs?v=20261123';
 const $=id=>document.getElementById(id),form=$('viewingForm'),config=window.E2_CONFIG;
 const params=new URLSearchParams(location.search),uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 let storage;try{storage=localStorage}catch{storage={getItem:()=>null,setItem:()=>{}}}
@@ -21,6 +21,7 @@ $('removeReferral').onclick=()=>{referral=null;try{storage.removeItem('e2-partne
 $('removeSales').onclick=()=>{sales=null;$('removeSales').hidden=true;$('formMessage').textContent='';saveDraft()};
 function receipt(data,label,restored=false){
   savedReceipt={data,label};form.hidden=true;$('receipt').hidden=false;$('receiptRef').textContent=data.id;
+  $('receiptWhatsApp').href=viewingWhatsAppLink(data.id,language);
   $('receiptCar').textContent=label||t('General showroom visit');
   const labels={Requested:'Awaiting E2 confirmation',Confirmed:'Appointment confirmed',Completed:'Visit completed',Cancelled:'Request cancelled'};
   $('receiptStatus').textContent=t(labels[data.status]||labels.Requested);

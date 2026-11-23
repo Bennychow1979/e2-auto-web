@@ -1,4 +1,7 @@
 export const bookingTranslations={
+  'Next: confirm your contact number':['Seterusnya: sahkan nombor telefon anda','下一步：确认你的联系号码'],
+  'Send my reference on WhatsApp ↗':['Hantar rujukan saya melalui WhatsApp ↗','用 WhatsApp 发送预约编号 ↗'],
+  'Open WhatsApp, then tap Send. E2 can check the number you send from against your request. Opening WhatsApp does not confirm your appointment.':['Buka WhatsApp, kemudian tekan Hantar. E2 boleh menyemak nombor pengirim dengan permintaan anda. Membuka WhatsApp tidak mengesahkan janji temu anda.','打开 WhatsApp 后，请点击发送。E2 会核对实际发送号码与预约资料。仅打开 WhatsApp 不代表预约已确认。'],
   'Viewing request receipt':['Resit permintaan lawatan','看车申请回执'],
   'Saved submission receipt':['Resit penghantaran tersimpan','已保存的提交回执'],
   'For the latest appointment status or changes, contact E2 with your reference.':['Untuk status janji temu terkini atau perubahan, hubungi E2 dengan nombor rujukan anda.','如需查询最新预约状态或更改安排，请联系 E2 并提供预约编号。'],
