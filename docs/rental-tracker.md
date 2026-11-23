@@ -245,3 +245,14 @@ pending/reserve/cancel/disburse/convert flow. `tests/rental-booking-regression.m
 covers the four reviewed defects plus poll/conflict drafts, late logout responses,
 and 320/390px cards. Both browser suites run in `npm run test:browser` with the
 existing rental, stock and audit regressions.
+
+
+## Payment corrections (2026-11-23)
+
+Payment rows now offer Edit and Void to authorized rental staff on open contracts. Editing records the previous values and the actor; voiding requires a reason and keeps the original row. Active payments are renumbered after `paid_count_excel`, while voided rows retain their historical number. Counts, next-due calculations and CSV last-payment dates exclude `void: true`. Existing database audit triggers continue recording immutable before/after snapshots with the authenticated actor.
+
+Migration `20261123131607_rental_payment_void_counts.sql` makes `rental_contracts_flat.paid_count` use the same rule without rewriting contracts, changing grants or changing `security_invoker`. Apply it before publishing the payment-correction UI.
+
+The implementation is based on current main, preserving the pending-disbursement/booking validator, closed-contract booking evidence, deposit-inclusive conversion totals, WhatsApp preview/copy filtering and logout guards. It does not overwrite those protections with the older uploaded frontend. Payment edit and void-reason drafts are restored after saving another panel section; stale revisions cannot overwrite another person's update. Unknown legacy payment methods remain selected when editing unrelated fields. Late payment responses do not repopulate private UI or messages after logout.
+
+Validation: `npm run check`, `node supabase/tests/rental.mjs`, `tests/rental-payment-fix-browser.mjs`, `tests/rental-payment-regression.mjs`, and the existing rental booking, pending, general, stock and audit browser suites. Tests use isolated synthetic data. `.github/workflows/rental-checks.yml` runs the database and browser suites on relevant changes.

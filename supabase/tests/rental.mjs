@@ -23,6 +23,7 @@ await db.exec(await readFile(new URL('../migrations/20261115183217_rental_audit_
 await db.exec(await readFile(new URL('../migrations/20261116033047_rental_profile_actor_names.sql',import.meta.url),'utf8'));
 await db.exec(await readFile(new URL('../migrations/20261120151522_rental_move_plate.sql',import.meta.url),'utf8'));
 await db.exec(await readFile(new URL('../migrations/20261121063232_rental_pending_booking_guards.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../migrations/20261123131607_rental_payment_void_counts.sql',import.meta.url),'utf8'));
 await db.query('insert into staff_profiles values($1,$2),($3,$4)',[ids.admin,'  Demo Admin  ',ids.office_admin,'   ']);
 const as=async role=>{await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[ids[role]||'']);await db.exec('set role '+(role==='anon'?'anon':'authenticated'));};
 const q=async(sql,args=[])=> (await db.query(sql,args)).rows;
@@ -204,5 +205,30 @@ assert.equal((await row('PENDING2')).data.actual_rent,300);
 const helper=(await q("select prosecdef,proconfig,has_function_privilege('anon',oid,'EXECUTE') anon,has_function_privilege('authenticated',oid,'EXECUTE') staff from pg_proc where oid='public.rental_validate_booking(jsonb,jsonb)'::regprocedure"))[0];
 assert.equal(helper.prosecdef,false);assert.equal(helper.anon,false);assert.equal(helper.staff,false);assert(helper.proconfig.includes('search_path=""'));
 console.log('PASS pending/booking guards in both RPCs, rollback including audit, revision conflicts, preserved deposits/history, conversion totals and internal helper ACL');
+
+
+// Void is an accounting correction, never deletion; frontend and SQL agree.
+{
+await as('admin');
+const ledger=[{seq:1,amount:500,paid_date:'2026-11-21'},{seq:2,amount:500,paid_date:'2026-11-22'}];
+await save('contracts','VOIDTEST',{plate:'VOIDTEST',car_status:'SOLD',paid_count_excel:3,payments:ledger,handovers:[]},0);
+const countPaid=async()=> (await q("select paid_count from public.rental_contracts_flat where id='VOIDTEST'"))[0].paid_count;
+assert.equal(await countPaid(),5);
+const corrected=[ledger[0],{...ledger[1],void:true,void_reason:'DUPLICATE',void_by:'Demo Admin'}];
+await save('contracts','VOIDTEST',{payments:corrected},1,true);
+assert.equal(await countPaid(),4);assert.equal((await row('VOIDTEST')).data.payments.length,2);
+await assert.rejects(()=>save('contracts','VOIDTEST',{payments:ledger},1,true),/Record changed/);
+assert.equal(await countPaid(),4);
+await save('contracts','VOIDTEST',{payments:[{...corrected[0],amount:450,edit_log:[{before:{amount:500}}]},corrected[1]]},2,true);
+assert.equal(await countPaid(),4);
+await save('contracts','VOIDTEST',{payments:[{...corrected[0],void:true,void_reason:'WRONG ENTRY'},corrected[1]]},3,true);
+assert.equal(await countPaid(),3);
+const viewOptions=(await q("select reloptions from pg_class where oid='public.rental_contracts_flat'::regclass"))[0].reloptions;
+assert(viewOptions.includes('security_invoker=true'));
+await as('super_admin');
+const audit=(await q("select old,new from public.rental_audit where row_id='VOIDTEST' and action='UPDATE' order by id"));
+assert.equal(audit.length,3);assert.equal(audit[0].old.data.payments[1].void,undefined);assert.equal(audit[0].new.data.payments[1].void,true);
+console.log('PASS voided instalments excluded from SQL totals, legacy paid count preserved, edits do not change counts, stale writes blocked, immutable audit and invoker view retained');
+}
 
 await db.close();

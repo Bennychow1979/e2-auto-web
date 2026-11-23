@@ -70,6 +70,8 @@ async function saveDetail(r,data,action,prefix){
   for(const [id,value] of remaining){
     if(id.startsWith('vr_')&&!document.getElementById(id))askVoid(r.id,Number(id.slice(3)));
     if(id.startsWith('eh_')&&!document.getElementById(id))askEditHand(r.id,Number(id.split('_')[1]));
+    if(id.startsWith('ep_')&&!document.getElementById(id))askEditPay(r.id,Number(id.split('_')[1]));
+    if(id.startsWith('vp_')&&!document.getElementById(id))askVoidPay(r.id,Number(id.split('_')[1]));
     const el=document.getElementById(id);if(!el)continue;
     if(el.type==='checkbox')el.checked=value;else el.value=value;
     panelDrafts.set(id,value);
@@ -96,6 +98,7 @@ function derive(c){
   const r = {...c};
   const pays = Array.isArray(c.payments) ? c.payments : [];
   r.payments = pays;
+  r.live_pays = pays.filter(p => p.void !== true);
   r.handovers = (Array.isArray(c.handovers) ? c.handovers : []).map(h => h.type ? h : { ...h, type: /REPO|RETURN|BTC|STOCK|SHOWROOM|BACK/.test(((h.to||'')+' '+(h.note||'')).toUpperCase()) ? 'IN' : 'OUT' });
   const live = r.handovers.filter(h => !h.void);
   const lastH = live[live.length - 1];
@@ -109,7 +112,7 @@ function derive(c){
   r.adv_status = c.adv_status || (c.adv_collected ? 'COLLECTED' : 'PENDING');
   r.adv_due = Number(c.adv_installment) > 0 && r.adv_status === 'PENDING';
   r.adv_lost = Number(c.adv_installment) > 0 && r.adv_status === 'LOST';
-  r.paid_count = (Number(c.paid_count_excel)||0) + pays.length;
+  r.paid_count = (Number(c.paid_count_excel)||0) + r.live_pays.length;
   const f = fins.find(x => x.code === c.financier);
   const acc = (c.account_no||'').replace(/\D/g,'');
   r.pay_bank = f ? ((f.alt && acc.length === f.alt.acct_digits) ? f.alt.bank : f.bank) : (c.bank || '');
@@ -182,7 +185,7 @@ $('#btnExport').onclick = async () => {
   const q = v => { let raw=v==null?'':String(v);if(typeof v==='string'&&/^[\s]*[=+@-]/.test(raw))raw="'"+raw;const t=raw.replace(/"/g,'""');return /[",\r\n]/.test(t)?'"'+t+'"':t; };
   const rowsOut = list.map(r => {
     const x = {...r, rental_state: r.status==='CLOSED'?'CLOSED':(r.rented?'RENTED':'IN STOCK'),
-      last_payment: r.payments.length ? r.payments[r.payments.length-1].paid_date : '',
+      last_payment: r.live_pays.length ? r.live_pays[r.live_pays.length-1].paid_date : '',
       gps: r.gps?'YES':'', spare_key: r.spare_key?'YES':'',
       booking_txt: r.booking ? `${r.booking.date||''} ${r.booking.to||''}${r.booking.phone?' '+r.booking.phone:''}${r.booking.partner?' ['+r.booking.partner+']':''}${r.booking.deposit?' deposit RM'+r.booking.deposit:''}` : '',
       handover_log: r.handovers.filter(h=>!h.void).map(h => `${h.date||''} ${h.type==='IN'?(h.how||'RETURN'):'OUT'} ${h.to||''}${h.phone?' '+h.phone:''}${h.partner?' ['+h.partner+']':''}${h.rent?' RM'+h.rent:''}${h.note?' ('+h.note+')':''}`).join(' | ')};
@@ -272,7 +275,7 @@ async function saveContract(v, existing){
     return v.plate.replace(/[^A-Z0-9]/g,'-').replace(/^-+|-+$/g,'');
   } else {
     const body = { ...existing }; delete body.id;
-    ['paid_count','next_due','days_left','status','od_amount_est','pay_bank','pay_to','handovers_live','holder','holder_date','holder_phone','rented','partner','actual_rent','check','adv_due','adv_lost','adv_status_derived','pending','moved'].forEach(k => delete body[k]);
+    ['paid_count','next_due','days_left','status','od_amount_est','pay_bank','pay_to','handovers_live','holder','holder_date','holder_phone','rented','partner','actual_rent','check','adv_due','adv_lost','adv_status_derived','pending','moved','live_pays'].forEach(k => delete body[k]);
     body.handovers = existing.handovers; body.actual_rent = existing.actual_rent ?? null;
     // Carry computed fields in v so both ordinary saves and atomic moves receive them.
     if (v.check_note_auto && !body.check_note) v.check_note = v.check_note_auto;
@@ -295,11 +298,26 @@ async function saveContract(v, existing){
 async function addPayment(r, p){
   if (r.pending) throw Error('待放款不能记录付款 Payments require disbursement');
   const pays = [...r.payments, p];
-  await saveDetail(r,{payments:pays},`记录第 ${p.seq} 期付款`,'p_');
+  return saveDetail(r,{payments:pays},`记录第 ${p.seq} 期付款`,'p_');
 }
-async function removePayment(r, seq){
-  const pays = r.payments.filter(p => p.seq !== seq).map((p,i) => ({...p, seq: (Number(r.paid_count_excel)||0) + i + 1}));
-  await db.collection('contracts').doc(r.id).update({ payments: pays, history: stamp(r, `删除第 ${seq} 期付款`) }, r._rental_revision);
+// Live payments are numbered in order after the instalments already paid outside the system; voided ones keep their old number for the record.
+function renumberPays(r, list){
+  let n = Number(r.paid_count_excel) || 0;
+  return list.map(p => p.void === true ? p : { ...p, seq: ++n });
+}
+async function editPayment(r, idx, patch){
+  const p = r.payments[idx]; if (!p || p.void) throw { code: 'void', message: '已作废的付款不能改' };
+  const before = {}; Object.keys(patch).forEach(k => { if ((p[k] ?? '') !== (patch[k] ?? '')) before[k] = p[k] ?? ''; });
+  if (!Object.keys(before).length) return false;
+  const edited = { ...p, ...patch, edited_by: me.name || me.id || '?', edited_at: new Date().toISOString(), edit_log: [...(Array.isArray(p.edit_log) ? p.edit_log : []), { at: new Date().toISOString(), by: me.name || me.id || '?', before }].slice(-10) };
+  const list = r.payments.map((x,i) => i === idx ? edited : x);
+  if (!await saveDetail(r, { payments: list }, `修改第 ${p.seq} 期付款: ${Object.entries(before).map(([k,v])=>k+' '+(v===''?'—':v)+'→'+(patch[k]??'—')).join(', ')}`, `ep_${idx}_`)) return null;
+  return true;
+}
+async function voidPayment(r, idx, reason){
+  const p = r.payments[idx]; if (!p || p.void) return;
+  const list = renumberPays(r, r.payments.map((x,i) => i === idx ? { ...x, void: true, void_by: me.name || me.id || '?', void_at: new Date().toISOString(), void_reason: reason } : x));
+  return saveDetail(r, { payments: list }, `作废第 ${p.seq} 期付款 ${money(p.amount)} ${fd(p.paid_date)}: ${reason}`, `vp_${idx}_`);
 }
 async function addHandover(r, h){
   const list = [...r.handovers, h];
@@ -831,6 +849,73 @@ function handoverRow(h, i, id){
     ${canEdit()&&!v?`<div class="handActions" id="vh_${i}"><button class="btn" onclick="askEditHand('${esc(id)}',${i})">编辑 Edit</button><button class="btn" onclick="askVoid('${esc(id)}',${i})">作废 Void</button></div>`:''}
   </div>`;
 }
+function paymentRow(p, i, id, open){
+  const v = p.void === true;
+  const trail = [p.by ? '记录 '+esc(p.by)+(p.at?' '+fd(String(p.at).slice(0,10)):'') : '', p.edited_at ? '已修改 edited by '+esc(p.edited_by||'')+' '+fd((p.edited_at||'').slice(0,10))+(Array.isArray(p.edit_log)&&p.edit_log.length?' · 原本 was: '+esc(Object.entries(p.edit_log[p.edit_log.length-1].before||{}).map(([k,val])=>k+'='+(val===''||val===null?'—':val)).join(', ')):'') : '', v ? '作废 VOID by '+esc(p.void_by||'')+' '+fd((p.void_at||'').slice(0,10))+': '+esc(p.void_reason||'') : ''].filter(Boolean).join('<br>');
+  return `<div class="card handRow payRow" id="pr_${i}" style="${v?'opacity:.55':''}">
+    <div class="handMain">
+      <div class="handHead" style="${v?'text-decoration:line-through':''}"><span class="chip ${v?'s-CLOSED':'s-OK'}">${v?'作废 Void':'第 '+p.seq+' 期 Instalment #'+p.seq}</span> <b>${money(p.amount)}</b> <span>${fd(p.paid_date)}</span> <span class="hint">${esc(p.method||'')}</span></div>
+      ${p.note?`<div style="${v?'text-decoration:line-through':''}">${esc(p.note)}</div>`:''}
+      ${trail?`<div class="hint" style="font-size:12px">${trail}</div>`:''}
+    </div>
+    ${canEdit()&&open&&!v?`<div class="handActions" id="vp_${i}"><button class="btn" onclick="askEditPay('${esc(id)}',${i})">编辑 Edit</button><button class="btn" onclick="askVoidPay('${esc(id)}',${i})">作废 Void</button></div>`:''}
+  </div>`;
+}
+function askEditPay(cid, idx){
+  const r = panelRecord?.id===cid?panelRecord:null; if (!r) return;
+  const p = r.payments[idx]; const row = document.getElementById('pr_'+idx); if (!p || !row || p.void) return;
+  if (!canEdit() || r.status==='CLOSED') return;
+  const P = `ep_${idx}_`;
+  const methods = [...new Set([p.method || '', ...METHODS])];
+  row.style.borderColor = 'var(--gold)';
+  row.innerHTML = `<div style="flex:1"><h2 style="margin-bottom:6px">修改第 ${p.seq} 期付款 Edit instalment #${p.seq}</h2>
+    <div class="row">
+      <div class="field"><label>付款日期 Paid date</label><input id="${P}paid_date" type="date" value="${esc(p.paid_date||'')}"></div>
+      <div class="field"><label>金额 Amount</label><input id="${P}amount" type="number" inputmode="decimal" min="0" value="${esc(p.amount ?? '')}"></div>
+      <div class="field"><label>方式 Method</label><select id="${P}method">${methods.map(m=>`<option value="${esc(m)}" ${m===(p.method||'')?'selected':''}>${esc(m)||'—'}</option>`).join('')}</select></div>
+      <div class="field" style="flex:2"><label>备注 Note</label><input id="${P}note" value="${esc(p.note||'')}"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="btn primary" onclick="saveEditPay('${esc(cid)}',${idx})">保存 Save</button><button class="btn" onclick="cancelEditPay('${esc(cid)}',${idx})">取消 Cancel</button></div>
+  </div>`;
+  for (const [k,v] of panelDrafts) if (k.startsWith(P) && document.getElementById(k)) document.getElementById(k).value = v;
+  document.getElementById(P+'amount').focus();
+}
+function cancelEditPay(cid, idx){
+  const r = panelRecord?.id===cid?panelRecord:null; if (!r) return;
+  for (const k of [...panelDrafts.keys()]) if (k.startsWith(`ep_${idx}_`)) panelDrafts.delete(k);
+  const row = document.getElementById('pr_'+idx); if (row) row.outerHTML = paymentRow(r.payments[idx], idx, r.id, r.status!=='CLOSED');
+  window.__dirty = panelDrafts.size > 0;
+  discardArmed = false;
+}
+async function saveEditPay(cid, idx){
+  const epoch=authEpoch;
+  const r = panelRecord?.id===cid?panelRecord:null; if (!r) return;
+  const g = k => document.getElementById(`ep_${idx}_${k}`)?.value ?? '';
+  const d = g('paid_date'), a = Number(g('amount'));
+  if (!d) { toast('请选付款日期 Paid date'); return; }
+  if (!Number.isFinite(a) || !(a > 0)) { toast('金额要大于 0 Amount must be > 0'); return; }
+  try {
+    const changed = await editPayment(r, idx, { paid_date: d, amount: a, method: g('method'), note: UP(g('note').trim()) });
+    if (epoch!==authEpoch || !me || changed===null) return;
+    if (!changed) { toast('没有改动 No change'); cancelEditPay(cid, idx); return; }
+    toast('已修改付款 Payment updated');
+  } catch (e) { if(epoch===authEpoch&&me)toast('失败 Failed: ' + (e.message||e.code)); }
+}
+function askVoidPay(cid, idx){
+  const r = panelRecord?.id===cid?panelRecord:null;
+  if (!r || !canEdit() || r.status==='CLOSED' || !r.payments[idx] || r.payments[idx].void) return;
+  const cell = document.getElementById('vp_'+idx); if (!cell) return;
+  cell.innerHTML = `<input id="vp_${idx}_reason" placeholder="作废原因 Reason" style="width:150px"> <button class="btn danger" onclick="voidPay('${esc(cid)}',${idx})">确定 OK</button>`;
+  document.getElementById(`vp_${idx}_reason`).focus();
+}
+async function voidPay(cid, idx){
+  const epoch=authEpoch;
+  const r = panelRecord?.id===cid?panelRecord:null; if (!r) return;
+  const reason = UP((document.getElementById(`vp_${idx}_reason`)?.value || '').trim());
+  if (!reason) { toast('请填作废原因 Reason required'); return; }
+  try { if(await voidPayment(r, idx, reason))toast('已作废，期数已重排 Voided, instalments renumbered'); }
+  catch (e) { if(epoch===authEpoch&&me)toast('失败 Failed: ' + (e.message||e.code)); }
+}
 async function openDetail(id, refresh){
   const r = rows.find(x => x.id === id); if (!r) return;
   resetPanel('detail');window.__openId=id;panelRecord=r;
@@ -914,9 +999,7 @@ async function openDetail(id, refresh){
     ${(r.history||[]).length?`<div>最近改动</div><div class="hint">${(r.history||[]).slice(-3).reverse().map(h=>esc(fd(h.at.slice(0,10))+' '+h.by+' · '+h.action)).join('<br>')}</div>`:''}
   </div>
   <h3 style="font-size:14px;margin:12px 0 6px">付款记录 Payments</h3>
-  <table class="pays"><thead><tr><th>期 #</th><th>日期 Date</th><th>金额 Amount</th><th>方式 Method</th><th>备注 Note</th><th>记录人 By</th></tr></thead><tbody>
-  ${(pays||[]).map(p=>`<tr><td>${p.seq}</td><td>${fd(p.paid_date)}</td><td>${money(p.amount)}</td><td>${esc(p.method||'')}</td><td>${esc(p.note||'')}</td><td class="hint">${esc(p.by||'')}</td></tr>`).join('') || '<tr><td colspan="6" class="hint">还没有在系统里记录付款 No payments logged yet</td></tr>'}
-  </tbody></table>
+  <div class="handList">${(pays||[]).map((p,i)=>paymentRow(p, i, r.id, r.status!=='CLOSED')).join('') || '<p class="hint">还没有在系统里记录付款 No payments logged yet</p>'}</div>
   ${canEdit() && r.status!=='CLOSED' && r.pending ? `<p class="hint">放款后才能记录付款。 Payments can be logged after disbursement.</p>` : ''}
   ${canEdit() && r.status!=='CLOSED' && !r.pending ? `
   <div class="card" style="margin-top:10px"><h2>记录第 ${next} 期付款 · Record instalment #${next}</h2>
@@ -952,12 +1035,13 @@ async function openDetail(id, refresh){
   if ($('#btnReopen')) $('#btnReopen').onclick = wrap(reopenContract);
   if ($('#btnEdit')) $('#btnEdit').onclick = () => openForm(r);
   if ($('#btnPay')) $('#btnPay').onclick = async () => {
+    const epoch=authEpoch;
     const d = $('#p_date').value, a = Number($('#p_amt').value);
     if (!d) { toast('请选付款日期 Paid date'); return; }
     if (!(a > 0)) { toast('金额要大于 0 Amount must be > 0'); return; }
     $('#btnPay').disabled = true;
-    try { await addPayment(r, {seq:next, paid_date:d, amount:a, method:$('#p_method').value, note:UP($('#p_note').value||''), by: me.name || me.id || '?', at: new Date().toISOString()}); }
-    catch (e) { if($('#btnPay'))$('#btnPay').disabled=false; toast('记录失败 Failed: '+(e.message||e.code)); return; }
+    try { if(!await addPayment(r, {seq:next, paid_date:d, amount:a, method:$('#p_method').value, note:UP($('#p_note').value||''), by: me.name || me.id || '?', at: new Date().toISOString()}))return; }
+    catch (e) { if(epoch!==authEpoch||!me)return; if($('#btnPay'))$('#btnPay').disabled=false; toast('记录失败 Failed: '+(e.message||e.code)); return; }
     toast(`已记录 ${r.plate} 第 ${next} 期`);
   };
 }
@@ -1008,7 +1092,7 @@ async function openAccess(){
  });
 }
 $('#btnAccess').onclick=()=>openAccess().catch(()=>toast('仅 Super Admin 可管理租车权限。'));
-Object.assign(window,{$,closeDrawer,toast,savePartnerPhone,voidHand,askVoid,askEditHand,saveEditHand,cancelEditHand,copyWA});
+Object.assign(window,{$,closeDrawer,toast,savePartnerPhone,voidHand,askVoid,askEditHand,saveEditHand,cancelEditHand,askEditPay,saveEditPay,cancelEditPay,askVoidPay,voidPay,copyWA});
 if(!configured){$('#loginErr').textContent='系统连接未配置。';$('#btnIn').disabled=true;}
 else{
  sb.auth.onAuthStateChange((event,session)=>{
