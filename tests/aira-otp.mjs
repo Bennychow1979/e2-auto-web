@@ -19,6 +19,8 @@ test('worker is destination-bound, expiry-bound and requires delivery evidence',
  assert.equal(messageRequest(j,'default').tool,'message');assert.equal(messageRequest(j,'default').args.target,'+60123456789');
  assert.equal(messageRequest(j,'default').sessionKey,'agent:main:e2-otp-pilot');
  assert.equal(deliveryAccepted({ok:true,result:{details:{messageId:'wa-test'}}}),true);
+ assert.equal(deliveryAccepted({ok:true,result:{details:{channel:'whatsapp',result:{messageId:'wa-test'},messageDelivery:{partialDelivery:false}}}}),true);
+ assert.equal(deliveryAccepted({ok:true,result:{details:{result:{messageId:'wa-test'},messageDelivery:{partialDelivery:true}}}}),false);
  for(const v of [{ok:true},{ok:false},{ok:true,result:{isError:true,details:{messageId:'x'}}},{ok:true,result:{content:[{type:'text',text:'{"error":"offline"}'}]}}])assert.equal(deliveryAccepted(v),false);
 });
 test('broker permissions, throttles, expiry and phone customer authorization',async()=>{

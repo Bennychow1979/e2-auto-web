@@ -15,5 +15,7 @@ export function deliveryAccepted(result){
  // Tool wrappers may return a JSON text result; require a real message ID.
  const objects=[value?.details,value?.structuredContent,value];
  for(const c of value?.content||[])if(c.type==='text')try{objects.push(JSON.parse(c.text))}catch{}
- return objects.some(v=>typeof v?.messageId==='string'&&v.messageId.length>0);
+ // OpenClaw 2026.10 wraps the platform acknowledgement in details.result.
+ return objects.some(v=>!v?.error&&!v?.messageDelivery?.partialDelivery&&
+  [v,v?.result].some(ack=>!ack?.error&&typeof ack?.messageId==='string'&&ack.messageId.length>0));
 }
