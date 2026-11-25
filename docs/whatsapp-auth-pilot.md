@@ -1,0 +1,34 @@
+# WhatsApp authentication pilot
+
+Limited to a server-side approved test number. Email registration and login remain available. No public navigation entry; `/customer-whatsapp-test.html?lang=zh` supports EN/BM/ZH and is noindex.
+
+## Deployment and isolation
+
+1. Apply `20261125181751_aira_whatsapp_auth_pilot.sql`; its initial state is disabled.
+2. Deploy `e2-aira-otp-worker` with JWT verification disabled. Its separate 64-hex bearer credential is checked against an expiring private database hash. Browser and authenticated-user roles cannot invoke the worker RPC or read private tables.
+3. Enable native Phone Auth with confirmation, six digits and 300-second expiry. Select Postgres Send SMS Hook `public.e2_aira_send_sms`. Leave test OTP bypass empty and email settings unchanged.
+4. Deploy static files. Never link this pilot in public navigation before acceptance.
+5. On the existing AIRA host, place worker modules and mode-600 worker.json in `~/.config/e2-otp-pilot/`. Config: token (random 32-byte hex), endpoint (project Edge Function URL), account (default), allowedPhone (test recipient without plus).
+6. Configure only the private pilot settings/allowlist in Supabase: token SHA-256, worker/pilot expiry no more than 24 hours. Start one temporary Node process; it self-exits after 24 hours. No systemd, cron, AWS infrastructure, gateway configuration, ports, channel bindings or auto-reply changes.
+7. The worker uses the existing loopback gateway `/tools/invoke` message tool with a separate `agent:main:e2-otp-pilot` session key. It does not run an agent prompt or AI completion. It reads the existing gateway credential locally and never uploads that credential. No service-role key is installed on the host.
+
+The existing WhatsApp connection is still shared for outbound delivery. Validate channel health after the test; do not promise zero load or zero interaction with third-party delivery state.
+
+## Data and safety
+
+Supabase Auth generates and verifies OTPs and issues native sessions. Only independently verified Auth email/phone fields authorize customers; editable metadata cannot confer access. Phone customer access is restricted to the active allowlist. Existing email accounts are not merged by self-reported phone number.
+
+The queue stores encrypted codes, clears ciphertext after acknowledgement/expiry and never logs codes. Worker delivery errors are generic. A claimed message is not retried after an ambiguous failure. Requests need a fresh worker heartbeat and are limited to one per 60 seconds, five per hour and twenty per day per number. Auth verification rate limiting remains native: this implementation does **not** promise a per-code five-wrong-attempt cutoff. Queue ciphertext lifetime is four minutes; Auth code lifetime is five minutes from issuance.
+
+The native phone provider is globally enabled, but sending and customer authorization are server restricted. Unapproved numbers must be tested as rejected before the pilot is accepted.
+
+## Verification
+
+- `npm run test:whatsapp`: PGlite authorization, private-table grants, allowlist, throttling, expiry, queue claims and worker validation. PGlite crypto stand-ins exercise control flow only; verify real pgcrypto separately on the target.
+- `playwright test -c playwright.otp.config.mjs tests/aira-otp.spec.mjs`: three languages, desktop/mobile, wrong code, correct code, email fallback, account creation flag, resend cooldown. Uses mocked Auth; does not establish WhatsApp delivery.
+- Run existing customer email registration/login/recovery tests.
+- Real acceptance: approved user requests a code, receives it in WhatsApp and enters it on the test page. Confirm registration, logout/login and saved-car ownership. Never request OTPs in chat or inspect stored Auth OTP values.
+
+## Stop / rollback
+
+Disable `e2_otp_private.settings.enabled`, clear heartbeat and expire worker_until. Stop only the recorded pilot Node PID after checking its command. Do not stop/restart OpenClaw, its gateway or the EC2 instance. Remove the pilot page via a normal release if needed. Existing verified email customer authorization remains intact. Disable Phone provider and the Send SMS Hook if retiring the entire pilot; email settings stay unchanged. Do not automatically delete any test account or its saved data.

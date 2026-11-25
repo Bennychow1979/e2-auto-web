@@ -1,6 +1,7 @@
 import {accountURL} from './customer-language.mjs?v=flow-20261113';
 import {t,language} from './i18n.mjs';
 import {customerDB as db,check} from './customer-data.js?v=customer-1';
+import {hasVerifiedContact} from './customer-phone-auth.mjs';
 
 const links=[...document.querySelectorAll('.navLogin')];
 const partnerLinks=[...document.querySelectorAll('.navPartner')].map(link=>({link,html:link.innerHTML,href:link.getAttribute('href')}));
@@ -37,7 +38,7 @@ async function refresh(){
   if(currentId!==session.user.id){currentId=session.user.id;paint(t('My profile'))}
   const user=check(await db.auth.getUser()).user;
   if(run!==revision)return;
-  if(!user?.email_confirmed_at||!check(await db.rpc('e2_customer_allowed'))){if(run===revision){currentId=null;paint()}return}
+  if(!hasVerifiedContact(user)||!check(await db.rpc('e2_customer_allowed'))){if(run===revision){currentId=null;paint()}return}
   const profile=check(await db.from('customer_profiles').select('full_name').eq('user_id',user.id).maybeSingle());
   if(run!==revision)return;
   const name=[profile?.full_name,user.user_metadata?.full_name].find(value=>typeof value==='string'&&value.trim());

@@ -31,6 +31,10 @@ verify_jwt = false
 [functions.e2-mileage-evidence]
 verify_jwt = false
 
+# Expiring worker credential checked by the service-only broker RPC.
+[functions.e2-aira-otp-worker]
+verify_jwt = false
+
 # Dedicated AIRA secret checked in constant time by the handler; no browser CORS.
 [functions.verify-viewing-contact]
 verify_jwt = false
