@@ -223,3 +223,12 @@ for(const [lang,hint] of [['en','Use at least 6 characters.'],['ms','Gunakan sek
   await expect(page.locator('#customerAuth')).toBeVisible();await login(page,'alice@example.test','Ab123!');await expect(page.locator('#customerAccount')).toBeVisible();
  });
 }
+
+test('registration tabs wait for the account module before accepting a tap',async({page,fixture})=>{
+ await fixture({session:false});let release;const loaded=new Promise(resolve=>release=resolve);
+ await page.route('**/customer.js?*',async route=>{await loaded;await route.continue()});
+ await page.goto('/customer.html');
+ await expect(page.locator('#showRegister')).toBeDisabled();await expect(page.locator('#showSignIn')).toBeDisabled();
+ release();await page.locator('#showRegister').click();await expect(page.locator('#customerRegister')).toBeVisible();
+ await page.locator('#showSignIn').click();await expect(page.locator('#customerSignIn')).toBeVisible();
+});
