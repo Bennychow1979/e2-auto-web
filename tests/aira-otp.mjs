@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {normalizePhone,hasVerifiedContact} from '../customer-phone-auth.mjs';
-import {validateJob,messageRequest,deliveryAccepted} from '../scripts/aira-otp/worker-core.mjs';
+import {validateJob,validateSender,messageRequest,deliveryAccepted} from '../scripts/aira-otp/worker-core.mjs';
 test('normalization refuses malformed/international destinations',()=>{
  for(const n of ['012 345 6789','+60123456789','0060123456789','60123456789'])assert.equal(normalizePhone(n),'+60123456789');
  for(const n of ['60123','+6512345678','+60abc123456789','60123456789@s.whatsapp.net','+60123456789;cmd',''])assert.throws(()=>normalizePhone(n));
@@ -16,8 +16,14 @@ test('worker is destination-bound, expiry-bound and requires delivery evidence',
  assert.equal(validateJob(j,j.phone),j);
  assert.throws(()=>validateJob(j,'60123456788'));assert.throws(()=>validateJob({...j,otp:'12345x'},j.phone));
  assert.throws(()=>validateJob({...j,expires_at:'invalid'},j.phone));assert.throws(()=>validateJob({...j,expires_at:new Date().toISOString()},j.phone));
- assert.equal(messageRequest(j,'default').tool,'message');assert.equal(messageRequest(j,'default').args.target,'+60123456789');
- assert.equal(messageRequest(j,'default').sessionKey,'agent:main:e2-otp-pilot');
+ assert.equal(messageRequest(j,'approved','sender').tool,'message');assert.equal(messageRequest(j,'approved','sender').args.target,'+60123456789');
+ assert.equal(messageRequest(j,'approved','sender').sessionKey,'agent:sender:e2-otp-pilot');
+ assert.throws(()=>messageRequest(j,'default'));
+ const cfg={account:'approved',agentId:'sender',senderPhone:'60123456788'};
+ const status={channelAccounts:{whatsapp:[{accountId:'approved',connected:true,self:{e164:'+60123456788'}}]}};
+ assert.equal(validateSender(status,cfg),true);
+ assert.throws(()=>validateSender(status,{...cfg,senderPhone:j.phone}));
+ assert.throws(()=>validateSender(status,{...cfg,account:'default'}));
  assert.equal(deliveryAccepted({ok:true,result:{details:{messageId:'wa-test'}}}),true);
  assert.equal(deliveryAccepted({ok:true,result:{details:{channel:'whatsapp',result:{messageId:'wa-test'},messageDelivery:{partialDelivery:false}}}}),true);
  assert.equal(deliveryAccepted({ok:true,result:{details:{result:{messageId:'wa-test'},messageDelivery:{partialDelivery:true}}}}),false);
