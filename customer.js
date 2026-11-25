@@ -1,5 +1,5 @@
 import {campaignSignupData} from './campaign-tracking.mjs?v=1';
-import {ct,accountURL} from './customer-language.mjs?v=mail-save-20261119';
+import {ct,accountURL} from './customer-language.mjs?v=password6-20261125';
 import {takeLoan} from './loan-intent.js?v=flow-20261113';
 import {pendingSave,captureSave,bindSave,clearSave,saveReturnURL} from './saved-intent.js?v=mail-save-20261119';
 import {customerDB as db,check,fields} from './customer-data.js?v=customer-1';

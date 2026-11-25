@@ -21,7 +21,7 @@ export const customerTranslations={
  'Start with the essentials.':['Mulakan dengan butiran asas.','先填写基本资料。'],
  'Full name':['Nama penuh','姓名'],
  'Mobile / WhatsApp':['Telefon bimbit / WhatsApp','手机号码 / WhatsApp'],
- 'Use at least 12 characters.':['Gunakan sekurang-kurangnya 12 aksara.','请使用至少 12 个字符。'],
+ 'Use at least 6 characters.':['Gunakan sekurang-kurangnya 6 aksara.','请使用至少 6 个字符。'],
  'Confirm password':['Sahkan kata laluan','确认密码'],
  'I have read the':['Saya telah membaca','我已阅读'],
  'customer privacy notice':['notis privasi pelanggan','顾客隐私声明'],

@@ -1,7 +1,7 @@
 import {t,localizedURL} from './i18n.mjs';
 import {flowTranslations} from './customer-flow-translations.mjs';
 import {privacyTranslations} from './customer-privacy-translations.mjs';
-import {customerTranslations} from './customer-translations.mjs?v=mail-save-20261119';
+import {customerTranslations} from './customer-translations.mjs?v=password6-20261125';
 
 const supported=new Set(['en','ms','zh']);
 export const customerLanguageKey='e2-customer-language';
