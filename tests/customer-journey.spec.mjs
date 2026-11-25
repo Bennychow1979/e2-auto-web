@@ -202,3 +202,24 @@ test('late application history cannot restore old customer progress after switch
   await fixture({hold:['select:loan_events']});await page.goto(`/my-e2.html?application=${aliceLoan}`);await expect.poll(()=>count(page,'select:loan_events')).toBe(1);await expect(page.locator('#loanHistory')).toContainText('Loading progress');
   await page.evaluate(id=>{window.__customerFixture.switchUser(id);window.__customerFixture.release('select:loan_events');},bob);await expectGate(page,'/my-e2');await expect(page.locator('#loanHistory')).toHaveCount(0);
 });
+
+for(const [lang,hint] of [['en','Use at least 6 characters.'],['ms','Gunakan sekurang-kurangnya 6 aksara.'],['zh','请使用至少 6 个字符。']]){
+ test(`customer registration accepts six characters and blocks five (${lang})`,async({page,fixture})=>{
+  await fixture({session:false});await page.goto(`/customer.html?mode=register&lang=${lang}`);
+  const form=page.locator('#customerRegister');await expect(form).toBeVisible();await expect(form).toContainText(hint);
+  for(const [name,value] of Object.entries({full_name:'Carol Synthetic',email:'carol@example.test',phone:'0123456789',password:'Ab12!',confirm:'Ab12!'}))await form.locator(`[name=${name}]`).fill(value);
+  await form.locator('[name=privacy]').check();await form.locator('[type=submit]').click();expect(await count(page,'signUp')).toBe(0);
+  for(const name of ['password','confirm'])await form.locator(`[name=${name}]`).fill('Ab123!');
+  await form.locator('[type=submit]').click();await expect.poll(()=>count(page,'signUp')).toBe(1);
+  await page.evaluate(()=>window.__customerFixture.confirm('carol@example.test'));await login(page,'carol@example.test','Ab123!');await expect(page.locator('#customerAccount')).toBeVisible();
+ });
+ test(`customer recovery accepts six characters and blocks five (${lang})`,async({page,fixture})=>{
+  await fixture({recovery:true});await page.goto(`/customer.html?lang=${lang}#type=recovery`);
+  const form=page.locator('#customerPassword');await expect(form).toBeVisible();
+  for(const name of ['password','confirm'])await form.locator(`[name=${name}]`).fill('Ab12!');
+  await form.locator('button').click();expect(await count(page,'updatePassword')).toBe(0);
+  for(const name of ['password','confirm'])await form.locator(`[name=${name}]`).fill('Ab123!');
+  await form.locator('button').click();await expect.poll(()=>count(page,'updatePassword')).toBe(1);
+  await expect(page.locator('#customerAuth')).toBeVisible();await login(page,'alice@example.test','Ab123!');await expect(page.locator('#customerAccount')).toBeVisible();
+ });
+}
