@@ -5,6 +5,7 @@ import {pendingSave,captureSave,bindSave,clearSave,saveReturnURL} from './saved-
 import {customerDB as db,check,fields} from './customer-data.js?v=customer-1';
 import {normalizeWhatsApp} from './profile-utils.js';
 import {createSessionIdentity} from './customer-session.mjs';
+import {hasVerifiedContact} from './customer-phone-auth.mjs';
 const $=id=>document.getElementById(id),profile=$('customerProfile'),register=$('customerRegister'),login=$('customerSignIn');
 let user=null,saved=null,busy=false,epoch=0,dirty=false,recovery=false;
 const sessionIdentity=createSessionIdentity();
@@ -21,13 +22,13 @@ function mode(create){register.hidden=!create;login.hidden=create;$('showRegiste
 function gate(){epoch++;user=null;saved=null;dirty=false;profile.reset();$('customerEmail').value='';$('customerAccount').hidden=true;$('customerRecovery').hidden=true;$('customerAuth').hidden=false}
 function showRecovery(){epoch++;$('customerAuth').hidden=true;$('customerAccount').hidden=true;$('customerRecovery').hidden=false}
 function clearRecovery(){recovery=false;try{sessionStorage.removeItem('e2-customer-recovery')}catch{}}
-function fillProfile(){profile.reset();for(const key of fields)profile.elements[key].value=saved?.[key]??(key==='full_name'?user.user_metadata?.full_name||'':key==='phone'?user.user_metadata?.phone||'':'');$('customerEmail').value=user.email;profile.elements.privacy.required=!saved;$('profilePrivacy').hidden=!!saved;dirty=false}
+function fillProfile(){profile.reset();for(const key of fields)profile.elements[key].value=saved?.[key]??(key==='full_name'?user.user_metadata?.full_name||'':key==='phone'?user.phone||user.user_metadata?.phone||'':'');$('customerEmail').value=user.email||'';$('customerEmail').closest('label').hidden=!user.email;profile.elements.privacy.required=!saved;$('profilePrivacy').hidden=!!saved;dirty=false}
 async function hydrate(session){
   const run=++epoch;if(!session||!sessionIdentity.accepts(session.user)){gate();return}if(recovery){showRecovery();return}
   try{
     const result=check(await db.auth.getUser());if(run!==epoch)return;
     if(result.user?.id!==session.user.id||!sessionIdentity.accepts(result.user)){gate();return}user=result.user;
-    if(!user?.email_confirmed_at||!check(await db.rpc('e2_customer_allowed')))throw Error('Confirm your email and sign in with an active account.');
+    if(!hasVerifiedContact(user)||!check(await db.rpc('e2_customer_allowed')))throw Error('Confirm your email and sign in with an active account.');
     const row=check(await db.from('customer_profiles').select('*').eq('user_id',user.id).maybeSingle());if(run!==epoch)return;saved=row;
     if(!saved&&user.user_metadata?.e2_customer_signup===true&&user.user_metadata?.privacy_version==='2026-09-13'){
       const initial={full_name:user.user_metadata.full_name,phone:user.user_metadata.phone};

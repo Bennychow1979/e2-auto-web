@@ -3,7 +3,7 @@ setupCustomerLanguage();
 // Capture the requested presentation before the existing account initializer
 // removes auth/query parameters. Keep session and recovery behavior unchanged.
 const registrationRequested=new URLSearchParams(location.search).get('mode')==='register';
-await import('./customer.js?v=password6-ready-20261125');
+await import('./customer.js?v=whatsapp-pilot-20261126');
 if(registrationRequested&&!document.getElementById('customerAuth').hidden){
   document.getElementById('showRegister').click();
 }
