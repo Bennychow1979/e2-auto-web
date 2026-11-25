@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {normalizePhone,hasVerifiedContact} from '../customer-phone-auth.mjs';
-import {validateJob,validateSender,messageRequest,deliveryAccepted} from '../scripts/aira-otp/worker-core.mjs';
+import {validateJob,validateSender,messageArguments,deliveryAccepted} from '../scripts/aira-otp/worker-core.mjs';
 test('normalization refuses malformed/international destinations',()=>{
  for(const n of ['012 345 6789','+60123456789','0060123456789','60123456789'])assert.equal(normalizePhone(n),'+60123456789');
  for(const n of ['60123','+6512345678','+60abc123456789','60123456789@s.whatsapp.net','+60123456789;cmd',''])assert.throws(()=>normalizePhone(n));
@@ -16,18 +16,16 @@ test('worker is destination-bound, expiry-bound and requires delivery evidence',
  assert.equal(validateJob(j,j.phone),j);
  assert.throws(()=>validateJob(j,'60123456788'));assert.throws(()=>validateJob({...j,otp:'12345x'},j.phone));
  assert.throws(()=>validateJob({...j,expires_at:'invalid'},j.phone));assert.throws(()=>validateJob({...j,expires_at:new Date().toISOString()},j.phone));
- assert.equal(messageRequest(j,'approved','sender').tool,'message');assert.equal(messageRequest(j,'approved','sender').args.target,'+60123456789');
- assert.equal(messageRequest(j,'approved','sender').sessionKey,'agent:sender:e2-otp-pilot');
- assert.throws(()=>messageRequest(j,'default'));
+ assert.deepEqual(messageArguments(j,'approved').slice(0,8),['message','send','--channel','whatsapp','--account','approved','--target','+60123456789']);
+ assert.throws(()=>messageArguments(j,'bad;command'));
+ assert.throws(()=>messageArguments(j,''));
  const cfg={account:'approved',agentId:'sender',senderPhone:'60123456788'};
  const status={channelAccounts:{whatsapp:[{accountId:'approved',connected:true,self:{e164:'+60123456788'}}]}};
  assert.equal(validateSender(status,cfg),true);
  assert.throws(()=>validateSender(status,{...cfg,senderPhone:j.phone}));
  assert.throws(()=>validateSender(status,{...cfg,account:'default'}));
- assert.equal(deliveryAccepted({ok:true,result:{details:{messageId:'wa-test'}}}),true);
- assert.equal(deliveryAccepted({ok:true,result:{details:{channel:'whatsapp',result:{messageId:'wa-test'},messageDelivery:{partialDelivery:false}}}}),true);
- assert.equal(deliveryAccepted({ok:true,result:{details:{result:{messageId:'wa-test'},messageDelivery:{partialDelivery:true}}}}),false);
- for(const v of [{ok:true},{ok:false},{ok:true,result:{isError:true,details:{messageId:'x'}}},{ok:true,result:{content:[{type:'text',text:'{"error":"offline"}'}]}}])assert.equal(deliveryAccepted(v),false);
+ assert.equal(deliveryAccepted({action:'send',channel:'whatsapp',dryRun:false,messageId:'wa-test'}),true);
+ for(const v of [{ok:true},{action:'send',channel:'whatsapp',dryRun:true,messageId:'x'},{action:'send',channel:'whatsapp',dryRun:false,error:'failed',messageId:'x'}])assert.equal(deliveryAccepted(v),false);
 });
 test('broker permissions, throttles, expiry and phone customer authorization',async()=>{
  const db=new PGlite();
@@ -47,6 +45,7 @@ test('broker permissions, throttles, expiry and phone customer authorization',as
  grant usage on schema auth,public to anon,authenticated,service_role,supabase_auth_admin;
  `);
  await db.exec(await readFile(new URL('../supabase/migrations/20261125181751_aira_whatsapp_auth_pilot.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261125184834_aira_otp_operator_sender.sql',import.meta.url),'utf8'));
  const token='a'.repeat(64),phone='60123456789';
  async function role(r){await db.exec('reset role');if(r)await db.exec('set role '+r)}
  async function hook(code='012345',p=phone){return (await db.query('select public.e2_aira_send_sms($1::jsonb) v',[JSON.stringify({user:{phone:p},sms:{otp:code}})])).rows[0].v}
@@ -71,7 +70,7 @@ test('broker permissions, throttles, expiry and phone customer authorization',as
  await db.exec("update e2_otp_private.jobs set created_at=now()-interval '2 minutes'");
  await role('supabase_auth_admin');assert.deepEqual(await hook('654321'),{});
  await role('service_role');await worker();
- await role();await db.exec("update e2_otp_private.jobs set claimed_at=now()-interval '40 seconds' where state='claimed'");
+ await role();await db.exec("update e2_otp_private.jobs set claimed_at=now()-interval '100 seconds' where state='claimed'");
  await role('service_role');assert.deepEqual(await worker(),{});
  await role();assert.equal((await db.query("select count(*)::int n from e2_otp_private.jobs where ciphertext is not null")).rows[0].n,0);
  await role('service_role');await worker('offline');
