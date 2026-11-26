@@ -1,5 +1,5 @@
 import {campaignSignupData} from './campaign-tracking.mjs?v=1';
-import {ct,accountURL} from './customer-language.mjs?v=profile-home-20261126';
+import {ct,accountURL,refreshCustomerLanguageLinks} from './customer-language.mjs?v=profile-home-20261126';
 import {takeLoan} from './loan-intent.js?v=flow-20261113';
 import {pendingSave,captureSave,bindSave,clearSave,saveReturnURL} from './saved-intent.js?v=mail-save-20261119';
 import {customerDB as db,check,fields} from './customer-data.js?v=customer-1';
@@ -9,7 +9,7 @@ import {hasVerifiedContact} from './customer-phone-auth.mjs';
 const $=id=>document.getElementById(id),profile=$('customerProfile'),register=$('customerRegister'),login=$('customerSignIn');
 let user=null,saved=null,busy=false,epoch=0,dirty=false,recovery=false;
 const sessionIdentity=createSessionIdentity();
-const explicitProfile=new URLSearchParams(location.search).get('view')==='profile';
+let explicitProfile=new URLSearchParams(location.search).get('view')==='profile';
 const homeURL=()=>accountURL('/index.html');
 try{recovery=sessionStorage.getItem('e2-customer-recovery')==='1'}catch{}
 let emailWait=0;try{const n=Number(sessionStorage.getItem('e2-customer-email-wait'));if(n>Date.now()&&n<Date.now()+61000)emailWait=n}catch{}
@@ -21,7 +21,16 @@ function lock(value){busy=value;document.querySelectorAll('form input,form selec
 function waitForMail(){emailWait=Date.now()+60000;try{sessionStorage.setItem('e2-customer-email-wait',String(emailWait))}catch{}mailControls()}
 setInterval(mailControls,1000);
 function mode(create){register.hidden=!create;login.hidden=create;$('showRegister').setAttribute('aria-pressed',String(create));$('showSignIn').setAttribute('aria-pressed',String(!create));note('customerAuthMessage','')}
-function gate(){epoch++;user=null;saved=null;dirty=false;profile.reset();$('customerEmail').value='';$('customerAccount').hidden=true;$('customerRecovery').hidden=true;$('customerAuth').hidden=false}
+function clearProfileView(){
+  explicitProfile=false;
+  const url=new URL(location.href);
+  if(url.searchParams.has('view')){
+    url.searchParams.delete('view');
+    history.replaceState(null,'',url.pathname+url.search+url.hash);
+    refreshCustomerLanguageLinks();
+  }
+}
+function gate(){epoch++;clearProfileView();user=null;saved=null;dirty=false;profile.reset();$('customerEmail').value='';$('customerAccount').hidden=true;$('customerRecovery').hidden=true;$('customerAuth').hidden=false}
 function showRecovery(){epoch++;$('customerAuth').hidden=true;$('customerAccount').hidden=true;$('customerRecovery').hidden=false}
 function clearRecovery(){recovery=false;try{sessionStorage.removeItem('e2-customer-recovery')}catch{}}
 function fillProfile(){if($('phonePasswordSettings'))$('phonePasswordSettings').hidden=!user.phone_confirmed_at;profile.reset();for(const key of fields)profile.elements[key].value=saved?.[key]??(key==='full_name'?user.user_metadata?.full_name||'':key==='phone'?user.phone||user.user_metadata?.phone||'':'');$('customerEmail').value=user.email||'';$('customerEmail').closest('label').hidden=!user.email;profile.elements.privacy.required=!saved;$('profilePrivacy').hidden=!!saved;dirty=false}
@@ -52,7 +61,7 @@ $('showSignIn').onclick=()=>mode(false);$('showRegister').onclick=()=>mode(true)
 // The entry module imports account code asynchronously. Enable tabs only after
 // their handlers exist so an early tap cannot be lost during module loading.
 $('showSignIn').disabled=!db;$('showRegister').disabled=!db;
-login.onsubmit=async event=>{event.preventDefault();if(busy)return;lock(true);note('customerAuthMessage','Signing in…');try{clearRecovery();const result=check(await db.auth.signInWithPassword({email:login.elements.email.value.trim(),password:login.elements.password.value}));login.elements.password.value='';await hydrate(result.session)}catch{note('customerAuthMessage','Could not sign in. Check your email and password, and confirm your email first.',true)}finally{lock(false)}};
+login.onsubmit=async event=>{event.preventDefault();if(busy)return;lock(true);note('customerAuthMessage','Signing in…');try{clearProfileView();clearRecovery();const result=check(await db.auth.signInWithPassword({email:login.elements.email.value.trim(),password:login.elements.password.value}));login.elements.password.value='';await hydrate(result.session)}catch{note('customerAuthMessage','Could not sign in. Check your email and password, and confirm your email first.',true)}finally{lock(false)}};
 register.onsubmit=async event=>{
  event.preventDefault();if(busy||Date.now()<emailWait)return;
  if(register.elements.password.value!==register.elements.confirm.value){note('customerAuthMessage','The passwords do not match.',true);return}
