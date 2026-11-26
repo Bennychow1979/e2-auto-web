@@ -19,7 +19,7 @@ const submit=page=>page.locator('#customerProfile [type=submit]').click();
 for(const lang of ['en','ms','zh']){
  test(`${lang}: unsaved stays on profile; explicit Save goes home; next login goes home`,async({page,context,baseURL})=>{
   await setup(context,baseURL);
-  await page.goto('/customer.html?lang='+lang);
+  await page.goto('/customer.html?method=email&lang='+lang);
   await expect(page.locator('#customerAccount')).toBeVisible();
   await page.reload();await expect(page.locator('#customerAccount')).toBeVisible();
   await expect(page.locator('.customerHome')).toHaveText({en:'Back to home',ms:'Kembali ke laman utama',zh:'返回首页'}[lang]);
@@ -32,8 +32,8 @@ for(const lang of ['en','ms','zh']){
   await expect(page.locator('#customerAccount')).toBeVisible();
   await submit(page);await expect(page).toHaveURL(baseURL+home(lang));
   expect(await page.evaluate(id=>window.__customerFixture.snapshot().profiles[id].profile_saved_at,alice)).toBeTruthy();
-  await page.goto('/customer.html?lang='+lang);await expect(page).toHaveURL(baseURL+home(lang));
-  await page.goto('/customer.html?view=profile&lang='+lang);await expect(page.locator('#customerAccount')).toBeVisible();
+  await page.goto('/customer.html?method=email&lang='+lang);await expect(page).toHaveURL(baseURL+home(lang));
+  await page.goto('/customer.html?method=email&view=profile&lang='+lang);await expect(page.locator('#customerAccount')).toBeVisible();
   await page.locator('#customerSignOut').click();
   await expect(page).toHaveURL(url=>!url.searchParams.has('view'));
   await expect(page.locator('.customerLanguages [data-customer-language=zh]')).not.toHaveAttribute('href',/view=profile/);
@@ -45,15 +45,15 @@ for(const lang of ['en','ms','zh']){
  });
  test(`${lang}: another device uses saved database state; deliberate profile and language switch stay editable`,async({page,context,baseURL})=>{
   await setup(context,baseURL,{completed:true});
-  await page.goto('/customer.html?lang='+lang);await expect(page).toHaveURL(baseURL+home(lang));
-  await page.goto('/customer.html?view=profile&lang='+lang);await expect(page.locator('#customerAccount')).toBeVisible();
+  await page.goto('/customer.html?method=email&lang='+lang);await expect(page).toHaveURL(baseURL+home(lang));
+  await page.goto('/customer.html?method=email&view=profile&lang='+lang);await expect(page.locator('#customerAccount')).toBeVisible();
   await page.reload();await expect(page.locator('#customerAccount')).toBeVisible();
   await page.locator('.customerLanguages [data-customer-language="zh"]').click();await expect(page.locator('#customerAccount')).toBeVisible();
   expect(new URL(page.url()).searchParams.get('view')).toBe('profile');
  });
  test(`${lang}: signed-out profile bookmark and language switch cannot override fresh login`,async({page,context,baseURL})=>{
   await setup(context,baseURL,{session:false,completed:true});
-  await page.goto('/customer.html?view=profile&lang='+lang);
+  await page.goto('/customer.html?method=email&view=profile&lang='+lang);
   await expect(page.locator('#customerSignIn [type=submit]')).toBeEnabled();
   await expect(page).toHaveURL(url=>!url.searchParams.has('view'));
   await page.locator('.customerLanguages [data-customer-language=zh]').click();

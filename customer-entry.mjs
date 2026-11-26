@@ -1,4 +1,4 @@
-import {setupCustomerLanguage,customerLanguage} from './customer-language.mjs?v=profile-home-20261126';
+import {setupCustomerLanguage,customerLanguage} from './customer-language.mjs?v=whatsapp-first-20261126';
 import {saveReturnURL,captureSave} from './saved-intent.js?v=whatsapp-public-20261126';
 setupCustomerLanguage();
 captureSave();
@@ -22,7 +22,7 @@ phoneLink.href=phoneURL(new URLSearchParams(location.search).get('mode')==='regi
 // Capture the requested presentation before the existing account initializer
 // removes auth/query parameters. Keep session and recovery behavior unchanged.
 const registrationRequested=new URLSearchParams(location.search).get('mode')==='register';
-await import('./customer.js?v=profile-relogin-20261126');
+await import('./customer.js?v=whatsapp-first-20261126');
 if(registrationRequested&&!document.getElementById('customerAuth').hidden){
   document.getElementById('showRegister').click();
 }

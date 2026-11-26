@@ -1,5 +1,5 @@
 import {campaignSignupData} from './campaign-tracking.mjs?v=1';
-import {ct,accountURL,refreshCustomerLanguageLinks} from './customer-language.mjs?v=profile-home-20261126';
+import {ct,accountURL,refreshCustomerLanguageLinks,customerLanguage} from './customer-language.mjs?v=whatsapp-first-20261126';
 import {takeLoan} from './loan-intent.js?v=flow-20261113';
 import {pendingSave,captureSave,bindSave,clearSave,saveReturnURL} from './saved-intent.js?v=mail-save-20261119';
 import {customerDB as db,check,fields} from './customer-data.js?v=customer-1';
@@ -9,11 +9,20 @@ import {hasVerifiedContact} from './customer-phone-auth.mjs';
 const $=id=>document.getElementById(id),profile=$('customerProfile'),register=$('customerRegister'),login=$('customerSignIn');
 let user=null,saved=null,busy=false,epoch=0,dirty=false,recovery=false;
 const sessionIdentity=createSessionIdentity();
-let explicitProfile=new URLSearchParams(location.search).get('view')==='profile';
+const profileIntro={title:document.querySelector('.customerIntro h1').innerHTML,description:document.querySelector('.customerIntro p').innerHTML};
+const entryParams=new URLSearchParams(location.search);
+const emailCallback=['code','error','token_hash'].some(key=>entryParams.has(key))||new URLSearchParams(location.hash.slice(1)).has('type')||new URLSearchParams(location.hash.slice(1)).has('error');
+const emailRequested=entryParams.get('method')==='email'||emailCallback;
+let explicitProfile=entryParams.get('view')==='profile';
+function whatsappDestination(){
+ const url=new URL('customer-whatsapp.html',location.href);url.searchParams.set('lang',customerLanguage);
+ if(entryParams.get('mode')==='register')url.searchParams.set('mode','register');
+ return saveReturnURL(url.href);
+}
 const homeURL=()=>accountURL('/index.html');
 try{recovery=sessionStorage.getItem('e2-customer-recovery')==='1'}catch{}
 let emailWait=0;try{const n=Number(sessionStorage.getItem('e2-customer-email-wait'));if(n>Date.now()&&n<Date.now()+61000)emailWait=n}catch{}
-const redirect=(withSave=true)=>withSave?saveReturnURL(accountURL('/customer.html')):accountURL('/customer.html');
+const redirect=(withSave=true)=>withSave?saveReturnURL(accountURL('/customer.html?method=email')):accountURL('/customer.html?method=email');
 captureSave();
 function note(id,text,bad=false){$(id).textContent=ct(text);$(id).classList.toggle('error',bad)}
 function mailControls(){const left=Math.max(0,Math.ceil((emailWait-Date.now())/1000));$('customerForgot').disabled=busy||left>0;$('customerResend').disabled=busy||left>0;$('customerResend').textContent=left?ct('Try again in {seconds}s',{seconds:left}):ct('Resend confirmation');register.querySelector('[type=submit]').disabled=busy||left>0}
@@ -30,12 +39,19 @@ function clearProfileView(){
     refreshCustomerLanguageLinks();
   }
 }
-function gate(){epoch++;clearProfileView();user=null;saved=null;dirty=false;profile.reset();$('customerEmail').value='';$('customerAccount').hidden=true;$('customerRecovery').hidden=true;$('customerAuth').hidden=false}
+function gate(preferWhatsApp=false){
+ epoch++;clearProfileView();user=null;saved=null;dirty=false;profile.reset();$('customerEmail').value='';
+ $('customerAccount').hidden=true;$('customerRecovery').hidden=true;
+ if(preferWhatsApp&&!emailRequested&&!recovery){$('customerAuth').hidden=true;location.replace(whatsappDestination());return}
+ $('customerAuth').hidden=false;
+ document.querySelector('.customerIntro h1').textContent=ct('Sign in with email');
+ document.querySelector('.customerIntro p').textContent=ct('Use your email and password to view your saved cars. You can also sign in with WhatsApp.');
+}
 function showRecovery(){epoch++;$('customerAuth').hidden=true;$('customerAccount').hidden=true;$('customerRecovery').hidden=false}
 function clearRecovery(){recovery=false;try{sessionStorage.removeItem('e2-customer-recovery')}catch{}}
-function fillProfile(){if($('phonePasswordSettings'))$('phonePasswordSettings').hidden=!user.phone_confirmed_at;profile.reset();for(const key of fields)profile.elements[key].value=saved?.[key]??(key==='full_name'?user.user_metadata?.full_name||'':key==='phone'?user.phone||user.user_metadata?.phone||'':'');$('customerEmail').value=user.email||'';$('customerEmail').closest('label').hidden=!user.email;profile.elements.privacy.required=!saved;$('profilePrivacy').hidden=!!saved;dirty=false}
+function fillProfile(){document.querySelector('.customerIntro h1').innerHTML=profileIntro.title;document.querySelector('.customerIntro p').innerHTML=profileIntro.description;if($('phonePasswordSettings'))$('phonePasswordSettings').hidden=!user.phone_confirmed_at;profile.reset();for(const key of fields)profile.elements[key].value=saved?.[key]??(key==='full_name'?user.user_metadata?.full_name||'':key==='phone'?user.phone||user.user_metadata?.phone||'':'');$('customerEmail').value=user.email||'';$('customerEmail').closest('label').hidden=!user.email;profile.elements.privacy.required=!saved;$('profilePrivacy').hidden=!!saved;dirty=false}
 async function hydrate(session){
-  const run=++epoch;if(!session||!sessionIdentity.accepts(session.user)){gate();return}if(recovery){showRecovery();return}
+  const run=++epoch;if(!session||!sessionIdentity.accepts(session.user)){gate(!session);return}if(recovery){showRecovery();return}
   try{
     const result=check(await db.auth.getUser());if(run!==epoch)return;
     if(result.user?.id!==session.user.id||!sessionIdentity.accepts(result.user)){gate();return}user=result.user;
@@ -82,9 +98,9 @@ $('customerPassword').onsubmit=async event=>{event.preventDefault();if(busy)retu
 profile.oninput=()=>{dirty=true};
 profile.onsubmit=async event=>{event.preventDefault();if(busy||!user)return;const run=epoch;lock(true);try{const details=Object.fromEntries(fields.map(k=>[k,profile.elements[k].value.trim()]));details.phone=normalizeWhatsApp(details.phone);const data=check(await db.rpc('e2_complete_customer_profile',{details,expected_revision:saved?.revision||0,accept_privacy:profile.elements.privacy.checked}));if(run!==epoch)return;saved=Array.isArray(data)?data[0]:data;fillProfile();note('customerProfileMessage','Your details have been saved.');setTimeout(()=>{if(run===epoch&&!dirty)location.replace(homeURL())},700)}catch(e){if(run===epoch)note('customerProfileMessage',e.code==='23514'?'Check your name, phone number and budget range.':e.message||'Could not save your details.',true)}finally{lock(false)}};
 $('reloadCustomer').onclick=async()=>{if(busy||(dirty&&!confirm(ct('Discard unsaved changes and reload?'))))return;lock(true);try{await hydrate(check(await db.auth.getSession()).session)}finally{lock(false)}};
-$('customerSignOut').onclick=async()=>{if(busy||(dirty&&!confirm(ct('Discard unsaved changes and sign out?'))))return;lock(true);try{check(await db.auth.signOut({scope:'local'}));clearRecovery();gate()}catch{note('customerProfileMessage','Could not sign out. Please try again.',true)}finally{lock(false)}};
+$('customerSignOut').onclick=async()=>{if(busy||(dirty&&!confirm(ct('Discard unsaved changes and sign out?'))))return;lock(true);try{check(await db.auth.signOut({scope:'local'}));clearRecovery();gate(true)}catch{note('customerProfileMessage','Could not sign out. Please try again.',true)}finally{lock(false)}};
 window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue=''}});
-if(!db){lock(true);note('customerAuthMessage','Customer accounts are being prepared. Please try again later.',true)}else{
+if(!db){gate();lock(true);note('customerAuthMessage','Customer accounts are being prepared. Please try again later.',true)}else{
  // Track session identity before profile hydration completes. A different login
  // in another tab must also invalidate pending reads/saves and clear old fields.
  db.auth.onAuthStateChange((event,session)=>{
@@ -94,6 +110,7 @@ if(!db){lock(true);note('customerAuthMessage','Customer accounts are being prepa
  });
  const badLink=new URLSearchParams(location.hash.slice(1)).has('error')||new URLSearchParams(location.search).has('error');
  if(!badLink)try{await hydrate(check(await db.auth.getSession()).session)}catch{gate();note('customerAuthMessage','This sign-in link could not be used. Please request a new email.',true)}
- history.replaceState(null,'',location.pathname+(explicitProfile?'?view=profile':''));
+ const clean=new URLSearchParams();if(explicitProfile)clean.set('view','profile');if(emailRequested)clean.set('method','email');
+ history.replaceState(null,'',location.pathname+(clean.size?'?'+clean:''));refreshCustomerLanguageLinks();
  if(badLink){clearRecovery();gate();note('customerAuthMessage','This email link has expired or was already used. Sign in, resend confirmation, or request a new password reset.',true)}
 }

@@ -51,7 +51,7 @@ for(const lang of ['en','ms','zh']){
   expect(page.url()).toContain('save=00000000-0000-4000-8000-000000000008');
   expect(page.url()).not.toContain('123456');
  });
- test('WhatsApp pilot '+lang+': login never silently creates users; changing number clears input',async({page,context,baseURL})=>{
+ test('WhatsApp pilot '+lang+': password recovery never silently creates users; changing number clears input',async({page,context,baseURL})=>{
   let request;
   await context.route('**/*',async route=>{
    const url=new URL(route.request().url());
@@ -61,7 +61,7 @@ for(const lang of ['en','ms','zh']){
   });
   await page.exposeFunction('recordRequest',args=>{request=args});
   await page.goto('/customer-whatsapp-test.html?lang='+lang);
-  await page.locator('#otpLogin').click();
+  await page.locator('#forgotPassword').click();
   await expect(page.locator('#otpRequest [type=submit]')).toBeEnabled();
   await page.locator('#otpRequest [name=phone]').fill('012 345 6789');await page.locator('#otpRequest [type=submit]').click();
   await expect(page.locator('#otpVerify')).toBeVisible();expect(request.options.shouldCreateUser).toBe(false);
