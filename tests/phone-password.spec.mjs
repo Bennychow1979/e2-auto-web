@@ -47,7 +47,7 @@ async function fillPassword(page,a='qa1234',b=a){
 for(const lang of ['en','ms','zh']){
  test('phone password '+lang+': login uses existing account without sending OTP',async({page,context,baseURL})=>{
   const calls=await mockAuth(page,context,baseURL);
-  await page.goto('/customer-whatsapp-test.html?lang='+lang);
+  await page.goto('/customer-whatsapp.html?lang='+lang);
   await page.locator('#phonePassword [name=phone]').fill('012 345 6789');
   await page.locator('#phonePassword [name=password]').fill('wrong123');
   await page.locator('#phonePassword [type=submit]').click();
@@ -61,7 +61,7 @@ for(const lang of ['en','ms','zh']){
  });
  test('phone password '+lang+': reset requires OTP, six characters and matching confirmation',async({page,context,baseURL})=>{
   const calls=await mockAuth(page,context,baseURL);
-  await page.goto('/customer-whatsapp-test.html?lang='+lang);
+  await page.goto('/customer-whatsapp.html?lang='+lang);
   await requestReset(page);
   expect(calls[0].args.options.shouldCreateUser).toBe(false);
   expect(calls.filter(c=>c.op==='update')).toHaveLength(0);
@@ -77,24 +77,24 @@ for(const lang of ['en','ms','zh']){
 }
 test('phone password: another account cannot inherit setup verification',async({page,context,baseURL})=>{
  const calls=await mockAuth(page,context,baseURL,{switched:true});
- await page.goto('/customer-whatsapp-test.html');await requestReset(page);await verifyCode(page);
+ await page.goto('/customer-whatsapp.html');await requestReset(page);await verifyCode(page);
  await fillPassword(page);
  await expect(page.locator('#setPhonePassword [name=password]')).toHaveValue('');
  expect(calls.filter(c=>c.op==='update')).toHaveLength(0);
 });
 test('phone password: denied session is signed out after password login',async({page,context,baseURL})=>{
  const calls=await mockAuth(page,context,baseURL,{denied:true});
- await page.goto('/customer-whatsapp-test.html');
+ await page.goto('/customer-whatsapp.html');
  await page.locator('#phonePassword [name=phone]').fill('012 345 6789');
  await page.locator('#phonePassword [name=password]').fill('qa1234');
  await page.locator('#phonePassword [type=submit]').click();
  await expect(page.locator('#phonePassword [name=password]')).toHaveValue('');
  expect(calls.some(c=>c.op==='signout')).toBe(true);
- expect(page.url()).toContain('customer-whatsapp-test');
+ expect(page.url()).toContain('customer-whatsapp');
 });
 test('phone password: existing session still needs a fresh code to change password',async({page,context,baseURL})=>{
  const calls=await mockAuth(page,context,baseURL,{initial:true});
- await page.goto('/customer-whatsapp-test.html');
+ await page.goto('/customer-whatsapp.html');
  await expect(page.locator('#otpSignedIn')).toBeVisible();
  await page.locator('#changePhonePassword').click();
  await expect(page.locator('#otpRequest')).toBeVisible();
@@ -107,7 +107,7 @@ test('phone password: existing session still needs a fresh code to change passwo
 test('phone password: expired verification cannot set a password',async({page,context,baseURL})=>{
  const calls=await mockAuth(page,context,baseURL);
  await page.clock.install();
- await page.goto('/customer-whatsapp-test.html');await requestReset(page);await verifyCode(page);
+ await page.goto('/customer-whatsapp.html');await requestReset(page);await verifyCode(page);
  await page.clock.fastForward(301000);await fillPassword(page);
  await expect(page.locator('#otpRequest')).toBeVisible();
  await expect(page.locator('#setPhonePassword')).toBeHidden();
@@ -115,9 +115,10 @@ test('phone password: expired verification cannot set a password',async({page,co
 });
 test('phone password: rejected update clears password fields without showing success',async({page,context,baseURL})=>{
  await mockAuth(page,context,baseURL,{updateFails:true});
- await page.goto('/customer-whatsapp-test.html');await requestReset(page);await verifyCode(page);await fillPassword(page);
+ await page.goto('/customer-whatsapp.html');await requestReset(page);await verifyCode(page);await fillPassword(page);
  await expect(page.locator('#setPhonePassword [name=password]')).toHaveValue('');
  await expect(page.locator('[name=confirm_password]')).toHaveValue('');
  await expect(page.locator('#otpSignedIn')).toBeHidden();
  await expect(page.locator('#setPhonePassword')).toBeVisible();
 });
+

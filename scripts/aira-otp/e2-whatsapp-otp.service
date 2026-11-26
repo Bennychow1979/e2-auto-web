@@ -1,0 +1,24 @@
+[Unit]
+Description=E2 customer WhatsApp verification sender
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.config/e2-otp-service
+ExecStart=/home/ubuntu/.nvm/versions/node/v24.22.2/bin/node %h/.config/e2-otp-service/worker.mjs --public
+Restart=always
+RestartSec=30
+TimeoutStopSec=20
+KillMode=control-group
+UMask=0077
+Nice=10
+CPUWeight=10
+MemoryHigh=512M
+MemoryMax=768M
+Environment=NODE_OPTIONS=--max-old-space-size=512
+Environment=PATH=/home/ubuntu/.nvm/versions/node/v24.22.2/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target

@@ -1,6 +1,6 @@
 export function validateJob(job,allowedPhone,now=Date.now()){
  if(!job||!Object.keys(job).length||job.paused)return null;
- if(!/^[0-9a-f-]{36}$/.test(job.id||'')||job.phone!==allowedPhone||!/^60[1-9][0-9]{7,10}$/.test(job.phone)||!/^\d{6}$/.test(job.otp))throw Error('Invalid job');
+ if(!/^[0-9a-f-]{36}$/.test(job.id||'')||(allowedPhone!==null&&job.phone!==allowedPhone)||!/^601[0-9]{8,9}$/.test(job.phone)||!/^\d{6}$/.test(job.otp))throw Error('Invalid job');
  const expiry=Date.parse(job.expires_at);
  if(!Number.isFinite(expiry)||expiry-now<70000||expiry-now>300000)throw Error('Expired job');
  return job;
@@ -20,4 +20,12 @@ export function messageArguments(job,account){
 export function deliveryAccepted(result){
  return result?.action==='send'&&result?.channel==='whatsapp'&&result?.dryRun===false&&
   !result?.error&&typeof result?.messageId==='string'&&result.messageId.length>0;
+}
+// Accept one complete JSON object after optional diagnostic lines.
+export function parseCommandJSON(output){
+ const raw=String(output||'').trim();
+ for(const match of raw.matchAll(/(?:^|\n)\s*(?=\{)/g)){
+  try{return JSON.parse(raw.slice(match.index).trim())}catch{}
+ }
+ throw Error('Command did not return complete JSON');
 }

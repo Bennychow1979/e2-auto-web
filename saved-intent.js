@@ -15,7 +15,7 @@ export function captureSave(search=globalThis.location?.search||''){
 }
 export function saveReturnURL(value){
  const base=globalThis.location?.href||'https://e2auto.my/',url=new URL(value,base),item=read();
- if(url.origin===new URL(base).origin&&/^\/(customer|saved)\.html$/.test(url.pathname)&&item){url.searchParams.set('save',item.id);url.searchParams.set('save_at',String(item.at))}
+ if(url.origin===new URL(base).origin&&/^\/(customer|saved|customer-whatsapp|customer-whatsapp-test)\.html$/.test(url.pathname)&&item){url.searchParams.set('save',item.id);url.searchParams.set('save_at',String(item.at))}
  return url.href;
 }
 export function clearSave(expected){
