@@ -15,9 +15,9 @@ KillMode=control-group
 UMask=0077
 Nice=10
 CPUWeight=10
-MemoryHigh=512M
-MemoryMax=768M
-Environment=NODE_OPTIONS=--max-old-space-size=512
+MemoryHigh=256M
+MemoryMax=320M
+Environment=NODE_OPTIONS=--max-old-space-size=80
 Environment=PATH=/home/ubuntu/.nvm/versions/node/v24.22.2/bin:/usr/local/bin:/usr/bin:/bin
 
 [Install]

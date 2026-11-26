@@ -22,7 +22,7 @@
     "test:inventory-refresh": "node --test supabase/tests/inventory-refresh-db.mjs supabase/tests/inventory-refresh-worker.mjs",
     "test:campaign": "node --test tests/campaign-core.mjs && node tests/campaign-db.mjs",
     "test:campaign:browser": "node tests/campaign-browser.mjs",
-    "test:whatsapp": "node --test tests/aira-otp.mjs"
+    "test:whatsapp": "node --test tests/aira-otp.mjs tests/aira-otp-sender.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",
