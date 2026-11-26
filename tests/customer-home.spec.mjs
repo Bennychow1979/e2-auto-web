@@ -35,8 +35,10 @@ for(const lang of ['en','ms','zh']){
   await page.goto('/customer.html?lang='+lang);await expect(page).toHaveURL(baseURL+home(lang));
   await page.goto('/customer.html?view=profile&lang='+lang);await expect(page.locator('#customerAccount')).toBeVisible();
   await page.locator('#customerSignOut').click();
-  // Normal sign-in (not an explicit profile-edit link).
-  await page.goto('/customer.html?lang='+lang);
+  await expect(page).toHaveURL(url=>!url.searchParams.has('view'));
+  await expect(page.locator('.customerLanguages [data-customer-language=zh]')).not.toHaveAttribute('href',/view=profile/);
+  // Regression: sign in again on the SAME page after signing out of My Profile.
+  // Navigating to a clean login URL here would hide a retained view=profile bug.
   await page.locator('#customerSignIn [name=email]').fill('alice@example.test');
   await page.locator('#customerSignIn [name=password]').fill('Synthetic-only-123!');
   await page.locator('#customerSignIn [type=submit]').click();await expect(page).toHaveURL(baseURL+home(lang));
@@ -48,6 +50,16 @@ for(const lang of ['en','ms','zh']){
   await page.reload();await expect(page.locator('#customerAccount')).toBeVisible();
   await page.locator('.customerLanguages [data-customer-language="zh"]').click();await expect(page.locator('#customerAccount')).toBeVisible();
   expect(new URL(page.url()).searchParams.get('view')).toBe('profile');
+ });
+ test(`${lang}: signed-out profile bookmark and language switch cannot override fresh login`,async({page,context,baseURL})=>{
+  await setup(context,baseURL,{session:false,completed:true});
+  await page.goto('/customer.html?view=profile&lang='+lang);
+  await expect(page.locator('#customerSignIn [type=submit]')).toBeEnabled();
+  await expect(page).toHaveURL(url=>!url.searchParams.has('view'));
+  await page.locator('.customerLanguages [data-customer-language=zh]').click();
+  await page.locator('#customerSignIn [name=email]').fill('alice@example.test');
+  await page.locator('#customerSignIn [name=password]').fill('Synthetic-only-123!');
+  await page.locator('#customerSignIn [type=submit]').click();await expect(page).toHaveURL(baseURL+'/zh/');
  });
  for(const completed of [false,true])test(`${lang}: WhatsApp password sign-in routes ${completed?'home':'to unsaved profile'}`,async({page,context,baseURL})=>{
   await setup(context,baseURL,{session:false,phone:true,completed});
