@@ -45,7 +45,7 @@ async function expectGate(page,path){
 }
 
 test('registration validates, prevents duplicates, requires confirmation, then restores profile',async({page,fixture})=>{
-  await fixture({session:false});await page.goto('/customer.html');await page.locator('#showRegister').click();
+  await fixture({session:false});await page.goto('/customer.html?method=email');await page.locator('#showRegister').click();
   const form=page.locator('#customerRegister');
   for(const [name,value] of Object.entries({full_name:'Carol Synthetic',email:'carol@example.test',phone:'0123456789',password:'Synthetic-only-123!',confirm:'Different-pass-123!'}))await form.locator(`[name=${name}]`).fill(value);
   await form.locator('[name=privacy]').check();await form.locator('[type=submit]').click();
@@ -62,7 +62,7 @@ test('registration validates, prevents duplicates, requires confirmation, then r
 });
 
 test('registration interruption retains inputs and cooldown prevents accidental retries',async({page,fixture})=>{
-  await fixture({session:false});await page.goto('/customer.html');await page.locator('#showRegister').click();
+  await fixture({session:false});await page.goto('/customer.html?method=email');await page.locator('#showRegister').click();
   for(const [name,value] of Object.entries({full_name:'Carol Synthetic',email:'carol@example.test',phone:'0123456789',password:'Synthetic-only-123!',confirm:'Synthetic-only-123!'}))await page.locator(`#customerRegister [name=${name}]`).fill(value);
   await page.locator('#customerRegister [name=privacy]').check();await page.evaluate(()=>window.__customerFixture.fail('signUp'));
   await page.locator('#customerRegister [type=submit]').click();await expect(page.locator('#customerAuthMessage')).toContainText('Could not complete registration');
@@ -71,27 +71,27 @@ test('registration interruption retains inputs and cooldown prevents accidental 
 });
 
 test('invalid login, profile save interruption/retry, reload, and local signout',async({page,fixture})=>{
-  await fixture({session:false});await page.goto('/customer.html');await login(page,'alice@example.test','wrong');
+  await fixture({session:false});await page.goto('/customer.html?method=email');await login(page,'alice@example.test','wrong');
   await expect(page.locator('#customerAccount')).toBeHidden();await expect(page.locator('#customerAuthMessage')).toContainText('Could not sign in');
   await login(page);await expect(page.locator('#customerEmail')).toHaveValue('alice@example.test');
   await page.locator('#customerProfile [name=city]').fill('Synthetic city');await page.evaluate(()=>window.__customerFixture.fail('rpc:e2_complete_customer_profile'));
   await page.locator('#customerProfile [type=submit]').click();await expect(page.locator('#customerProfileMessage')).toContainText('Synthetic interrupted');
   await expect(page.locator('#customerProfile [name=city]')).toHaveValue('Synthetic city');await page.locator('#customerProfile [type=submit]').click();
-  await expect(page.locator('#customerProfileMessage')).toContainText('have been saved');await expect(page).toHaveURL(url=>url.pathname==='/');await page.goto('/customer.html?view=profile');await expect(page.locator('#customerProfile [name=city]')).toHaveValue('Synthetic city');
+  await expect(page.locator('#customerProfileMessage')).toContainText('have been saved');await expect(page).toHaveURL(url=>url.pathname==='/');await page.goto('/customer.html?method=email&view=profile');await expect(page.locator('#customerProfile [name=city]')).toHaveValue('Synthetic city');
   await page.locator('#customerSignOut').click();await expectGate(page,'/customer');await page.reload();await expectGate(page,'/customer');
   expect(await page.evaluate(()=>window.__customerFixture.snapshot().sessions['e2-staff-auth'])).toBe('synthetic-staff');
 });
 
 for(const button of ['customerForgot','customerResend'])test(`${button} handles interruptions and shared email cooldown`,async({page,fixture})=>{
-  await fixture({session:false});await page.goto('/customer.html');await page.locator('#customerSignIn [name=email]').fill('alice@example.test');
+  await fixture({session:false});await page.goto('/customer.html?method=email');await page.locator('#customerSignIn [name=email]').fill('alice@example.test');
   await page.evaluate(op=>window.__customerFixture.fail(op),button==='customerForgot'?'resetEmail':'resendEmail');await page.locator('#'+button).click();
   await expect(page.locator('#customerAuthMessage')).toContainText('could not be completed');await expect(page.locator('#customerForgot')).toBeDisabled();await expect(page.locator('#customerResend')).toBeDisabled();
   await page.reload();await expect(page.locator('#customerForgot')).toBeDisabled();
 });
 
 test('recovery validates, survives interrupted update, clears URL, and requires new login',async({page,fixture})=>{
-  await fixture({recovery:true});await page.goto('/customer.html?code=synthetic-only#type=recovery');
-  await expect(page.locator('#customerRecovery')).toBeVisible();await expect(page).toHaveURL(/\/customer.html$/);
+  await fixture({recovery:true});await page.goto('/customer.html?method=email&code=synthetic-only#type=recovery');
+  await expect(page.locator('#customerRecovery')).toBeVisible();await expect(page).toHaveURL(/\/customer.html\?method=email$/);
   await page.locator('#customerPassword [name=password]').fill('Replacement-only-123!');await page.locator('#customerPassword [name=confirm]').fill('Mismatch-only-123!');await page.locator('#customerPassword button').click();
   await expect(page.locator('#customerRecoveryMessage')).toContainText('do not match');expect(await count(page,'updatePassword')).toBe(0);
   await page.locator('#customerPassword [name=confirm]').fill('Replacement-only-123!');await page.evaluate(()=>window.__customerFixture.fail('updatePassword'));await page.locator('#customerPassword button').click();
@@ -102,22 +102,22 @@ test('recovery validates, survives interrupted update, clears URL, and requires 
 });
 
 test('expired confirmation/recovery links show actionable retry and clear URL',async({page,fixture})=>{
-  await fixture({session:false});await page.goto('/customer.html?error=expired#synthetic-token');await expect(page.locator('#customerAuthMessage')).toContainText('expired or was already used');await expect(page).toHaveURL(/\/customer.html$/);await expectGate(page,'/customer');
+  await fixture({session:false});await page.goto('/customer.html?method=email&error=expired#synthetic-token');await expect(page.locator('#customerAuthMessage')).toContainText('expired or was already used');await expect(page).toHaveURL(/\/customer.html\?method=email$/);await expectGate(page,'/customer');
 });
 
 for(const path of ['/customer.html',`/my-e2.html?application=${aliceLoan}`,`/documents.html?application=${aliceLoan}`]){
   test(`cross-tab account switch immediately clears old customer data: ${path}`,async({page,context,fixture})=>{
-    await fixture();await page.goto(path);
+    await fixture();await page.goto(path==='/customer.html'?path+'?method=email':path);
     if(path.startsWith('/customer'))await expect(page.locator('#customerEmail')).toHaveValue('alice@example.test');
     else await expect(page.locator('body')).toContainText('Alice private vehicle');
-    const other=await context.newPage();await other.goto('/customer.html');await expect(other.locator('#customerAccount')).toBeVisible();
+    const other=await context.newPage();await other.goto('/customer.html?method=email');await expect(other.locator('#customerAccount')).toBeVisible();
     await other.evaluate(id=>window.__customerFixture.switchUser(id),bob);await expectGate(page,path);
     await page.reload();
     if(path.startsWith('/customer'))await expect(page.locator('#customerEmail')).toHaveValue('bob@example.test');
     else {await expect(page.locator('body')).not.toContainText('Alice private');await expect(page.locator('body')).not.toContainText('Alice Example');}
   });
   test(`account switch cancels a pending initial identity read: ${path}`,async({page,fixture})=>{
-    await fixture({hold:['getUser']});await page.goto(path);await expect.poll(()=>count(page,'getUser')).toBeGreaterThan(0);
+    await fixture({hold:['getUser']});await page.goto(path==='/customer.html'?path+'?method=email':path);await expect.poll(()=>count(page,'getUser')).toBeGreaterThan(0);
     await page.evaluate(id=>{window.__customerFixture.switchUser(id);window.__customerFixture.release('getUser');},bob);
     await expectGate(page,path);
     if(path.startsWith('/customer'))await expect(page.locator('#customerProfile [name=full_name]')).toHaveValue('');
@@ -125,12 +125,12 @@ for(const path of ['/customer.html',`/my-e2.html?application=${aliceLoan}`,`/doc
 }
 
 test('same-account token refresh preserves an unsaved profile',async({page,fixture})=>{
-  await fixture();await page.goto('/customer.html');await expect(page.locator('#customerAccount')).toBeVisible();await page.locator('#customerProfile [name=city]').fill('Unsaved synthetic city');
+  await fixture();await page.goto('/customer.html?method=email');await expect(page.locator('#customerAccount')).toBeVisible();await page.locator('#customerProfile [name=city]').fill('Unsaved synthetic city');
   for(const event of ['TOKEN_REFRESHED','SIGNED_IN']){await page.evaluate(({id,event})=>window.__customerFixture.switchUser(id,event),{id:alice,event});await expect(page.locator('#customerProfile [name=city]')).toHaveValue('Unsaved synthetic city');}
 });
 
 test('pending profile response cannot repopulate signed-out or switched account',async({page,fixture})=>{
-  await fixture();await page.goto('/customer.html');await expect(page.locator('#customerAccount')).toBeVisible();await page.locator('#customerProfile [name=city]').fill('Alice private city');
+  await fixture();await page.goto('/customer.html?method=email');await expect(page.locator('#customerAccount')).toBeVisible();await page.locator('#customerProfile [name=city]').fill('Alice private city');
   await page.evaluate(()=>window.__customerFixture.hold('rpc:e2_complete_customer_profile'));await page.locator('#customerProfile [type=submit]').click();
   await expect.poll(()=>count(page,'rpc:e2_complete_customer_profile')).toBe(1);await page.evaluate(id=>{window.__customerFixture.switchUser(id);window.__customerFixture.release('rpc:e2_complete_customer_profile');},bob);
   await expectGate(page,'/customer');await expect(page.locator('#customerProfile [name=city]')).toHaveValue('');
@@ -171,7 +171,7 @@ test('signout during upload or download prevents stale document UI returning',as
 });
 
 test('login through new draft, save/reload, upload, submit and updated progress',async({page,fixture})=>{
-  await fixture({session:false});await page.goto('/customer.html');await login(page);await expect(page.locator('#customerAccount')).toBeVisible();await page.locator('#customerAccount').getByRole('link',{name:'Continue application ↗',exact:true}).click();
+  await fixture({session:false});await page.goto('/customer.html?method=email');await login(page);await expect(page.locator('#customerAccount')).toBeVisible();await page.locator('#customerAccount').getByRole('link',{name:'Continue application ↗',exact:true}).click();
   await page.locator('#main [data-page=choose]').click();await page.locator('[data-start]').click();await page.locator('#startForm input[type=checkbox]').check();await page.locator('#startForm [type=submit]').click();
   await expect(page.locator('#loanForm')).toBeVisible();const appId=new URL(page.url()).searchParams.get('application');
   await page.locator('#field_deposit').fill('8000');await page.locator('#field_tenure').selectOption('5 years');await page.locator('#saveDraft').click();await expect(page.locator('#toast')).toContainText('has been saved');await page.reload();await expect(page.locator('#field_deposit')).toHaveValue('8000');
@@ -186,7 +186,7 @@ test('login through new draft, save/reload, upload, submit and updated progress'
 });
 
 for(const button of ['customerForgot','customerResend'])test(`${button} reports accepted request without claiming email delivery`,async({page,fixture})=>{
-  await fixture({session:false});await page.goto('/customer.html');await page.locator('#customerSignIn [name=email]').fill('alice@example.test');await page.locator('#'+button).click();
+  await fixture({session:false});await page.goto('/customer.html?method=email');await page.locator('#customerSignIn [name=email]').fill('alice@example.test');await page.locator('#'+button).click();
   await expect(page.locator('#customerAuthMessage')).toContainText('If this email is eligible');expect(await count(page,button==='customerForgot'?'resetEmail':'resendEmail')).toBe(1);await expect(page.locator('#customerForgot')).toBeDisabled();await expect(page.locator('#customerResend')).toBeDisabled();
 });
 
@@ -206,7 +206,7 @@ test('late application history cannot restore old customer progress after switch
 
 for(const [lang,hint] of [['en','Use at least 6 characters.'],['ms','Gunakan sekurang-kurangnya 6 aksara.'],['zh','请使用至少 6 个字符。']]){
  test(`customer registration accepts six characters and blocks five (${lang})`,async({page,fixture})=>{
-  await fixture({session:false});await page.goto(`/customer.html?mode=register&lang=${lang}`);
+  await fixture({session:false});await page.goto(`/customer.html?method=email&mode=register&lang=${lang}`);
   const form=page.locator('#customerRegister');await expect(form).toBeVisible();await expect(form).toContainText(hint);
   for(const [name,value] of Object.entries({full_name:'Carol Synthetic',email:'carol@example.test',phone:'0123456789',password:'Ab12!',confirm:'Ab12!'}))await form.locator(`[name=${name}]`).fill(value);
   await form.locator('[name=privacy]').check();await form.locator('[type=submit]').click();expect(await count(page,'signUp')).toBe(0);
@@ -215,7 +215,7 @@ for(const [lang,hint] of [['en','Use at least 6 characters.'],['ms','Gunakan sek
   await page.evaluate(()=>window.__customerFixture.confirm('carol@example.test'));await login(page,'carol@example.test','Ab123!');await expect(page.locator('#customerAccount')).toBeVisible();
  });
  test(`customer recovery accepts six characters and blocks five (${lang})`,async({page,fixture})=>{
-  await fixture({recovery:true});await page.goto(`/customer.html?lang=${lang}#type=recovery`);
+  await fixture({recovery:true});await page.goto(`/customer.html?method=email&lang=${lang}#type=recovery`);
   const form=page.locator('#customerPassword');await expect(form).toBeVisible();
   for(const name of ['password','confirm'])await form.locator(`[name=${name}]`).fill('Ab12!');
   await form.locator('button').click();expect(await count(page,'updatePassword')).toBe(0);
@@ -228,7 +228,7 @@ for(const [lang,hint] of [['en','Use at least 6 characters.'],['ms','Gunakan sek
 test('registration tabs wait for the account module before accepting a tap',async({page,fixture})=>{
  await fixture({session:false});let release;const loaded=new Promise(resolve=>release=resolve);
  await page.route('**/customer.js?*',async route=>{await loaded;await route.continue()});
- await page.goto('/customer.html');
+ await page.goto('/customer.html?method=email');
  await expect(page.locator('#showRegister')).toBeDisabled();await expect(page.locator('#showSignIn')).toBeDisabled();
  release();await page.locator('#showRegister').click();await expect(page.locator('#customerRegister')).toBeVisible();
  await page.locator('#showSignIn').click();await expect(page.locator('#customerSignIn')).toBeVisible();
