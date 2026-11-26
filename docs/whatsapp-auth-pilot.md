@@ -2,6 +2,16 @@
 
 Limited to a server-side approved test number. Email registration and login remain available. No public navigation entry; `/customer-whatsapp-test.html?lang=zh` supports EN/BM/ZH and is noindex.
 
+## Phone and password pilot
+
+The test page defaults to phone/password login with the native Supabase `signInWithPassword` API. Code login remains available. Registration first verifies the phone with a WhatsApp code, then offers password setup. Existing phone customers use **Forgot / set password** (or **Set / change password** when signed in) to verify a new code before setup; recovery requests use `shouldCreateUser: false`.
+
+Passwords require at least six characters and matching confirmation. They go directly to Supabase Auth through `updateUser`, never to AIRA, the OTP queue, URLs, local storage, or application logs. Setup requires the same independently verified phone/user as the current tab's successful OTP, within five minutes, and an allowed customer. Switching accounts or reloading does not inherit that setup state. This is a client flow guard; Supabase Auth remains the server-side authority for password updates. There are no new database, AWS, or OpenClaw settings for this change.
+
+The phone account is separate from any existing email account. The allowlist and pilot expiration continue to restrict customer data access. Password setup and real password login must be tested by the account owner; do not generate or enter a password for them.
+
+Tests: `tests/aira-otp.spec.mjs` and `tests/phone-password.spec.mjs` cover EN/BM/ZH desktop/mobile, six-character setup, mismatch rejection, invalid credentials, recovery without signup, account switching, customer denial, and code fallback. These mock Auth; user acceptance against live Auth is separate.
+
 ## Deployment and isolation
 
 1. Apply `20261125181751_aira_whatsapp_auth_pilot.sql` and `20261125184834_aira_otp_operator_sender.sql`; the initial state is disabled.
