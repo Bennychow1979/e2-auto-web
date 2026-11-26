@@ -1,0 +1,4 @@
+.authTabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.authTabs button{width:100%;padding:12px 5px;font-size:.82rem;overflow-wrap:anywhere}
+.accountCard form>button[type=button],#changePhonePassword,#otpSignOut{display:block;border:0;background:transparent;padding:12px 0;min-height:44px;text-decoration:underline;text-underline-offset:4px;color:#545850;text-align:left}
+#otpPurpose,.accountCard form>p{font-size:.85rem;line-height:1.6;color:#64686c}
