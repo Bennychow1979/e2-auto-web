@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {normalizePhone,hasVerifiedContact} from '../customer-phone-auth.mjs';
-import {validateJob,validateSender,messageArguments,deliveryAccepted} from '../scripts/aira-otp/worker-core.mjs';
+import {validateJob,validateSender,messageArguments,deliveryAccepted,parseCommandJSON} from '../scripts/aira-otp/worker-core.mjs';
 test('normalization refuses malformed/international destinations',()=>{
  for(const n of ['012 345 6789','+60123456789','0060123456789','60123456789'])assert.equal(normalizePhone(n),'+60123456789');
  for(const n of ['60123','+6512345678','+60abc123456789','60123456789@s.whatsapp.net','+60123456789;cmd',''])assert.throws(()=>normalizePhone(n));
@@ -14,6 +14,11 @@ test('normalization refuses malformed/international destinations',()=>{
 test('worker is destination-bound, expiry-bound and requires delivery evidence',()=>{
  const j={id:'00000000-0000-4000-8000-000000000001',phone:'60123456789',otp:'012345',expires_at:new Date(Date.now()+240000).toISOString()};
  assert.equal(validateJob(j,j.phone),j);
+ assert.equal(validateJob(j,null),j);
+ assert.throws(()=>validateJob({...j,phone:'6512345678'},null));
+ assert.throws(()=>validateJob(j,undefined));
+ assert.equal(deliveryAccepted(parseCommandJSON('Diagnostic line\n'+JSON.stringify({action:'send',channel:'whatsapp',dryRun:false,messageId:'wa-test'}))),true);
+ assert.throws(()=>parseCommandJSON('No complete JSON'));
  assert.throws(()=>validateJob(j,'60123456788'));assert.throws(()=>validateJob({...j,otp:'12345x'},j.phone));
  assert.throws(()=>validateJob({...j,expires_at:'invalid'},j.phone));assert.throws(()=>validateJob({...j,expires_at:new Date().toISOString()},j.phone));
  assert.deepEqual(messageArguments(j,'approved').slice(0,8),['message','send','--channel','whatsapp','--account','approved','--target','+60123456789']);
@@ -83,5 +88,50 @@ test('broker permissions, throttles, expiry and phone customer authorization',as
  await db.query("select set_config('request.jwt.claim.sub',$1,false)",[ids[1]]);await role('authenticated');assert.equal((await db.query('select public.e2_customer_allowed() v')).rows[0].v,false);
  await role();await db.exec("update e2_otp_private.settings set worker_until=now()-interval '1 second'");
  await role('service_role');await assert.rejects(worker());
+ await role();
+ await db.exec(await readFile(new URL('../supabase/migrations/20261126034910_aira_whatsapp_public_registration.sql',import.meta.url),'utf8'));
+ // Migration alone does not open public registration.
+ assert.equal((await db.query('select public_enabled from e2_otp_private.settings')).rows[0].public_enabled,false);
+ await db.exec("update e2_otp_private.settings set public_enabled=true,enabled=true,pilot_until=now()-interval '1 day',worker_until='infinity',heartbeat=now(); delete from e2_otp_private.jobs;");
+ // A verified non-allowlisted phone can sign in; a metadata claim cannot.
+ for(const [i,id] of ids.entries()){
+  await role();await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);
+  await role('authenticated');
+  assert.equal((await db.query('select public.e2_customer_allowed() v')).rows[0].v,i===0||i===3);
+ }
+ await role();await db.exec("update e2_otp_private.settings set enabled=false,heartbeat=null");
+ await role('authenticated');assert.equal((await db.query('select public.e2_customer_allowed() v')).rows[0].v,true);
+ await role('supabase_auth_admin');assert.equal((await hook('123456','60123456788')).error.http_code,503);
+ await role();await db.exec("update e2_otp_private.settings set enabled=true,heartbeat=now()");
+ for(const r of ['anon','authenticated','service_role']){
+  await role(r);await assert.rejects(hook());await assert.rejects(db.query('select * from e2_otp_private.settings'));
+ }
+ await role('authenticated');await assert.rejects(worker());
+ await role('supabase_auth_admin');
+ for(const p of ['6512345678','60312345678','6012345'])assert.equal((await hook('123456',p)).error.http_code,403);
+ const changed=(await db.query("select public.e2_aira_send_sms($1::jsonb) v",[JSON.stringify({user:{phone:'60123456788',phone_change:'60123456787'},sms:{otp:'123456'}})])).rows[0].v;
+ assert.equal(changed.error.http_code,403);
+ assert.deepEqual(await hook('123456','60123456788'),{});
+ assert.deepEqual(await hook('123456','60123456787'),{});
+ assert.deepEqual(await hook('123456','60123456786'),{});
+ assert.equal((await hook('123456','60123456785')).error.http_code,429); // Queue backpressure
+ await role('service_role');const publicJob=await worker();
+ assert.equal(publicJob.phone,'60123456788');
+ assert.deepEqual(await worker(),{}); // No overlapping CLI sends, even two pollers.
+ assert.deepEqual(await worker('heartbeat'),{});
+ await worker('ack',token,publicJob.id,true);
+ const second=await worker();assert.equal(second.phone,'60123456787');
+ await worker('ack',token,second.id,false);
+ assert.deepEqual(await worker(),{paused:true});
+ await role('supabase_auth_admin');assert.equal((await hook('123456','60123456784')).error.http_code,503);
+ await role();await db.exec("update e2_otp_private.settings set suspended_until=null,heartbeat=now(); update e2_otp_private.jobs set state='sent',ciphertext=null;");
+ // Per-number throttle still applies after switching to public mode.
+ await role('supabase_auth_admin');assert.equal((await hook('654321','60123456788')).error.http_code,429);
+ await role();await db.exec("delete from e2_otp_private.jobs; insert into e2_otp_private.jobs(phone,fingerprint,state,created_at) select '60123456788','synthetic','sent',now()-interval '2 minutes' from generate_series(1,60);");
+ await role('supabase_auth_admin');assert.equal((await hook('123456','60123456784')).error.http_code,429);
+ await role();await db.exec("update e2_otp_private.jobs set created_at=now()-interval '2 hours'; insert into e2_otp_private.jobs(phone,fingerprint,state,created_at) select '60123456788','synthetic','sent',now()-interval '2 hours' from generate_series(1,240);");
+ await role('supabase_auth_admin');assert.equal((await hook('123456','60123456784')).error.http_code,429);
+ await role();await db.exec("update e2_otp_private.settings set public_enabled=false,pilot_until=now()-interval '1 second'");
+ await role('service_role');assert.deepEqual(await worker(),{paused:true});
  await db.close();
 });

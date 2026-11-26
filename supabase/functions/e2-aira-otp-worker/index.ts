@@ -17,7 +17,7 @@ Deno.serve(async req=>{
   while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>1024){await reader.cancel();return fail(413)}raw+=decoder.decode(value,{stream:true})}
   raw+=decoder.decode();
   const body=JSON.parse(raw);
-  if(!['poll','ack','offline'].includes(body.action))return fail(400);
+  if(!['poll','ack','offline','heartbeat'].includes(body.action))return fail(400);
   if(body.action==='ack'&&(!/^[0-9a-f-]{36}$/.test(body.job||'')||typeof body.ok!=='boolean'))return fail(400);
   const {data,error}=await db.rpc('e2_aira_worker',{p_token:token,p_action:body.action,p_job:body.action==='ack'?body.job:null,p_ok:body.ok===true});
   if(error)return fail(error.code==='42501'?403:503);

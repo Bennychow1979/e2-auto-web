@@ -22,7 +22,7 @@ function mode(create){register.hidden=!create;login.hidden=create;$('showRegiste
 function gate(){epoch++;user=null;saved=null;dirty=false;profile.reset();$('customerEmail').value='';$('customerAccount').hidden=true;$('customerRecovery').hidden=true;$('customerAuth').hidden=false}
 function showRecovery(){epoch++;$('customerAuth').hidden=true;$('customerAccount').hidden=true;$('customerRecovery').hidden=false}
 function clearRecovery(){recovery=false;try{sessionStorage.removeItem('e2-customer-recovery')}catch{}}
-function fillProfile(){profile.reset();for(const key of fields)profile.elements[key].value=saved?.[key]??(key==='full_name'?user.user_metadata?.full_name||'':key==='phone'?user.phone||user.user_metadata?.phone||'':'');$('customerEmail').value=user.email||'';$('customerEmail').closest('label').hidden=!user.email;profile.elements.privacy.required=!saved;$('profilePrivacy').hidden=!!saved;dirty=false}
+function fillProfile(){if($('phonePasswordSettings'))$('phonePasswordSettings').hidden=!user.phone_confirmed_at;profile.reset();for(const key of fields)profile.elements[key].value=saved?.[key]??(key==='full_name'?user.user_metadata?.full_name||'':key==='phone'?user.phone||user.user_metadata?.phone||'':'');$('customerEmail').value=user.email||'';$('customerEmail').closest('label').hidden=!user.email;profile.elements.privacy.required=!saved;$('profilePrivacy').hidden=!!saved;dirty=false}
 async function hydrate(session){
   const run=++epoch;if(!session||!sessionIdentity.accepts(session.user)){gate();return}if(recovery){showRecovery();return}
   try{
