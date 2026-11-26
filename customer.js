@@ -1,5 +1,5 @@
 import {campaignSignupData} from './campaign-tracking.mjs?v=1';
-import {ct,accountURL} from './customer-language.mjs?v=password6-20261125';
+import {ct,accountURL} from './customer-language.mjs?v=profile-home-20261126';
 import {takeLoan} from './loan-intent.js?v=flow-20261113';
 import {pendingSave,captureSave,bindSave,clearSave,saveReturnURL} from './saved-intent.js?v=mail-save-20261119';
 import {customerDB as db,check,fields} from './customer-data.js?v=customer-1';
@@ -9,6 +9,8 @@ import {hasVerifiedContact} from './customer-phone-auth.mjs';
 const $=id=>document.getElementById(id),profile=$('customerProfile'),register=$('customerRegister'),login=$('customerSignIn');
 let user=null,saved=null,busy=false,epoch=0,dirty=false,recovery=false;
 const sessionIdentity=createSessionIdentity();
+const explicitProfile=new URLSearchParams(location.search).get('view')==='profile';
+const homeURL=()=>accountURL('/index.html');
 try{recovery=sessionStorage.getItem('e2-customer-recovery')==='1'}catch{}
 let emailWait=0;try{const n=Number(sessionStorage.getItem('e2-customer-email-wait'));if(n>Date.now()&&n<Date.now()+61000)emailWait=n}catch{}
 const redirect=(withSave=true)=>withSave?saveReturnURL(accountURL('/customer.html')):accountURL('/customer.html');
@@ -35,7 +37,14 @@ async function hydrate(session){
       try{const created=check(await db.rpc('e2_save_customer_profile',{details:initial,expected_revision:0,accept_privacy:true}));if(run!==epoch)return;saved=Array.isArray(created)?created[0]:created}catch{if(run!==epoch)return}
     }
     const loanReturn=takeLoan();if(loanReturn){location.replace(accountURL(loanReturn));return}
-    if(pendingSave(user.id)){bindSave(user.id);location.replace(saveReturnURL(accountURL('saved.html')));return}
+    // Complete an email-carried favourite before routing, including a new browser.
+    const wanted=pendingSave(user.id);
+    if(wanted){
+      bindSave(user.id);
+      try{check(await db.rpc('e2_save_vehicle',{target:wanted,keep:true}));if(run!==epoch)return;clearSave(wanted)}
+      catch{if(run!==epoch)return;location.replace(saveReturnURL(accountURL('saved.html')));return}
+    }
+    if(saved?.profile_saved_at&&!explicitProfile){location.replace(homeURL());return}
     fillProfile();$('customerAuth').hidden=true;$('customerRecovery').hidden=true;$('customerAccount').hidden=false;note('customerProfileMessage',saved?'Your saved details are ready.':'Complete your details to finish setting up your customer profile.');
   }catch(error){if(run===epoch){gate();note('customerAuthMessage',error.message||'Could not load your account. Please try again.',true)}}
 }
@@ -62,7 +71,7 @@ async function requestEmail(type){
 $('customerForgot').onclick=()=>requestEmail('reset');$('customerResend').onclick=()=>requestEmail('confirm');
 $('customerPassword').onsubmit=async event=>{event.preventDefault();if(busy)return;const form=event.currentTarget;if(form.elements.password.value!==form.elements.confirm.value){note('customerRecoveryMessage','The passwords do not match.',true);return}lock(true);try{check(await db.auth.updateUser({password:form.elements.password.value}));form.reset();clearRecovery();check(await db.auth.signOut({scope:'local'}));gate();note('customerAuthMessage','Password saved. Sign in with your new password.')}catch{note('customerRecoveryMessage','Could not save your password. Request a new reset email and try again.',true)}finally{lock(false)}};
 profile.oninput=()=>{dirty=true};
-profile.onsubmit=async event=>{event.preventDefault();if(busy||!user)return;const run=epoch;lock(true);try{const details=Object.fromEntries(fields.map(k=>[k,profile.elements[k].value.trim()]));details.phone=normalizeWhatsApp(details.phone);const data=check(await db.rpc('e2_save_customer_profile',{details,expected_revision:saved?.revision||0,accept_privacy:profile.elements.privacy.checked}));if(run!==epoch)return;saved=Array.isArray(data)?data[0]:data;fillProfile();note('customerProfileMessage','Your details have been saved.')}catch(e){if(run===epoch)note('customerProfileMessage',e.code==='23514'?'Check your name, phone number and budget range.':e.message||'Could not save your details.',true)}finally{lock(false)}};
+profile.onsubmit=async event=>{event.preventDefault();if(busy||!user)return;const run=epoch;lock(true);try{const details=Object.fromEntries(fields.map(k=>[k,profile.elements[k].value.trim()]));details.phone=normalizeWhatsApp(details.phone);const data=check(await db.rpc('e2_complete_customer_profile',{details,expected_revision:saved?.revision||0,accept_privacy:profile.elements.privacy.checked}));if(run!==epoch)return;saved=Array.isArray(data)?data[0]:data;fillProfile();note('customerProfileMessage','Your details have been saved.');setTimeout(()=>{if(run===epoch&&!dirty)location.replace(homeURL())},700)}catch(e){if(run===epoch)note('customerProfileMessage',e.code==='23514'?'Check your name, phone number and budget range.':e.message||'Could not save your details.',true)}finally{lock(false)}};
 $('reloadCustomer').onclick=async()=>{if(busy||(dirty&&!confirm(ct('Discard unsaved changes and reload?'))))return;lock(true);try{await hydrate(check(await db.auth.getSession()).session)}finally{lock(false)}};
 $('customerSignOut').onclick=async()=>{if(busy||(dirty&&!confirm(ct('Discard unsaved changes and sign out?'))))return;lock(true);try{check(await db.auth.signOut({scope:'local'}));clearRecovery();gate()}catch{note('customerProfileMessage','Could not sign out. Please try again.',true)}finally{lock(false)}};
 window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue=''}});
@@ -76,6 +85,6 @@ if(!db){lock(true);note('customerAuthMessage','Customer accounts are being prepa
  });
  const badLink=new URLSearchParams(location.hash.slice(1)).has('error')||new URLSearchParams(location.search).has('error');
  if(!badLink)try{await hydrate(check(await db.auth.getSession()).session)}catch{gate();note('customerAuthMessage','This sign-in link could not be used. Please request a new email.',true)}
- history.replaceState(null,'',location.pathname);
+ history.replaceState(null,'',location.pathname+(explicitProfile?'?view=profile':''));
  if(badLink){clearRecovery();gate();note('customerAuthMessage','This email link has expired or was already used. Sign in, resend confirmation, or request a new password reset.',true)}
 }

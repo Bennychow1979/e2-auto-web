@@ -45,9 +45,8 @@ for(const lang of ['en','ms','zh']){
   await page.locator('#setPhonePassword [name=password]').fill('qa1234');
   await page.locator('[name=confirm_password]').fill('qa1234');
   await page.locator('#setPhonePassword [type=submit]').click();
-  await expect(page.locator('#otpSignedIn')).toBeVisible();
+  await expect(page).toHaveURL(/customer.html/);
   expect(calls.at(-1)).toEqual({op:'update',args:{password:'qa1234'}});
-  await page.locator('#profileLink').click();
   await expect(page).toHaveURL(/customer.html/);
   expect(page.url()).toContain('save=00000000-0000-4000-8000-000000000008');
   expect(page.url()).not.toContain('123456');

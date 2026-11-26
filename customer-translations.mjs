@@ -104,6 +104,7 @@ export const customerTranslations={
  'Sign in / Create account ↗':['Log masuk / Daftar akaun ↗','登录 / 注册账号 ↗'],
  'Saved cars':['Kereta disimpan','收藏车辆'],
  'Refresh':['Muat semula','刷新'],
+ 'Back to home':['Kembali ke laman utama','返回首页'],
  'Explore cars ↗':['Lihat kereta ↗','浏览车辆 ↗'],
  'My profile':['Profil saya','我的资料'],
  'Back to showroom ↗':['Kembali ke bilik pameran ↗','返回车辆列表 ↗'],
