@@ -1,0 +1,7 @@
+/* The real H2 keeps layout, SEO, selection and a crisp fallback. */
+[data-fit-neon]{position:relative;width:fit-content;max-width:100%;isolation:isolate}
+.e2NeonText{display:inline-block;max-width:100%}
+.e2NeonSurface{position:absolute;inset:-16px;display:block;touch-action:pan-y}
+.e2NeonCanvas{position:absolute;inset:0;display:block;width:100%;height:100%;opacity:0;pointer-events:none}
+.e2NeonSurface.e2NeonActive .e2NeonCanvas{opacity:1}
+@media(prefers-reduced-motion:reduce){.e2NeonSurface{display:none!important}[data-fit-neon] .e2NeonText{opacity:1!important}}
