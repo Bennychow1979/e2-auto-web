@@ -1,4 +1,4 @@
-import {accountURL} from './customer-language.mjs?v=flow-20261113';
+import {accountURL} from './customer-language.mjs?v=profile-home-20261126';
 import {t,language} from './i18n.mjs';
 import {customerDB as db,check} from './customer-data.js?v=customer-1';
 import {hasVerifiedContact} from './customer-phone-auth.mjs';
@@ -11,7 +11,7 @@ function paint(name=null){
  for(const link of links){
   const label=link.querySelector('span');
   if(label)label.textContent=name||t('Sign in');
-  link.href=accountURL('/customer.html',language);
+  link.href=accountURL(name?'/customer.html?view=profile':'/customer.html',language);
   link.setAttribute('aria-label',name?t('Open profile for {name}',{name}):t('Sign in to your E2 account'));
   link.title=name?'E2 · '+name:t('Sign in');
  }

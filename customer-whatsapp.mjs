@@ -1,6 +1,6 @@
 import {customerDB as db,check} from './customer-data.js?v=customer-1';
 import {captureSave,saveReturnURL,bindSave} from './saved-intent.js?v=whatsapp-public-20261126';
-import {customerLanguage as language,accountURL,rememberCustomerLanguage} from './customer-language.mjs?v=password6-20261125';
+import {customerLanguage as language,accountURL,rememberCustomerLanguage} from './customer-language.mjs?v=profile-home-20261126';
 import {normalizePhone,hasVerifiedContact} from './customer-phone-auth.mjs';
 const texts={
  en:{title:'Sign in with WhatsApp',intro:'Verify your Malaysian WhatsApp number, or use email to register and sign in.',email:'Use email instead',login:'Sign in',register:'Create account',phone:'WhatsApp number',name:'Full name',consent:'I agree to the customer privacy notice.',privacy:'Read notice',existing:'Already registered by email? Use email to access your existing saved cars. Accounts are not automatically merged by phone number.',request:'Send verification code',code:'6-digit code',verify:'Verify and continue',change:'Change number / resend',signed:'You are signed in.',profile:'My profile',saved:'Saved cars',signout:'Sign out',sending:'Requesting your code…',sent:'Code requested. Check WhatsApp. Use the newest code within 5 minutes.',failed:'Could not request a code. Check your number and account option, wait, or use email.',invalid:'Enter a valid Malaysian mobile number.',wrong:'The code could not be verified. Check the newest code and try again, or request a new one.',wait:'Please wait 60 seconds between requests.',unavailable:'WhatsApp sign-in is unavailable. Please use email.',verifying:'Verifying…'},
@@ -18,7 +18,7 @@ document.title=copy.title+' | E2 Auto';
 for(const link of document.querySelectorAll('nav[aria-label=Language] a')){const u=new URL(link.href);if(new URLSearchParams(location.search).get('mode')==='register')u.searchParams.set('mode','register');link.href=saveReturnURL(u.href);}
 document.documentElement.lang=language==='zh'?'zh-Hans':language;
 document.querySelectorAll('[data-copy]').forEach(el=>el.textContent=copy[el.dataset.copy]);
-for(const [id,path] of [['emailLink','customer.html'],['privacyLink','customer-privacy.html'],['profileLink','customer.html'],['savedLink','saved.html']])$(id).href=saveReturnURL(accountURL(path));
+for(const [id,path] of [['emailLink','customer.html'],['privacyLink','customer-privacy.html'],['profileLink','customer.html?view=profile'],['savedLink','saved.html']])$(id).href=saveReturnURL(accountURL(path));
 let currentMode='password',busy=false,phone='',waitUntil=0,freshVerification=null,signedUser=null;
 function note(key){$('otpStatus').textContent=copy[key]||key}
 function lock(value){busy=value;document.querySelectorAll('input,button').forEach(el=>el.disabled=value)}
@@ -97,6 +97,7 @@ passwordSetup.onsubmit=async e=>{
   const updated=check(await db.auth.updateUser({password})).user;
   if(updated?.id!==user.id)throw Error();
   bindSave(user.id);passwordSetup.reset();showSignedIn(updated);note('passwordSaved');
+  if(currentMode==='register')continueToProfile(updated);
  }catch{passwordSetup.reset();note('passwordSaveFailed')}finally{lock(false)}
 };
 $('otpSignOut').onclick=async()=>{if(busy)return;lock(true);try{check(await db.auth.signOut({scope:'local'}));location.reload()}catch{note('unavailable');lock(false)}};

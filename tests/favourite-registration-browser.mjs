@@ -62,7 +62,7 @@ try{
   // A new browser context has none of the original tab's session/local storage.
   state.verified=true;await initial.close();const confirmed=await context(),returned=await confirmed.newPage();
   await returned.goto(mail.href+'#access_token=synthetic-confirmation&type=signup');
-  await returned.waitForURL('**/saved.html?lang='+lang);await expect(returned.locator('.savedCard')).toHaveCount(1);
+  await expect(returned.locator('#customerAccount')).toBeVisible();await expect.poll(()=>state.rows.length).toBe(1);await returned.goto(origin+'/saved.html?lang='+lang);await expect(returned.locator('.savedCard')).toHaveCount(1);
   await expect(returned.locator('.savedCard')).toContainText('Honda CITY');assert.equal(state.rows[0].vehicle_id,carId);assert.equal(state.writes,1);
   assert.equal(new URL(returned.url()).hash,'');assert.equal(new URL(returned.url()).searchParams.has('save'),false);
   assert(await returned.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Saved cars fits iPhone width');

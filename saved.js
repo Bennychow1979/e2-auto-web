@@ -1,9 +1,9 @@
 import {vehiclePath} from './vehicle-routes.mjs';
-import {customerLanguage} from './customer-language.mjs?v=mail-save-20261119';
+import {customerLanguage} from './customer-language.mjs?v=profile-home-20261126';
 import {db,customer,savedRows,setSaved} from './saved-data.js';
 import {pendingSave,clearSave,captureSave,bindSave} from './saved-intent.js?v=mail-save-20261119';
 import {getVehicles,coverURL,esc,rm} from './e2-data.js';
-import {ct,accountURL,setupCustomerLanguage} from './customer-language.mjs?v=mail-save-20261119';
+import {ct,accountURL,setupCustomerLanguage} from './customer-language.mjs?v=profile-home-20261126';
 captureSave();
 setupCustomerLanguage();
 // Consume URL context once; retryable intent remains in this tab until saved.

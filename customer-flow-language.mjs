@@ -1,4 +1,4 @@
-import {ct,accountURL,customerLanguage,setupCustomerLanguage} from './customer-language.mjs?v=intake-source-20261117';
+import {ct,accountURL,customerLanguage,setupCustomerLanguage} from './customer-language.mjs?v=profile-home-20261126';
 import {escapeHTML} from './i18n.mjs';
 import {documentCoverage} from './document-fields.js';
 import {sections} from './loan-fields.js';

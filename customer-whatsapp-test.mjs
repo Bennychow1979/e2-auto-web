@@ -1,2 +1,2 @@
 // Compatibility for existing test-page bookmarks.
-import './customer-whatsapp.mjs?v=public-20261126';
+import './customer-whatsapp.mjs?v=profile-home-20261126';

@@ -1,4 +1,4 @@
-import {refreshCustomerLanguageLinks} from './customer-language.mjs?v=flow-20261113';
+import {refreshCustomerLanguageLinks} from './customer-language.mjs?v=profile-home-20261126';
 import {ft,flowHTML,flowURL,flowLocale,setupCustomerFlow} from './customer-flow-language.mjs';
 import {db,check,editable,getLoan,getLoans,getEvents,startLoan,saveLoan,submitLoan} from './loan-data.js';
 import {customer} from './saved-data.js';

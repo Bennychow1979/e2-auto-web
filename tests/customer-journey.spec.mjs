@@ -11,6 +11,7 @@ const test=base.extend({
     await context.route('**/*',async route=>{
       const url=new URL(route.request().url());
       if(url.origin===new URL(baseURL).origin){
+        if(['/','/ms/','/zh/'].includes(url.pathname))return route.fulfill({contentType:'text/html',body:'<title>E2 Home</title><h1>Home</h1>'});
         if(url.pathname==='/e2-config.js')return route.fulfill({contentType:'text/javascript',body:'window.E2_CONFIG={supabaseUrl:"https://synthetic-customer.supabase.co",publishableKey:"sb_publishable_synthetic"};'});
         return route.continue();
       }
@@ -73,10 +74,10 @@ test('invalid login, profile save interruption/retry, reload, and local signout'
   await fixture({session:false});await page.goto('/customer.html');await login(page,'alice@example.test','wrong');
   await expect(page.locator('#customerAccount')).toBeHidden();await expect(page.locator('#customerAuthMessage')).toContainText('Could not sign in');
   await login(page);await expect(page.locator('#customerEmail')).toHaveValue('alice@example.test');
-  await page.locator('#customerProfile [name=city]').fill('Synthetic city');await page.evaluate(()=>window.__customerFixture.fail('rpc:e2_save_customer_profile'));
+  await page.locator('#customerProfile [name=city]').fill('Synthetic city');await page.evaluate(()=>window.__customerFixture.fail('rpc:e2_complete_customer_profile'));
   await page.locator('#customerProfile [type=submit]').click();await expect(page.locator('#customerProfileMessage')).toContainText('Synthetic interrupted');
   await expect(page.locator('#customerProfile [name=city]')).toHaveValue('Synthetic city');await page.locator('#customerProfile [type=submit]').click();
-  await expect(page.locator('#customerProfileMessage')).toContainText('have been saved');await page.reload();await expect(page.locator('#customerProfile [name=city]')).toHaveValue('Synthetic city');
+  await expect(page.locator('#customerProfileMessage')).toContainText('have been saved');await expect(page).toHaveURL(url=>url.pathname==='/');await page.goto('/customer.html?view=profile');await expect(page.locator('#customerProfile [name=city]')).toHaveValue('Synthetic city');
   await page.locator('#customerSignOut').click();await expectGate(page,'/customer');await page.reload();await expectGate(page,'/customer');
   expect(await page.evaluate(()=>window.__customerFixture.snapshot().sessions['e2-staff-auth'])).toBe('synthetic-staff');
 });
@@ -130,8 +131,8 @@ test('same-account token refresh preserves an unsaved profile',async({page,fixtu
 
 test('pending profile response cannot repopulate signed-out or switched account',async({page,fixture})=>{
   await fixture();await page.goto('/customer.html');await expect(page.locator('#customerAccount')).toBeVisible();await page.locator('#customerProfile [name=city]').fill('Alice private city');
-  await page.evaluate(()=>window.__customerFixture.hold('rpc:e2_save_customer_profile'));await page.locator('#customerProfile [type=submit]').click();
-  await expect.poll(()=>count(page,'rpc:e2_save_customer_profile')).toBe(1);await page.evaluate(id=>{window.__customerFixture.switchUser(id);window.__customerFixture.release('rpc:e2_save_customer_profile');},bob);
+  await page.evaluate(()=>window.__customerFixture.hold('rpc:e2_complete_customer_profile'));await page.locator('#customerProfile [type=submit]').click();
+  await expect.poll(()=>count(page,'rpc:e2_complete_customer_profile')).toBe(1);await page.evaluate(id=>{window.__customerFixture.switchUser(id);window.__customerFixture.release('rpc:e2_complete_customer_profile');},bob);
   await expectGate(page,'/customer');await expect(page.locator('#customerProfile [name=city]')).toHaveValue('');
 });
 
