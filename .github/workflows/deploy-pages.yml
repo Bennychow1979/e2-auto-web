@@ -26,6 +26,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -137,8 +138,9 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Verify live publication after CDN propagation
+        id: live_publication
         if: ${{ !inputs.restore_previous }}
-        run: node scripts/verify-live-publication.mjs _site
+        run: node scripts/verify-live-publication.mjs _site > "$RUNNER_TEMP/e2-live-publication.json"
 
       - name: Notify Benny when stock publication fails
         if: ${{ failure() && !inputs.restore_previous }}
@@ -146,3 +148,13 @@ jobs:
           E2AUTO_CHECK_BOT_TOKEN: ${{ secrets.E2AUTO_CHECK_BOT_TOKEN }}
           E2AUTO_CHECK_CHAT_ID: ${{ secrets.E2AUTO_CHECK_CHAT_ID }}
         run: node scripts/notify-stock-publication.mjs
+
+      - name: Notify Benny when a failed publication recovers
+        if: ${{ success() && !inputs.restore_previous && github.run_attempt > 1 && steps.live_publication.outcome == 'success' }}
+        # Delivery trouble must not mislabel an already verified publication as failed.
+        continue-on-error: true
+        env:
+          E2AUTO_CHECK_BOT_TOKEN: ${{ secrets.E2AUTO_CHECK_BOT_TOKEN }}
+          E2AUTO_CHECK_CHAT_ID: ${{ secrets.E2AUTO_CHECK_CHAT_ID }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/notify-stock-publication.mjs --recovered _site "$RUNNER_TEMP/e2-live-publication.json"
